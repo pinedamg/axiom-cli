@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 pub const DEFAULT_DB_PATH: &str = "axiom.db";
 pub const DEFAULT_SCHEMAS_DIR: &str = "config/schemas";
+pub const DEFAULT_PLUGINS_DIR: &str = "config/plugins";
 pub const DEFAULT_ENTROPY_THRESHOLD: f64 = 4.5;
 
 #[derive(Debug, Clone)]
@@ -22,6 +23,7 @@ pub enum IntentStrategy {
 pub struct AxiomConfig {
     pub db_path: PathBuf,
     pub schemas_dir: PathBuf,
+    pub plugins_dir: PathBuf,
     pub entropy_threshold: f64,
     pub intent_keywords: Vec<String>,
     pub pii_patterns: Vec<String>,
@@ -33,6 +35,7 @@ impl Default for AxiomConfig {
         Self {
             db_path: PathBuf::from(DEFAULT_DB_PATH),
             schemas_dir: PathBuf::from(DEFAULT_SCHEMAS_DIR),
+            plugins_dir: PathBuf::from(DEFAULT_PLUGINS_DIR),
             entropy_threshold: DEFAULT_ENTROPY_THRESHOLD,
             intent_keywords: vec![
                 "error".to_string(), "fail".to_string(), "package".to_string(),

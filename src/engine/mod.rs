@@ -1,15 +1,18 @@
 pub mod discovery;
 pub mod intent_discovery;
+pub mod plugins;
 
 use crate::privacy::PrivacyRedactor;
 use crate::schema::{ToolSchema, Action};
 use crate::IntentContext;
 use crate::engine::discovery::DiscoveryEngine;
+use crate::engine::plugins::WasmPluginManager;
 
 pub struct AxiomEngine {
     pub redactor: PrivacyRedactor,
     pub schemas: Vec<ToolSchema>,
     pub discovery: DiscoveryEngine,
+    pub plugins: Option<WasmPluginManager>,
 }
 
 impl AxiomEngine {
@@ -18,7 +21,13 @@ impl AxiomEngine {
             redactor,
             schemas,
             discovery: DiscoveryEngine::default(),
+            plugins: None,
         }
+    }
+
+    pub fn with_plugins(mut self, manager: WasmPluginManager) -> Self {
+        self.plugins = Some(manager);
+        self
     }
 
     pub fn load_learned_templates(&mut self, templates: Vec<(String, usize)>) {
@@ -45,15 +54,16 @@ impl AxiomEngine {
         }
 
         // 3. Apply static schemas
+        let mut final_line = Some(redacted.clone());
         if let Some(schema) = self.schemas.iter().find(|s| s.matches(command)) {
             for rule in &schema.rules {
                 if let Some(re) = &rule.compiled_re {
                     if re.is_match(&redacted) {
                         match rule.action {
-                            Action::Keep => return Some(redacted),
-                            Action::Collapse => return None,
-                            Action::Redact => return Some("[REDACTED_BY_SCHEMA]".to_string()),
-                            Action::Hidden => return None,
+                            Action::Keep => { final_line = Some(redacted.clone()); break; },
+                            Action::Collapse => { final_line = None; break; },
+                            Action::Redact => { final_line = Some("[REDACTED_BY_SCHEMA]".to_string()); break; },
+                            Action::Hidden => { final_line = None; break; },
                         }
                     }
                 }
@@ -61,11 +71,23 @@ impl AxiomEngine {
         } else {
             // 4. Auto-discovery (Phase 3 + 3.4 Aggregation)
             if self.discovery.process_and_check_noise(&redacted) {
-                return None;
+                final_line = None;
             }
         }
 
-        Some(redacted)
+        // 5. Apply WASM Plugins if the line is still visible
+        if let Some(mut current_line) = final_line {
+            if let Some(plugin_manager) = &mut self.plugins {
+                current_line = plugin_manager.transform(&current_line);
+                if current_line.is_empty() {
+                    return None;
+                }
+                return Some(current_line);
+            }
+            return Some(current_line);
+        }
+
+        None
     }
 }
 
@@ -93,6 +115,22 @@ mod tests {
         let summaries = engine.flush_summaries();
         assert!(!summaries.is_empty());
         assert!(summaries[0].contains("Event #<NUM> occurred"));
+    }
+
+    #[test]
+    fn test_engine_with_no_plugins() {
+        let redactor = PrivacyRedactor::default();
+        let mut engine = AxiomEngine::new(redactor, vec![]);
+        let command = "ls";
+        let context = IntentContext {
+            last_message: "list files".to_string(),
+            command: command.to_string(),
+            keywords: vec!["list".to_string()],
+        };
+
+        let line = "file.txt";
+        let result = engine.process_line(line, command, &context);
+        assert_eq!(result, Some("file.txt".to_string()));
     }
 
     #[test]

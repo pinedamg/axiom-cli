@@ -3,6 +3,7 @@ use crate::config::AxiomConfig;
 use crate::persistence::PersistenceManager;
 use crate::schema::ToolSchema;
 use crate::privacy::PrivacyRedactor;
+use crate::engine::plugins::WasmPluginManager;
 use crate::engine::AxiomEngine;
 
 pub struct AxiomSession {
@@ -16,13 +17,17 @@ impl AxiomSession {
         let persistence = PersistenceManager::new_with_path(&config.db_path)?;
         let schemas = Self::load_schemas(&config)?;
         
-        // Use patterns and threshold from config
         let redactor = PrivacyRedactor::new(
             config.entropy_threshold, 
             config.pii_patterns.clone()
         );
         
         let mut engine = AxiomEngine::new(redactor, schemas);
+        
+        // Initialize WASM plugins
+        if let Ok(plugin_manager) = WasmPluginManager::new(&config.plugins_dir) {
+            engine = engine.with_plugins(plugin_manager);
+        }
         
         // Load historical memory
         if let Ok(known) = persistence.get_known_templates() {
