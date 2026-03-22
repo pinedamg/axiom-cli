@@ -1,0 +1,15 @@
+name: git-cli
+command_pattern: "^git"
+rules:
+  - name: CommitHashes
+    pattern: "^commit [a-f0-9]{40}"
+    action: keep
+    priority: 10
+  - name: AuthorDate
+    pattern: "^(Author:|Date:).*"
+    action: collapse
+    priority: 5
+  - name: DiffMetadata
+    pattern: "^(index|similarity|rename).*"
+    action: collapse
+    priority: 5

@@ -66,12 +66,26 @@ impl PersistenceManager {
         Ok(results)
     }
 
-    /// Records a token saving event
+    /// Logs a saving event
     pub fn log_saving(&self, command: &str, original: usize, compressed: usize) -> anyhow::Result<()> {
         self.conn.execute(
             "INSERT INTO savings_log (command, original_size, compressed_size) VALUES (?1, ?2, ?3)",
             params![command, original as i64, compressed as i64],
         )?;
         Ok(())
+    }
+
+    /// Returns total characters saved: (original, compressed)
+    pub fn get_total_savings(&self) -> anyhow::Result<(usize, usize)> {
+        let mut stmt = self.conn.prepare("SELECT SUM(original_size), SUM(compressed_size) FROM savings_log")?;
+        let mut rows = stmt.query([])?;
+        
+        if let Some(row) = rows.next()? {
+            let original: i64 = row.get(0).unwrap_or(0);
+            let compressed: i64 = row.get(1).unwrap_or(0);
+            Ok((original as usize, compressed as usize))
+        } else {
+            Ok((0, 0))
+        }
     }
 }

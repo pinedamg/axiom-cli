@@ -9,9 +9,11 @@ This Roadmap defines the implementation path for **AXIOM**, prioritizing securit
 ## Phase 2: Intelligence & Context (Beta) - [IN PROGRESS]
 **Goal**: Make Axiom understand the "why" behind command execution.
 
-### 2.1 Auto-Intent Detection
+### 2.1 Auto-Intent & Integration
 - [x] Manual context via environment variables.
-- [ ] **Next**: Auto-discovery of chat logs (Cursor, Claude, Gemini CLI) to extract context silently.
+- [x] Auto-discovery of chat logs (Cursor, Claude, Gemini CLI) to extract context silently.
+- [ ] **Next**: "Process Detective" (Auto-prefixing only when a command is launched by an AI agent).
+- [ ] **Next**: "Local Shims" (Project-level binary overrides in `.axiom/bin`).
 - [ ] Git context integration (detecting currently modified files).
 
 ### 2.2 Semantic Transformer

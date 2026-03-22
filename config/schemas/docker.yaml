@@ -1,0 +1,11 @@
+name: docker-cli
+command_pattern: "^docker"
+rules:
+  - name: PullProgress
+    pattern: ".*: (Pull complete|Waiting|Extracting|Downloading).*"
+    action: collapse
+    priority: 5
+  - name: StatusHeader
+    pattern: "^CONTAINER ID.*"
+    action: keep
+    priority: 10
