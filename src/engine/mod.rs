@@ -1,4 +1,5 @@
 pub mod discovery;
+pub mod intent_discovery;
 
 use crate::privacy::PrivacyRedactor;
 use crate::schema::{ToolSchema, Action};

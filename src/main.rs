@@ -4,6 +4,7 @@ use axiom::config::AxiomConfig;
 use axiom::session::AxiomSession;
 use axiom::IntentContext;
 use axiom::gateway::execute_command;
+use axiom::engine::intent_discovery::IntentDiscoverer;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -24,8 +25,12 @@ async fn main() -> anyhow::Result<()> {
     let config = AxiomConfig::default();
     let mut session = AxiomSession::new(config)?;
 
-    // 2. Detect Intent
-    let intent = env::var("AXIOM_CONTEXT").unwrap_or_else(|_| "Automated Session".to_string());
+    // 2. Detect Intent (Manual > Auto > Default)
+    let intent = env::var("AXIOM_CONTEXT")
+        .ok()
+        .or_else(|| IntentDiscoverer::discover(&session.config.intent_sources))
+        .unwrap_or_else(|| "Automated Session".to_string());
+
     let context = IntentContext {
         last_message: intent,
         command: args.command.join(" "),
