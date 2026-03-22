@@ -5,6 +5,7 @@ This Roadmap defines the implementation path for **AXIOM**, prioritizing securit
 ## Phase 1: Foundation & Security (Alpha) - [COMPLETED]
 **Goal**: Build the flow interceptor and the data protection system.
 - [x] CLI proxy, non-blocking capture, entropy scanner, PII redaction, and YAML engine.
+- [x] **Performance Optimization**: Achieved <10ms startup latency (~9ms in Release) via SQLite tuning.
 
 ## Phase 2: Intelligence & Context (Beta) - [IN PROGRESS]
 **Goal**: Make Axiom understand the "why" behind command execution.

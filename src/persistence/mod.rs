@@ -10,6 +10,14 @@ impl PersistenceManager {
     pub fn new_with_path(db_path: &Path) -> anyhow::Result<Self> {
         let conn = Connection::open(db_path)?;
 
+        // Performance optimizations for CLI startup
+        conn.execute_batch("
+            PRAGMA journal_mode = WAL;
+            PRAGMA synchronous = NORMAL;
+            PRAGMA temp_store = MEMORY;
+            PRAGMA cache_size = -2000;
+        ")?;
+
         // Create base tables
         conn.execute(
             "CREATE TABLE IF NOT EXISTS learned_templates (
