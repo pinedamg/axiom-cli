@@ -4,6 +4,7 @@ pub const DEFAULT_DB_PATH: &str = "axiom.db";
 pub const DEFAULT_SCHEMAS_DIR: &str = "config/schemas";
 pub const DEFAULT_PLUGINS_DIR: &str = "config/plugins";
 pub const DEFAULT_ENTROPY_THRESHOLD: f64 = 4.5;
+pub const DEFAULT_SEMANTIC_THRESHOLD: f32 = 0.75;
 
 #[derive(Debug, Clone)]
 pub struct IntentSource {
@@ -25,6 +26,7 @@ pub struct AxiomConfig {
     pub schemas_dir: PathBuf,
     pub plugins_dir: PathBuf,
     pub entropy_threshold: f64,
+    pub semantic_threshold: f32,
     pub intent_keywords: Vec<String>,
     pub pii_patterns: Vec<String>,
     pub intent_sources: Vec<IntentSource>,
@@ -37,6 +39,7 @@ impl Default for AxiomConfig {
             schemas_dir: PathBuf::from(DEFAULT_SCHEMAS_DIR),
             plugins_dir: PathBuf::from(DEFAULT_PLUGINS_DIR),
             entropy_threshold: DEFAULT_ENTROPY_THRESHOLD,
+            semantic_threshold: DEFAULT_SEMANTIC_THRESHOLD,
             intent_keywords: vec![
                 "error".to_string(), "fail".to_string(), "package".to_string(),
                 "version".to_string(), "diff".to_string(), "log".to_string(),

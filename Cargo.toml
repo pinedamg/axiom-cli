@@ -30,6 +30,9 @@ rusqlite = { version = "0.31", features = ["bundled"] }
 # WASM Runtime
 wasmtime = "19.0"
 
+# Fuzzy Matching (Alternative to Neural for older systems)
+strsim = "0.11"
+
 [dev-dependencies]
 # For testing
 tokio-test = "0.4"

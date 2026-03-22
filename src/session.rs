@@ -1,9 +1,11 @@
 use std::fs;
+use std::env;
 use crate::config::AxiomConfig;
 use crate::persistence::PersistenceManager;
 use crate::schema::ToolSchema;
 use crate::privacy::PrivacyRedactor;
 use crate::engine::plugins::WasmPluginManager;
+use crate::engine::intelligence::{FuzzyIntelligence, NeuralIntelligence};
 use crate::engine::AxiomEngine;
 
 pub struct AxiomSession {
@@ -22,7 +24,16 @@ impl AxiomSession {
             config.pii_patterns.clone()
         );
         
-        let mut engine = AxiomEngine::new(redactor, schemas);
+        // Strategy Selection: Select intelligence provider
+        // We use Fuzzy by default for stability, Neural can be enabled via env/config
+        let intelligence: Box<dyn crate::engine::intelligence::IntelligenceProvider> = 
+            if env::var("AXIOM_FORCE_NEURAL").is_ok() {
+                Box::new(NeuralIntelligence)
+            } else {
+                Box::new(FuzzyIntelligence)
+            };
+        
+        let mut engine = AxiomEngine::new(redactor, schemas, intelligence);
         
         // Initialize WASM plugins
         if let Ok(plugin_manager) = WasmPluginManager::new(&config.plugins_dir) {

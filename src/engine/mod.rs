@@ -1,27 +1,35 @@
 pub mod discovery;
 pub mod intent_discovery;
 pub mod plugins;
+pub mod intelligence;
 
 use crate::privacy::PrivacyRedactor;
 use crate::schema::{ToolSchema, Action};
 use crate::IntentContext;
 use crate::engine::discovery::DiscoveryEngine;
 use crate::engine::plugins::WasmPluginManager;
+use crate::engine::intelligence::IntelligenceProvider;
 
 pub struct AxiomEngine {
     pub redactor: PrivacyRedactor,
     pub schemas: Vec<ToolSchema>,
     pub discovery: DiscoveryEngine,
     pub plugins: Option<WasmPluginManager>,
+    pub intelligence: Box<dyn IntelligenceProvider>,
 }
 
 impl AxiomEngine {
-    pub fn new(redactor: PrivacyRedactor, schemas: Vec<ToolSchema>) -> Self {
+    pub fn new(
+        redactor: PrivacyRedactor, 
+        schemas: Vec<ToolSchema>,
+        intelligence: Box<dyn IntelligenceProvider>
+    ) -> Self {
         Self {
             redactor,
             schemas,
             discovery: DiscoveryEngine::default(),
             plugins: None,
+            intelligence,
         }
     }
 
@@ -43,13 +51,22 @@ impl AxiomEngine {
         self.discovery.flush_variable_summary()
     }
 
-    /// Processes an output line. Uses pre-compiled Regex for maximum efficiency.
+    /// Processes an output line.
     pub fn process_line(&mut self, line: &str, command: &str, context: &IntentContext) -> Option<String> {
         // 1. Privacy Redaction
         let redacted = self.redactor.redact(line);
 
         // 2. Intent Priority (Force show if relevant)
-        if context.is_relevant(&redacted) {
+        // Layer A: Keyword Matching (Fast)
+        let mut is_relevant = context.is_relevant(&redacted);
+        
+        // Layer B: Intelligent Provider (Fuzzy or Neural)
+        if !is_relevant {
+            // Using 0.7 as default semantic/fuzzy threshold
+            is_relevant = self.intelligence.is_relevant(&context.last_message, &redacted, 0.7);
+        }
+
+        if is_relevant {
             return Some(redacted);
         }
 
@@ -69,13 +86,13 @@ impl AxiomEngine {
                 }
             }
         } else {
-            // 4. Auto-discovery (Phase 3 + 3.4 Aggregation)
+            // 4. Auto-discovery
             if self.discovery.process_and_check_noise(&redacted) {
                 final_line = None;
             }
         }
 
-        // 5. Apply WASM Plugins if the line is still visible
+        // 5. Apply WASM Plugins
         if let Some(mut current_line) = final_line {
             if let Some(plugin_manager) = &mut self.plugins {
                 current_line = plugin_manager.transform(&current_line);
@@ -95,11 +112,12 @@ impl AxiomEngine {
 mod tests {
     use super::*;
     use crate::schema::TransformationRule;
+    use crate::engine::intelligence::FuzzyIntelligence;
 
     #[test]
     fn test_engine_auto_discovery_with_summary() {
         let redactor = PrivacyRedactor::default();
-        let mut engine = AxiomEngine::new(redactor, vec![]);
+        let mut engine = AxiomEngine::new(redactor, vec![], Box::new(FuzzyIntelligence));
         let command = "unknown-tool";
         let context = IntentContext {
             last_message: "Run tool".to_string(),
@@ -120,7 +138,7 @@ mod tests {
     #[test]
     fn test_engine_with_no_plugins() {
         let redactor = PrivacyRedactor::default();
-        let mut engine = AxiomEngine::new(redactor, vec![]);
+        let mut engine = AxiomEngine::new(redactor, vec![], Box::new(FuzzyIntelligence));
         let command = "ls";
         let context = IntentContext {
             last_message: "list files".to_string(),
@@ -152,7 +170,7 @@ mod tests {
         schema.compile().unwrap();
 
         let redactor = PrivacyRedactor::default();
-        let mut engine = AxiomEngine::new(redactor, vec![schema]);
+        let mut engine = AxiomEngine::new(redactor, vec![schema], Box::new(FuzzyIntelligence));
         let line = "+ lodash";
         let command = "npm install lodash";
 
