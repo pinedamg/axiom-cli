@@ -15,7 +15,12 @@ impl AxiomSession {
     pub fn new(config: AxiomConfig) -> anyhow::Result<Self> {
         let persistence = PersistenceManager::new_with_path(&config.db_path)?;
         let schemas = Self::load_schemas(&config)?;
-        let redactor = PrivacyRedactor::new(config.entropy_threshold);
+        
+        // Use patterns and threshold from config
+        let redactor = PrivacyRedactor::new(
+            config.entropy_threshold, 
+            config.pii_patterns.clone()
+        );
         
         let mut engine = AxiomEngine::new(redactor, schemas);
         
@@ -54,7 +59,7 @@ impl AxiomSession {
             let _ = self.persistence.upsert_template(&template, freq);
         }
         
-        // Log metrics
+        // Log savings
         let _ = self.persistence.log_saving(command, original, compressed);
         
         Ok(())

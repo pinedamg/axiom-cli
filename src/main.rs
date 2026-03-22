@@ -29,6 +29,7 @@ async fn main() -> anyhow::Result<()> {
     let context = IntentContext {
         last_message: intent,
         command: args.command.join(" "),
+        keywords: session.config.intent_keywords.clone(),
     };
 
     // 3. Execute

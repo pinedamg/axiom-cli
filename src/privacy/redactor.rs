@@ -7,20 +7,25 @@ pub struct PrivacyRedactor {
 }
 
 impl PrivacyRedactor {
-    pub fn new(entropy_threshold: f64) -> Self {
+    pub fn new(entropy_threshold: f64, pii_patterns: Vec<String>) -> Self {
+        let compiled_patterns = pii_patterns
+            .into_iter()
+            .filter_map(|p| Regex::new(&p).ok())
+            .collect();
+
         Self {
             entropy_threshold,
-            pii_patterns: vec![
-                Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap(),
-                Regex::new(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b").unwrap(),
-            ],
+            pii_patterns: compiled_patterns,
         }
     }
 }
 
 impl Default for PrivacyRedactor {
     fn default() -> Self {
-        Self::new(4.5)
+        Self::new(4.5, vec![
+            r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}".to_string(),
+            r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b".to_string(),
+        ])
     }
 }
 
@@ -28,12 +33,12 @@ impl PrivacyRedactor {
     pub fn redact(&self, input: &str) -> String {
         let mut output = input.to_string();
 
-        // 1. Regex-based redaction (PII)
+        // 1. Regex Redaction (PII)
         for pattern in &self.pii_patterns {
             output = pattern.replace_all(&output, "[REDACTED_PII]").to_string();
         }
 
-        // 2. Entropy-based redaction (Secrets)
+        // 2. Entropy Redaction (Secrets)
         let words: Vec<&str> = output.split_whitespace().collect();
         let mut final_output = output.clone();
 

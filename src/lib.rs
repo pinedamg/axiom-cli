@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 pub struct IntentContext {
     pub last_message: String,
     pub command: String,
+    pub keywords: Vec<String>,
 }
 
 impl IntentContext {
@@ -21,15 +22,14 @@ impl IntentContext {
         let msg = self.last_message.to_lowercase();
         let target = text.to_lowercase();
 
-        // Simple relevance logic for now (Keyword Matching)
-        let keywords = vec!["error", "fail", "package", "version", "diff", "log", "debug"];
-        
-        for kw in keywords {
+        // Check against injected keywords
+        for kw in &self.keywords {
             if msg.contains(kw) && target.contains(kw) {
                 return true;
             }
         }
         
+        // If the user's message contains specific words from the text
         for word in msg.split_whitespace() {
             if word.len() > 3 && target.contains(word) {
                 return true;

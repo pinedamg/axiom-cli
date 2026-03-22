@@ -4,7 +4,7 @@ use tokio::process::Command;
 use crate::IntentContext;
 use crate::session::AxiomSession;
 
-/// Executes a command under the supervision of an Axiom session.
+/// Executes a command under Axiom's supervision.
 pub async fn execute_command(
     program: &str,
     args: &[String],
@@ -25,7 +25,6 @@ pub async fn execute_command(
     let mut stdout_lines = BufReader::new(stdout).lines();
     let mut stderr_lines = BufReader::new(stderr).lines();
 
-    let mut collapsed_count = 0;
     let mut total_original = 0;
     let mut total_compressed = 0;
 
@@ -33,22 +32,21 @@ pub async fn execute_command(
         tokio::select! {
             line = stdout_lines.next_line() => {
                 match line? {
-                    Some(l) => process_line_output(&l, &command_str, context, session, &mut collapsed_count, &mut total_original, &mut total_compressed, false),
+                    Some(l) => process_line_output(&l, &command_str, context, session, &mut total_original, &mut total_compressed, false),
                     None => break,
                 }
             }
             line = stderr_lines.next_line() => {
                 match line? {
-                    Some(l) => process_line_output(&l, &command_str, context, session, &mut collapsed_count, &mut total_original, &mut total_compressed, true),
+                    Some(l) => process_line_output(&l, &command_str, context, session, &mut total_original, &mut total_compressed, true),
                     None => {}, 
                 }
             }
         }
     }
 
-    if collapsed_count > 0 {
-        println!("\x1b[33m[AXIOM] ({} lines collapsed)\x1b[0m", collapsed_count);
-    }
+    // Print final summaries if any
+    flush_and_print_summaries(session, false);
 
     session.finalize(&command_str, total_original, total_compressed)?;
     child.wait().await?;
@@ -60,21 +58,24 @@ fn process_line_output(
     command: &str,
     context: &IntentContext,
     session: &mut AxiomSession,
-    collapsed_count: &mut usize,
     total_original: &mut usize,
     total_compressed: &mut usize,
     is_stderr: bool,
 ) {
     *total_original += line.len();
     if let Some(processed) = session.engine.process_line(line, command, context) {
-        if *collapsed_count > 0 {
-            let msg = format!("\x1b[33m[AXIOM] ({} lines collapsed: Structural Noise)\x1b[0m", *collapsed_count);
-            if is_stderr { eprintln!("{}", msg); } else { println!("{}", msg); }
-            *collapsed_count = 0;
-        }
+        // Before printing a new relevant line, flush any pending summaries
+        flush_and_print_summaries(session, is_stderr);
+        
         *total_compressed += processed.len();
         if is_stderr { eprintln!("{}", processed); } else { println!("{}", processed); }
-    } else {
-        *collapsed_count += 1;
+    }
+}
+
+fn flush_and_print_summaries(session: &mut AxiomSession, is_stderr: bool) {
+    let summaries = session.engine.flush_summaries();
+    for summary in summaries {
+        let msg = format!("\x1b[33m[AXIOM] {}\x1b[0m", summary);
+        if is_stderr { eprintln!("{}", msg); } else { println!("{}", msg); }
     }
 }
