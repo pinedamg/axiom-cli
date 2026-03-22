@@ -4,6 +4,7 @@ use crate::privacy::entropy::calculate_entropy;
 pub struct PrivacyRedactor {
     entropy_threshold: f64,
     pii_patterns: Vec<Regex>,
+    word_regex: Regex,
 }
 
 impl PrivacyRedactor {
@@ -16,6 +17,7 @@ impl PrivacyRedactor {
         Self {
             entropy_threshold,
             pii_patterns: compiled_patterns,
+            word_regex: Regex::new(r"\S+").unwrap(),
         }
     }
 }
@@ -38,17 +40,16 @@ impl PrivacyRedactor {
             output = pattern.replace_all(&output, "[REDACTED_PII]").to_string();
         }
 
-        // 2. Entropy Redaction (Secrets)
-        let words: Vec<&str> = output.split_whitespace().collect();
-        let mut final_output = output.clone();
-
-        for word in words {
+        // 2. Entropy Redaction (Secrets) - Optimized single-pass
+        // We use Cow::Owned to avoid lifetime issues with the captures reference
+        self.word_regex.replace_all(&output, |caps: &regex::Captures| {
+            let word = &caps[0];
             if word.len() > 10 && calculate_entropy(word) > self.entropy_threshold {
-                final_output = final_output.replace(word, "[REDACTED_SECRET]");
+                std::borrow::Cow::Owned("[REDACTED_SECRET]".to_string())
+            } else {
+                std::borrow::Cow::Owned(word.to_string())
             }
-        }
-
-        final_output
+        }).to_string()
     }
 }
 
