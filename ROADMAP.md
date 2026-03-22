@@ -26,24 +26,16 @@ This Roadmap defines the implementation path for **AXIOM**, prioritizing securit
 ---
 
 ## Phase 3: Learning & Ecosystem (Gamma) - [IN PROGRESS]
-**Goal**: Total automation and community scalability.
+[...]
+- [x] Smart Aggregator: Variable Buffer and Synthetic Summary.
 
-### 3.1 Structural Auto-Discovery
-- [x] Pattern-based template extraction and structural skeletons.
+## Phase 3.5: Validation Lab (The Battle Arena) - [COMPLETED]
+- [x] **Benchmark Suite**: Script to compare Raw vs Axiom output using real LLMs (Ollama/Groq).
+- [x] **Token Metrics**: Automated calculation of token savings per command type.
+- [ ] **Instruction Feedback**: Test `AGENTS.md` effectiveness with automated agents.
 
-### 3.2 WASM Plugin System
-- [ ] Support for complex filters written in WebAssembly.
-- [ ] Total isolation of third-party plugins.
-
-### 3.3 Universal Schema Hub
-- [ ] Synchronization with a central schema repository.
-- [ ] Sharing of anonymized structural templates.
-
-### 3.4 Smart Aggregator
-- [x] Variable Buffer: Capture dynamic data (`<HEX>`, `<NUM>`, `<UUID>`, `<PATH>`).
-- [x] Synthetic Summary Generation: "Template matched X times. Variables: [...]".
-
----
+## Phase 4: Local AI & Semantic Intelligence (Vision)
+[...]
 
 ## Phase 4: Local AI & Semantic Intelligence (Vision)
 **Goal**: Move beyond keywords into true meaning.
