@@ -26,7 +26,7 @@ impl AxiomEngine {
     }
 
     pub fn get_learned_templates(&self) -> Vec<(String, usize)> {
-        self.discovery.templates.clone().into_iter().collect()
+        self.discovery.templates.iter().map(|(k, v)| (k.clone(), *v)).collect()
     }
 
     /// Flushes all buffered variables into a list of human-readable summaries
