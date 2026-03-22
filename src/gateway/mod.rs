@@ -17,8 +17,8 @@ pub async fn execute_command(
         .stderr(Stdio::piped())
         .spawn()?;
 
-    let stdout = child.stdout.take().unwrap();
-    let stderr = child.stderr.take().unwrap();
+    let stdout = child.stdout.take().ok_or_else(|| anyhow::anyhow!("Failed to capture stdout"))?;
+    let stderr = child.stderr.take().ok_or_else(|| anyhow::anyhow!("Failed to capture stderr"))?;
 
     let command_str = format!("{} {}", program, args.join(" "));
 
