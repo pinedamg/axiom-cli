@@ -1,0 +1,11 @@
+name: npm-installer
+command_pattern: "npm.*install"
+rules:
+  - name: SuccessPackages
+    pattern: "^\\+ [a-zA-Z0-9-]+"
+    action: collapse
+    priority: 1
+  - name: BuildInfo
+    pattern: ".*added [0-9]+ package.*"
+    action: keep
+    priority: 10

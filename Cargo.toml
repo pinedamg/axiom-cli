@@ -1,0 +1,32 @@
+[package]
+name = "axiom"
+version = "0.1.0"
+edition = "2021"
+authors = ["Axiom Dev Team"]
+description = "The Semantic Token Streamer: Intent-Aware CLI Compression for LLMs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# CLI Argument parsing
+clap = { version = "4.0", features = ["derive"] }
+
+# Serialization & Deserialization
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+serde_json = "1.0"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Security & Entropy
+regex = "1.0"
+
+# Persistence
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+[dev-dependencies]
+# For testing
+tokio-test = "0.4"

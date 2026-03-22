@@ -1,0 +1,6 @@
+AXIOM_MANIFESTO.md
+axiom.db
+target/
+.DS_Store
+Cargo.lock
+*.sh
