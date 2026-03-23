@@ -75,4 +75,4 @@ if __name__ == "__main__":
     # Battle 2: Noisy Tool with Secret
     print("\nSimulating Battle 2: Sensitive Output...")
     # Injecting a fake secret in the output via echo
-    arena.print_report(arena.run_command(["bash", "-c", "echo 'Connecting to DB...'; echo 'User: mpineda'; echo 'Pass: AKIA5G4H3J2K1L0M9N8P7Q6R5S4T3U2V1W0X'; echo 'Done.'"]))
+    arena.print_report(arena.run_command(["bash", "-c", "echo 'Connecting to DB...'; echo 'User: mpineda'; echo 'Pass: REDACTED_DUMMY_KEY_FOR_TESTS'; echo 'Done.'"]))

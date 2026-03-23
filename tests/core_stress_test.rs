@@ -42,7 +42,7 @@ fn test_core_generic_scenarios() {
     assert!(result.unwrap().contains("failure"));
 
     // Test Case 4: Privacy Redaction consistency (Using higher entropy secret)
-    let secret_line = "The token is AKIA5G4H3J2K1L0M9N8P7Q6R5S4T3U2V1W0X and email is dev@test.com";
+    let secret_line = "The token is A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6 and email is dev@test.com";
     let result_privacy = session.engine.process_line(secret_line, command, &context_generic);
     let output = result_privacy.unwrap();
     assert!(output.contains("[REDACTED_PII]"));
