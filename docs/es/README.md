@@ -18,7 +18,30 @@ Axiom actúa como un **Firewall Semántico**. Intercepta la salida de tus comand
 
 ---
 
-## 📖 Tabla de Contenidos
+## 🏗️ Cómo Funciona: El Embudo de Señal
+
+Axiom actúa como un filtro local de alto rendimiento entre tus herramientas y tu ventana de contexto.
+
+```mermaid
+graph TD
+    A[Comando de Terminal] -->|Intercepción| B{AXIOM PROXY}
+    
+    subgraph "EJECUCIÓN LOCAL (Sub-10ms)"
+    B --> C[🛡️ ESCUDO DE PRIVACIDAD]
+    C -->|Redacción de Entropía y PII| D[🧠 MOTOR SEMÁNTICO]
+    D -->|Agregación y Filtrado Inteligente| E[⚡ FLUJO DE ALTA SEÑAL]
+    end
+    
+    E --> F[🤖 AGENTE DE IA / CURSOR / CLAUDE]
+    E --> G[👤 DESARROLLADOR ZEN]
+
+    style C fill:#ff9999,stroke:#333,stroke-width:2px
+    style D fill:#99ccff,stroke:#333,stroke-width:2px
+    style E fill:#99ff99,stroke:#333,stroke-width:4px
+```
+
+---
+
 
 - [🚀 Empezando](empezando/instalacion.md)
   - [Instalación](empezando/instalacion.md) - Cómo ponerte en marcha.
