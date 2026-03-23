@@ -1,8 +1,21 @@
 use rusqlite::{params, Connection};
 use std::path::Path;
 
+pub mod analytics;
+pub use analytics::{TokenSavings, AnalyticsProvider};
+
 pub struct PersistenceManager {
     conn: Connection,
+}
+
+impl AnalyticsProvider for PersistenceManager {
+    fn record_savings(&self, savings: TokenSavings) -> anyhow::Result<()> {
+        self.log_saving(&savings.command, savings.raw_bytes, savings.processed_bytes)
+    }
+
+    fn get_total_savings(&self) -> anyhow::Result<(usize, usize)> {
+        self.get_total_savings()
+    }
 }
 
 impl PersistenceManager {

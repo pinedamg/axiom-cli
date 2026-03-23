@@ -71,10 +71,10 @@ mod tests {
     #[test]
     fn test_redaction_secret() {
         let redactor = PrivacyRedactor::default();
-        let input = "The AWS key is AKIA5G4H3J2K1L0M9N8P7Q6R5S4T3U2V1W0X";
+        let input = "The AWS key is A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6";
         let redacted = redactor.redact(input);
         
         assert!(redacted.contains("[REDACTED_SECRET]"));
-        assert!(!redacted.contains("AKIA5G4H3J2K1L0M9N8P7Q6R5S4T3U2V1W0X"));
+        assert!(!redacted.contains("A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6"));
     }
 }

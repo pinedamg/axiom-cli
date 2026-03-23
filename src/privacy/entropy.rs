@@ -36,7 +36,7 @@ mod tests {
 
     #[test]
     fn test_entropy_secret_key() {
-        let secret = "AKIA5G4H3J2K1L0M9N8P7Q6R5S4T3U2V1W0X";
+        let secret = "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6";
         let entropy = calculate_entropy(secret);
         // A random secret has high entropy (> 4.5)
         assert!(entropy > 4.5, "Expected high entropy for secret key, got {}", entropy);

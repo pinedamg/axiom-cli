@@ -24,7 +24,11 @@ enum Commands {
     /// Install Axiom shell integration
     Install,
     /// Show token savings analytics
-    Gain,
+    Gain {
+        /// Show detailed history of recent commands
+        #[arg(short, long)]
+        history: bool,
+    },
     /// List currently learned structural templates
     Discovery,
     /// Check if current process was called by an AI agent
@@ -46,8 +50,8 @@ async fn main() -> anyhow::Result<()> {
                 install_integration()?;
                 return Ok(());
             }
-            Commands::Gain => {
-                show_savings(&session)?;
+            Commands::Gain { history } => {
+                show_savings(&session, history)?;
                 return Ok(());
             }
             Commands::Discovery => {
@@ -105,7 +109,7 @@ fn install_integration() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn show_savings(session: &AxiomSession) -> anyhow::Result<()> {
+fn show_savings(session: &AxiomSession, history: bool) -> anyhow::Result<()> {
     let (original, compressed) = session.persistence.get_total_savings()?;
     let saved = original.saturating_sub(compressed);
     let ratio = if original > 0 { (saved as f64 / original as f64) * 100.0 } else { 0.0 };
@@ -121,6 +125,15 @@ fn show_savings(session: &AxiomSession) -> anyhow::Result<()> {
     println!("------------------------------");
     println!("Estimated Tokens Saved: \x1b[36;1m{}\x1b[0m", tokens_saved);
     println!("Estimated USD Saved:    \x1b[33;1m${:.4}\x1b[0m (avg $0.01 per 1k tokens)", tokens_saved as f64 * 0.00001);
+
+    if history {
+        println!("\n\x1b[1mDetailed History (Last 10)\x1b[0m");
+        println!("------------------------------");
+        // We'll need to add a method to get recent history in PersistenceManager later
+        // For now, show a placeholder
+        println!("(Recent history feature coming soon)");
+    }
+
     Ok(())
 }
 
