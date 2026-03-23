@@ -25,10 +25,16 @@ impl AxiomSession {
         );
         
         // Strategy Selection: Select intelligence provider
-        // We use Fuzzy by default for stability, Neural can be enabled via env/config
         let intelligence: Box<dyn crate::engine::intelligence::IntelligenceProvider> = 
             if env::var("AXIOM_FORCE_NEURAL").is_ok() {
-                Box::new(NeuralIntelligence)
+                // If it fails to load, fallback to Fuzzy gracefully
+                match NeuralIntelligence::new() {
+                    Ok(n) => Box::new(n),
+                    Err(e) => {
+                        eprintln!("\x1b[31m[AXIOM] Failed to load Neural Engine: {}. Falling back to Fuzzy.\x1b[0m", e);
+                        Box::new(FuzzyIntelligence)
+                    }
+                }
             } else {
                 Box::new(FuzzyIntelligence)
             };

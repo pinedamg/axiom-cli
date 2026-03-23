@@ -38,12 +38,13 @@ This Roadmap defines the implementation path for **AXIOM**, prioritizing securit
 ## Phase 4: Local AI & Semantic Intelligence (Vision)
 [...]
 
-## Phase 4: Local AI & Semantic Intelligence (Vision)
+## Phase 4: Local AI & Semantic Intelligence (Vision) - [IN PROGRESS]
 **Goal**: Move beyond keywords into true meaning.
 
 ### 4.1 Local Embeddings (SLM)
-- [ ] Integration of ONNX Runtime or Candle for local vector similarity.
-- [ ] Replace keyword matching with **Semantic Similarity** (>0.8 score = relevant).
+- [x] Integration of **Candle** (Pure Rust) for local vector similarity.
+- [x] Replace/Augment keyword matching with **Semantic Similarity** (BERT-based).
+- [x] Hybrid strategy: Keyword -> Fuzzy -> Neural.
 
 ### 4.2 Neural Aggregator
 - [ ] Use a Small Language Model to narrate summaries of repetitive logs.
