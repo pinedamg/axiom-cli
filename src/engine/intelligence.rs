@@ -17,7 +17,18 @@ impl IntelligenceProvider for FuzzyIntelligence {
     fn name(&self) -> &str { "fuzzy" }
     
     fn is_relevant(&self, intent: &str, line: &str, threshold: f32) -> bool {
-        let score = jaro_winkler(intent, line) as f32;
+        let intent_lower = intent.to_lowercase();
+        let line_lower = line.to_lowercase();
+
+        // 1. Direct word inclusion (Fast & precise)
+        for word in intent_lower.split_whitespace() {
+            if word.len() > 3 && line_lower.contains(word) {
+                return true;
+            }
+        }
+
+        // 2. Fuzzy matching for typos or variations
+        let score = jaro_winkler(&intent_lower, &line_lower) as f32;
         score >= threshold
     }
 }
@@ -83,7 +94,10 @@ impl IntelligenceProvider for NeuralIntelligence {
         };
 
         // Cosine similarity
-        let similarity = (e1 * e2).unwrap().sum_all().unwrap().to_scalar::<f32>().unwrap();
+        let similarity = match (e1 * e2) {
+            Ok(t) => t.sum_all().unwrap().to_scalar::<f32>().unwrap(),
+            Err(_) => 0.0,
+        };
         similarity >= threshold
     }
 }
@@ -95,21 +109,17 @@ mod tests {
     #[test]
     fn test_fuzzy_relevance() {
         let fuzzy = FuzzyIntelligence;
-        // Jaro-Winkler needs strings to be more similar to get > 0.7
-        assert!(fuzzy.is_relevant("error", "error message", 0.7));
+        assert!(fuzzy.is_relevant("error", "The build failed with error 1", 0.7));
         assert!(!fuzzy.is_relevant("apple", "orange", 0.7));
     }
 
     #[test]
-    #[ignore] // Still ignoring for general runs because of large download
+    #[ignore]
     fn test_neural_similarity_logic() {
         let engine = NeuralIntelligence::new().unwrap();
-        
-        // Different words, similar technical meaning
         let intent = "The website is down";
         let line = "Connection refused at port 80";
-        
         let score = engine.is_relevant(intent, line, 0.5);
-        assert!(score, "Neural engine should identify connection refused as site down");
+        assert!(score);
     }
 }

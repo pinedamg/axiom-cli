@@ -1,0 +1,15 @@
+name: go-cli
+command_pattern: "^go"
+rules:
+  - name: TestPass
+    pattern: "^ok  \\s+.*"
+    action: collapse
+    priority: 5
+  - name: TestFail
+    pattern: "^--- FAIL: .*"
+    action: keep
+    priority: 10
+  - name: BuildInfo
+    pattern: "^# .*"
+    action: collapse
+    priority: 1

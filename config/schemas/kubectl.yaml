@@ -1,0 +1,15 @@
+name: cloud-kubectl
+command_pattern: "^(kubectl|k)"
+rules:
+  - name: PodRunning
+    pattern: ".*\\s+Running\\s+[0-9]+\\s+[0-9a-z]+$"
+    action: collapse
+    priority: 5
+  - name: EventsInfo
+    pattern: "^(Type|Reason|Age|From|Message).*"
+    action: keep
+    priority: 10
+  - name: ResourceRefreshing
+    pattern: ".*Refreshing state.*"
+    action: collapse
+    priority: 1

@@ -1,11 +1,19 @@
-name: npm-installer
-command_pattern: "npm.*install"
+name: node-npm
+command_pattern: "^(npm|pnpm|yarn)"
 rules:
-  - name: SuccessPackages
+  - name: InstallProgress
+    pattern: "^(added|removed|changed|updated) [0-9]+ package.*"
+    action: keep
+    priority: 10
+  - name: DeprecationWarnings
+    pattern: ".*deprecated.*"
+    action: collapse
+    priority: 5
+  - name: PackageAdd
     pattern: "^\\+ [a-zA-Z0-9-]+"
     action: collapse
     priority: 1
-  - name: BuildInfo
-    pattern: ".*added [0-9]+ package.*"
-    action: keep
-    priority: 10
+  - name: YarnStep
+    pattern: "^\\[[0-9]/[0-9]\\].*"
+    action: collapse
+    priority: 1

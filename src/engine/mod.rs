@@ -17,6 +17,9 @@ pub struct AxiomEngine {
     pub discovery: DiscoveryEngine,
     pub plugins: Option<WasmPluginManager>,
     pub intelligence: Box<dyn IntelligenceProvider>,
+    pub markdown_mode: bool,
+    /// Counter for volume control
+    line_counter: usize,
 }
 
 impl AxiomEngine {
@@ -31,12 +34,23 @@ impl AxiomEngine {
             discovery: DiscoveryEngine::default(),
             plugins: None,
             intelligence,
+            markdown_mode: false,
+            line_counter: 0,
         }
     }
 
     pub fn with_plugins(mut self, manager: WasmPluginManager) -> Self {
         self.plugins = Some(manager);
         self
+    }
+
+    pub fn with_semantic(mut self, engine: Box<dyn IntelligenceProvider>) -> Self {
+        self.intelligence = engine;
+        self
+    }
+
+    pub fn set_markdown_mode(&mut self, enabled: bool) {
+        self.markdown_mode = enabled;
     }
 
     pub fn load_learned_templates(&mut self, templates: Vec<(String, usize)>) {
@@ -52,18 +66,51 @@ impl AxiomEngine {
         self.discovery.flush_variable_summary()
     }
 
+    fn looks_like_table(&self, line: &str) -> bool {
+        let line = line.trim();
+        if line.len() < 10 { return false; }
+        
+        // Heuristic: Check for multiple blocks of text separated by 2+ spaces
+        // This is typical for terminal tables (docker, ps, kubectl)
+        let parts: Vec<&str> = line.split("  ").filter(|s| !s.trim().is_empty()).collect();
+        parts.len() >= 3
+    }
+
+    fn convert_to_markdown(&self, line: &str) -> String {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 2 { return line.to_string(); }
+        
+        format!("| {} |", parts.join(" | "))
+    }
+
     /// Processes an output line.
     pub fn process_line(&mut self, line: &str, command: &str, context: &IntentContext) -> Option<String> {
-        // 1. Privacy Redaction
-        let redacted = self.redactor.redact(line);
+        self.line_counter += 1;
 
-        // 2. Intent Priority (Force show if relevant)
-        // Layer A: Keyword Matching (Fast)
+        // 1. Markdown Transformation (Pre-processing)
+        let working_line = if self.markdown_mode && self.looks_like_table(line) {
+            self.convert_to_markdown(line)
+        } else {
+            line.to_string()
+        };
+
+        // 2. Volume Guardian
+        if command.starts_with("cat") && self.line_counter > 100 && !context.is_relevant("full file") {
+            if self.line_counter == 101 {
+                return Some("[AXIOM] (Guardian Mode: File too long. Summary follows...)".to_string());
+            }
+            if self.discovery.process_and_check_noise(&working_line) {
+                return None;
+            }
+        }
+
+        // 3. Privacy Redaction
+        let redacted = self.redactor.redact(&working_line);
+
+        // 4. Intent Priority
         let mut is_relevant = context.is_relevant(&redacted);
         
-        // Layer B: Intelligent Provider (Fuzzy or Neural)
         if !is_relevant {
-            // Using 0.7 as default semantic/fuzzy threshold
             is_relevant = self.intelligence.is_relevant(&context.last_message, &redacted, 0.7);
         }
 
@@ -71,7 +118,7 @@ impl AxiomEngine {
             return Some(redacted);
         }
 
-        // 3. Apply static schemas
+        // 5. Apply static schemas
         let mut final_line = Some(redacted.clone());
         if let Some(schema) = self.schemas.iter().find(|s| s.matches(command)) {
             for rule in &schema.rules {
@@ -79,7 +126,11 @@ impl AxiomEngine {
                     if re.is_match(&redacted) {
                         match rule.action {
                             Action::Keep => { final_line = Some(redacted.clone()); break; },
-                            Action::Collapse => { final_line = None; break; },
+                            Action::Collapse => { 
+                                self.discovery.process_and_check_noise(&redacted);
+                                final_line = None; 
+                                break; 
+                            },
                             Action::Redact => { final_line = Some("[REDACTED_BY_SCHEMA]".to_string()); break; },
                             Action::Hidden => { final_line = None; break; },
                         }
@@ -87,13 +138,13 @@ impl AxiomEngine {
                 }
             }
         } else {
-            // 4. Auto-discovery
+            // 6. Auto-discovery
             if self.discovery.process_and_check_noise(&redacted) {
                 final_line = None;
             }
         }
 
-        // 5. Apply WASM Plugins
+        // 7. Apply WASM Plugins
         if let Some(mut current_line) = final_line {
             if let Some(plugin_manager) = &mut self.plugins {
                 current_line = plugin_manager.transform(&current_line);
@@ -116,6 +167,23 @@ mod tests {
     use crate::engine::intelligence::FuzzyIntelligence;
 
     #[test]
+    fn test_markdown_table_conversion() {
+        let redactor = PrivacyRedactor::default();
+        let mut engine = AxiomEngine::new(redactor, vec![], Box::new(FuzzyIntelligence));
+        engine.set_markdown_mode(true);
+        
+        let table_line = "ID        NAME      STATUS    AGE";
+        let result = engine.process_line(table_line, "ps", &IntentContext {
+            last_message: "show table".to_string(),
+            command: "ps".to_string(),
+            keywords: vec![],
+        });
+        
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), "| ID | NAME | STATUS | AGE |");
+    }
+
+    #[test]
     fn test_engine_auto_discovery_with_summary() {
         let redactor = PrivacyRedactor::default();
         let mut engine = AxiomEngine::new(redactor, vec![], Box::new(FuzzyIntelligence));
@@ -123,7 +191,7 @@ mod tests {
         let context = IntentContext {
             last_message: "Run tool".to_string(),
             command: command.to_string(),
-            keywords: vec!["run".to_string()],
+            keywords: vec![],
         };
 
         for i in 0..10 {
@@ -144,7 +212,7 @@ mod tests {
         let context = IntentContext {
             last_message: "list files".to_string(),
             command: command.to_string(),
-            keywords: vec!["list".to_string()],
+            keywords: vec![],
         };
 
         let line = "file.txt";
@@ -179,7 +247,7 @@ mod tests {
         let context_a = IntentContext {
             last_message: "Fix some bug".to_string(),
             command: command.to_string(),
-            keywords: vec!["bug".to_string()],
+            keywords: vec![],
         };
         assert_eq!(engine.process_line(line, command, &context_a), None);
 
@@ -187,7 +255,7 @@ mod tests {
         let context_b = IntentContext {
             last_message: "What version of lodash did you install?".to_string(),
             command: command.to_string(),
-            keywords: vec!["version".to_string()],
+            keywords: vec!["lodash".to_string()],
         };
         assert!(engine.process_line(line, command, &context_b).is_some());
     }

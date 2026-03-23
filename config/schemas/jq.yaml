@@ -1,0 +1,11 @@
+name: data-jq
+command_pattern: "^jq"
+rules:
+  - name: LargeArrayItem
+    pattern: "^\\s+\\{.*"
+    action: collapse
+    priority: 1
+  - name: JsonBrackets
+    pattern: "^[\\[\\]\\{\\}]\\s*$"
+    action: keep
+    priority: 10

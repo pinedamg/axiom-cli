@@ -1,11 +1,19 @@
-name: docker-cli
-command_pattern: "^docker"
+name: cloud-docker
+command_pattern: "^(docker|docker-compose|dc)"
 rules:
+  - name: ContainerUp
+    pattern: ".*\\s+Up\\s+[0-9a-zA-Z\\s\\(\\)]+$"
+    action: collapse
+    priority: 5
   - name: PullProgress
     pattern: ".*: (Pull complete|Waiting|Extracting|Downloading).*"
     action: collapse
     priority: 5
+  - name: ImageInfo
+    pattern: "Digest: sha256:.*"
+    action: collapse
+    priority: 1
   - name: StatusHeader
-    pattern: "^CONTAINER ID.*"
+    pattern: "^(CONTAINER ID|IMAGE|COMMAND|CREATED|STATUS).*"
     action: keep
     priority: 10
