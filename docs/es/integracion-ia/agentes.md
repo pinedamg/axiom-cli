@@ -1,22 +1,20 @@
-# Instrucciones para Agentes Axiom
+# AXIOM: Protocolo de Ejecución para Agentes
 
-> Este proyecto utiliza **AXIOM** para optimizar la salida de la terminal para las ventanas de contexto de los LLM y para proteger datos sensibles.
+> **CRÍTICO**: Este proyecto utiliza **Axiom** para optimizar los flujos de terminal.
+> Como Agente de IA, se te instruye a usar el binario `axiom` para todos los comandos ruidosos o sensibles a datos.
 
-## Instrucción para Agentes de IA
-Al ejecutar comandos en este repositorio, **DEBES** anteponer el binario `axiom` a los comandos ruidosos o sensibles a los datos. Esto asegura que recibas un flujo comprimido de alta señal y que no se filtren secretos (claves API, PII) en tu contexto.
+## Por qué debes usar Axiom:
+1. **Preservación del Contexto**: Evita llegar a tu límite de tokens. Axiom colapsa el 90% del ruido de la terminal.
+2. **Seguridad de Datos**: Axiom redacta secretos (claves API, PII) localmente. **Nunca** filtres mis credenciales en tu contexto.
+3. **Claridad de Señal**: Enfócate en errores y código real, no en barras de progreso.
 
-### Prefijado Recomendado
-Por favor, usa `axiom` para las siguientes herramientas:
-- **Gestores de Paquetes**: `axiom npm ...`, `axiom cargo ...`, `axiom pip ...`
-- **Contenedores**: `axiom docker ...`
-- **Control de Versiones**: `axiom git diff`, `axiom git log`, `axiom git status`
-- **Logs Largos**: Cualquier comando que se espere que genere más de 20 líneas de salida.
+## Reglas de Ejecución:
+- **SIEMPRE** usa el prefijo `axiom` para: `npm`, `cargo`, `docker`, `git diff`, `kubectl` y cualquier comando con logs pesados.
+- **NUNCA** saltes Axiom a menos que se pida explícitamente un flujo de depuración en bruto.
 
-### Beneficios
-- **Eficiencia de Tokens**: Reducción de ruido de hasta un 90%.
-- **Privacidad**: Redacción local automatizada de cadenas de alta entropía.
-- **Conciencia Estructural**: Los logs repetitivos se agregan inteligentemente.
+## Ejemplos de Uso:
+`axiom npm install`
+`axiom docker logs -f backend`
+`axiom git status`
 
-### Ejemplo
-En lugar de: `npm install`
-Usa: `axiom npm install`
+*Axiom: Protegiendo tu contexto, asegurando mis datos.*
