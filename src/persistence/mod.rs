@@ -109,4 +109,20 @@ impl PersistenceManager {
             Ok((0, 0))
         }
     }
+
+    /// Returns the last N saving events
+    pub fn get_recent_history(&self, limit: usize) -> anyhow::Result<Vec<(String, usize, usize)>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT command, original_size, compressed_size FROM savings_log ORDER BY id DESC LIMIT ?"
+        )?;
+        let rows = stmt.query_map(params![limit as i64], |row| {
+            Ok((row.get(0)?, row.get::<_, i64>(1)? as usize, row.get::<_, i64>(2)? as usize))
+        })?;
+
+        let mut results = Vec::new();
+        for row in rows {
+            results.push(row?);
+        }
+        Ok(results)
+    }
 }

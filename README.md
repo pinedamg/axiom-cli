@@ -49,6 +49,21 @@ axiom gain --history
 
 ---
 
+## 🔒 Privacy & Telemetry
+
+Axiom is built for privacy. We only collect **anonymous aggregate metrics** (e.g., total bytes saved) to improve the compression algorithms and prove ROI to the community.
+- **NO** command strings are ever sent.
+- **NO** PII or secrets are ever sent.
+- **NO** user identifiable data is collected.
+
+### Opt-out
+If you wish to opt-out of anonymous telemetry, set the following environment variable in your shell:
+```bash
+export AXIOM_ANALYTICS_OPT_OUT=1
+```
+
+---
+
 ## 🛠️ Installation
 
 ```bash

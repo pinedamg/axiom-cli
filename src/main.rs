@@ -128,10 +128,16 @@ fn show_savings(session: &AxiomSession, history: bool) -> anyhow::Result<()> {
 
     if history {
         println!("\n\x1b[1mDetailed History (Last 10)\x1b[0m");
-        println!("------------------------------");
-        // We'll need to add a method to get recent history in PersistenceManager later
-        // For now, show a placeholder
-        println!("(Recent history feature coming soon)");
+        println!("{:<30} {:>10} {:>10} {:>8}", "Command", "Original", "Saved", "%");
+        println!("------------------------------------------------------------");
+        if let Ok(recent) = session.persistence.get_recent_history(10) {
+            for (cmd, orig, comp) in recent {
+                let saved = orig.saturating_sub(comp);
+                let ratio = if orig > 0 { (saved as f64 / orig as f64) * 100.0 } else { 0.0 };
+                let cmd_short = if cmd.len() > 30 { format!("{}...", &cmd[..27]) } else { cmd };
+                println!("{:<30} {:>10} {:>10} {:>7.1}%", cmd_short, orig, saved, ratio);
+            }
+        }
     }
 
     Ok(())

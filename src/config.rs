@@ -30,6 +30,7 @@ pub struct AxiomConfig {
     pub intent_keywords: Vec<String>,
     pub pii_patterns: Vec<String>,
     pub intent_sources: Vec<IntentSource>,
+    pub analytics_opt_out: bool,
 }
 
 impl Default for AxiomConfig {
@@ -40,6 +41,7 @@ impl Default for AxiomConfig {
             plugins_dir: PathBuf::from(DEFAULT_PLUGINS_DIR),
             entropy_threshold: DEFAULT_ENTROPY_THRESHOLD,
             semantic_threshold: DEFAULT_SEMANTIC_THRESHOLD,
+            analytics_opt_out: false,
             intent_keywords: vec![
                 "error".to_string(), "fail".to_string(), "package".to_string(),
                 "version".to_string(), "diff".to_string(), "log".to_string(),

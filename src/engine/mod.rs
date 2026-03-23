@@ -2,6 +2,7 @@ pub mod discovery;
 pub mod intent_discovery;
 pub mod plugins;
 pub mod intelligence;
+pub mod telemetry;
 
 use crate::privacy::PrivacyRedactor;
 use crate::schema::{ToolSchema, Action};
