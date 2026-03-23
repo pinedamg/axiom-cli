@@ -42,7 +42,7 @@ This Roadmap defines the implementation path for **AXIOM**, prioritizing securit
 [...]
 - [x] **Benchmark Suite**: Script to compare Raw vs Axiom output using real LLMs (Ollama/Groq).
 - [x] **Token Metrics**: Automated calculation of token savings per command type.
-- [ ] **Instruction Feedback**: Test `AGENTS.md` effectiveness with automated agents.
+- [x] **Instruction Feedback**: Verified `AGENTS.md` effectiveness with Gemini agent.
 
 ## Phase 4: Local AI & Semantic Intelligence (Vision)
 [...]
