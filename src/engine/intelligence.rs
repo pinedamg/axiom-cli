@@ -94,7 +94,7 @@ impl IntelligenceProvider for NeuralIntelligence {
         };
 
         // Cosine similarity
-        let similarity = match (e1 * e2) {
+        let similarity = match e1 * e2 {
             Ok(t) => t.sum_all().unwrap().to_scalar::<f32>().unwrap(),
             Err(_) => 0.0,
         };

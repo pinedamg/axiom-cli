@@ -37,6 +37,17 @@ enum Commands {
     Discovery,
     /// Check if current process was called by an AI agent
     CheckAi,
+    /// Configuration management
+    Config {
+        #[command(subcommand)]
+        action: ConfigAction,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum ConfigAction {
+    /// Initialize a local .axiom.yaml with default values
+    Init,
 }
 
 #[tokio::main]
@@ -74,6 +85,17 @@ async fn main() -> anyhow::Result<()> {
                     println!("DETECTED: Human Shell ({})", ProcessDetective::get_parent_name());
                     exit(1);
                 }
+            }
+            Commands::Config { action } => {
+                match action {
+                    ConfigAction::Init => {
+                        let config = AxiomConfig::default();
+                        let yaml = serde_yaml::to_string(&config)?;
+                        std::fs::write(".axiom.yaml", yaml)?;
+                        println!("Created local configuration file: .axiom.yaml");
+                    }
+                }
+                return Ok(());
             }
         }
     }
@@ -122,6 +144,7 @@ fn show_savings(session: &AxiomSession) -> anyhow::Result<()> {
     let saved = original.saturating_sub(compressed);
     let ratio = if original > 0 { (saved as f64 / original as f64) * 100.0 } else { 0.0 };
     
+    // Estimate tokens (avg 4 chars per token)
     let tokens_saved = saved / 4;
 
     println!("\x1b[1mAXIOM Token Savings Analytics\x1b[0m");
