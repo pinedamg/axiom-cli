@@ -68,9 +68,9 @@ graph TD
     E --> F[🤖 AI AGENT / CURSOR / CLAUDE]
     E --> G[👤 DEVELOPER ZEN]
 
-    style C fill:#ff9999,stroke:#333,stroke-width:2px
-    style D fill:#99ccff,stroke:#333,stroke-width:2px
-    style E fill:#99ff99,stroke:#333,stroke-width:4px
+    style C fill:#ff9999,stroke:#333,stroke-width:2px,color:#000
+    style D fill:#99ccff,stroke:#333,stroke-width:2px,color:#000
+    style E fill:#99ff99,stroke:#333,stroke-width:4px,color:#000
 ```
 
 ---
