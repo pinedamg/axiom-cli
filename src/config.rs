@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 use std::env;
+use std::fs;
+use serde::{Serialize, Deserialize};
 
 pub const DEFAULT_DB_PATH: &str = "axiom.db";
 pub const DEFAULT_SCHEMAS_DIR: &str = "config/schemas";
@@ -7,7 +9,8 @@ pub const DEFAULT_PLUGINS_DIR: &str = "config/plugins";
 pub const DEFAULT_ENTROPY_THRESHOLD: f64 = 4.5;
 pub const DEFAULT_SEMANTIC_THRESHOLD: f32 = 0.75;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum TelemetryLevel {
     Off,
     Basic,
@@ -15,27 +18,29 @@ pub enum TelemetryLevel {
     Full,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntentSource {
     pub name: String,
     pub path: PathBuf,
     pub strategy: IntentStrategy,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum IntentStrategy {
     LastLine,
     TailJSON,
     SQLiteHistory,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum IntelligenceMode {
     Fuzzy,
     Neural,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AxiomConfig {
     pub db_path: PathBuf,
     pub schemas_dir: PathBuf,
@@ -94,9 +99,18 @@ impl Default for AxiomConfig {
 }
 
 impl AxiomConfig {
+    /// Layered loading logic: Defaults -> Project File -> Env Vars
     pub fn load() -> Self {
         let mut config = Self::default();
 
+        // 1. Try loading from local project file (.axiom.yaml)
+        if let Ok(content) = fs::read_to_string(".axiom.yaml") {
+            if let Ok(local_config) = serde_yaml::from_str::<AxiomConfig>(&content) {
+                config = local_config; // Simple override for now
+            }
+        }
+
+        // 2. Overrides from Environment Variables
         if env::var("AXIOM_FORCE_NEURAL").is_ok() {
             config.intelligence_mode = IntelligenceMode::Neural;
         }
@@ -112,6 +126,10 @@ impl AxiomConfig {
                 "basic" => TelemetryLevel::Basic,
                 _ => TelemetryLevel::Off,
             };
+        }
+
+        if let Ok(path) = env::var("AXIOM_DB_PATH") {
+            config.db_path = PathBuf::from(path);
         }
 
         config
