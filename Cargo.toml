@@ -33,12 +33,15 @@ wasmtime = "19.0"
 # Fuzzy Matching
 strsim = "0.11"
 
-# Local AI Embeddings (Pure Rust alternative to ort)
+# Local AI Embeddings
 candle-core = "0.8"
 candle-nn = "0.8"
 candle-transformers = "0.8"
 tokenizers = "0.21"
 hf-hub = "0.4"
+
+# Process Monitoring (The Detective)
+sysinfo = "0.30"
 
 [dev-dependencies]
 # For testing

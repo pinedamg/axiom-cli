@@ -1,9 +1,26 @@
 use std::fs;
+use std::process::Command;
 use crate::config::{IntentSource, IntentStrategy};
 
 pub struct IntentDiscoverer;
 
 impl IntentDiscoverer {
+    /// Discovers modified files from Git to enrich the context
+    pub fn get_git_context() -> Vec<String> {
+        let output = Command::new("git")
+            .args(["diff", "--name-only"])
+            .output();
+
+        if let Ok(out) = output {
+            String::from_utf8_lossy(&out.stdout)
+                .lines()
+                .map(|s| s.to_string())
+                .collect()
+        } else {
+            vec![]
+        }
+    }
+
     /// Tries to discover the last user intent from a list of sources
     pub fn discover(sources: &[IntentSource]) -> Option<String> {
         for source in sources {

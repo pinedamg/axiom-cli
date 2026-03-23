@@ -9,13 +9,12 @@ This Roadmap defines the implementation path for **AXIOM**, prioritizing securit
 
 ## Phase 2: Intelligence & Context (Beta) - [IN PROGRESS]
 **Goal**: Make Axiom understand the "why" behind command execution.
-
 ### 2.1 Auto-Intent & Integration
 - [x] Manual context via environment variables.
 - [x] Auto-discovery of chat logs (Cursor, Claude, Gemini CLI) to extract context silently.
-- [ ] **Next**: "Process Detective" (Auto-prefixing only when a command is launched by an AI agent).
+- [x] **Process Detective**: Auto-prefixing only when a command is launched by an AI agent.
+- [x] **Git Context**: Automatically prioritizing currently modified files.
 - [ ] **Next**: "Local Shims" (Project-level binary overrides in `.axiom/bin`).
-- [ ] Git context integration (detecting currently modified files).
 
 ### 2.2 Semantic Transformer
 - [x] Intent priority logic (Intent Overriding).
@@ -30,7 +29,17 @@ This Roadmap defines the implementation path for **AXIOM**, prioritizing securit
 [...]
 - [x] Smart Aggregator: Variable Buffer and Synthetic Summary.
 
+### 3.2 WASM Plugin System - [COMPLETED]
+- [x] Support for complex filters written in WebAssembly.
+- [x] Total isolation of third-party plugins.
+- [x] **Plugin Developer Guide**: Comprehensive documentation for external logic.
+
+### 3.3 Universal Schema Hub
+- [ ] Synchronization with a central schema repository.
+- [ ] Sharing of anonymized structural templates.
+
 ## Phase 3.5: Validation Lab (The Battle Arena) - [COMPLETED]
+[...]
 - [x] **Benchmark Suite**: Script to compare Raw vs Axiom output using real LLMs (Ollama/Groq).
 - [x] **Token Metrics**: Automated calculation of token savings per command type.
 - [ ] **Instruction Feedback**: Test `AGENTS.md` effectiveness with automated agents.
