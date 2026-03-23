@@ -1,0 +1,15 @@
+name: cloud-terraform
+command_pattern: "^terraform"
+rules:
+  - name: RefreshingState
+    pattern: ".*: Refreshing state... \\[id=.*\\]"
+    action: collapse
+    priority: 5
+  - name: PlanSummary
+    pattern: "Plan: [0-9]+ to add, [0-9]+ to change, [0-9]+ to destroy."
+    action: keep
+    priority: 10
+  - name: ReadingResource
+    pattern: ".*: Reading...$"
+    action: collapse
+    priority: 1

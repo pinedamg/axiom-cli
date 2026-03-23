@@ -1,0 +1,15 @@
+name: linux-apt
+command_pattern: "^apt"
+rules:
+  - name: Progress
+    pattern: ".*(Reading database|Selecting previously unselected|Preparing to unpack|Unpacking|Setting up).*"
+    action: collapse
+    priority: 5
+  - name: DownloadInfo
+    pattern: "Get:[0-9]+ .*"
+    action: collapse
+    priority: 5
+  - name: Success
+    pattern: ".*done\\."
+    action: keep
+    priority: 1

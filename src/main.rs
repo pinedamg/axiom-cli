@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::env;
 use std::process::exit;
-use axiom::config::AxiomConfig;
+use axiom::config::{AxiomConfig, TelemetryLevel};
 use axiom::session::AxiomSession;
 use axiom::IntentContext;
 use axiom::gateway::execute_command;
@@ -17,6 +17,10 @@ struct Cli {
     /// The command to execute (proxy mode)
     #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
     proxy_args: Vec<String>,
+
+    /// Enable Markdown table transformation
+    #[arg(short, long, global = true)]
+    markdown: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -25,7 +29,7 @@ enum Commands {
     Install,
     /// Show token savings analytics
     Gain {
-        /// Show detailed history of recent commands
+        /// Show detailed savings history
         #[arg(short = 's', long)]
         history: bool,
     },
@@ -33,16 +37,31 @@ enum Commands {
     Discovery,
     /// Check if current process was called by an AI agent
     CheckAi,
+    /// Show current configuration and telemetry status
+    Status,
+    /// Configuration management
+    Config {
+        #[command(subcommand)]
+        action: ConfigAction,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum ConfigAction {
+    /// Set telemetry level (anonymous, discovery, full, off)
+    Telemetry { level: String },
+    /// Register Pro license key
+    License { key: String },
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    // 1. Setup Session
-    let config = AxiomConfig::default();
-    let mut session = AxiomSession::new(config)?;
-
+    // 1. Setup Session (Persistent)
+    let is_first_run = !AxiomConfig::config_path().exists();
+    let mut config = AxiomConfig::load();
+    
     // 2. Handle Subcommands
     if let Some(cmd) = cli.command {
         match cmd {
@@ -50,11 +69,13 @@ async fn main() -> anyhow::Result<()> {
                 install_integration()?;
                 return Ok(());
             }
-            Commands::Gain { history } => {
-                show_savings(&session, history)?;
+            Commands::Gain { history: _ } => {
+                let session = AxiomSession::new(config)?;
+                show_savings(&session)?;
                 return Ok(());
             }
             Commands::Discovery => {
+                let session = AxiomSession::new(config)?;
                 show_discovery(&session)?;
                 return Ok(());
             }
@@ -67,6 +88,52 @@ async fn main() -> anyhow::Result<()> {
                     exit(1);
                 }
             }
+            Commands::Status => {
+                let session = AxiomSession::new(config)?;
+                show_status(&session)?;
+                return Ok(());
+            }
+            Commands::Config { action } => {
+                match action {
+                    ConfigAction::Telemetry { level } => {
+                        let new_level = match level.to_lowercase().as_str() {
+                            "off" => {
+                                if !config.is_pro {
+                                    println!("\x1b[31;1mERROR: Telemetry 'OFF' is a Pro feature.\x1b[0m");
+                                    println!("Axiom Community requires at least 'anonymous' telemetry to improve the tool.");
+                                    println!("Get a Pro license at: \x1b[34mhttps://axiom.mpineda.com.ar/pro\x1b[0m");
+                                    None
+                                } else {
+                                    println!("Telemetry set to OFF. We will miss you!");
+                                    Some(TelemetryLevel::Off)
+                                }
+                            }
+                            "anonymous" => Some(TelemetryLevel::Anonymous),
+                            "discovery" => Some(TelemetryLevel::Discovery),
+                            "full" => Some(TelemetryLevel::Full),
+                            _ => {
+                                println!("Unknown telemetry level. Use: anonymous, discovery, full, off");
+                                None
+                            }
+                        };
+                        
+                        if let Some(l) = new_level {
+                            config.telemetry_level = l;
+                            config.save()?;
+                            println!("Telemetry level saved: {:?}", l);
+                        }
+                    }
+                    ConfigAction::License { key } => {
+                        println!("Validating license key: {}...", key);
+                        // Future: Real validation
+                        config.is_pro = true; // Placeholder for alpha
+                        config.license_key = Some(key);
+                        config.save()?;
+                        println!("\x1b[32;1mLicense activated! You are now an Axiom Pro user.\x1b[0m");
+                    }
+                }
+                return Ok(());
+            }
         }
     }
 
@@ -76,13 +143,23 @@ async fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
+    // Show first-run informational message (Transparently)
+    if is_first_run {
+        println!("\x1b[34m[AXIOM] Telemetry is active (Full) to improve the tool. \x1b[0m");
+        println!("\x1b[34m[AXIOM] Check 'axiom status' or 'axiom config' to learn more.\x1b[0m\n");
+    }
+
+    let mut session = AxiomSession::new(config)?;
+    if cli.markdown {
+        session.engine.set_markdown_mode(true);
+    }
+
     // Auto-detect intent
     let intent = env::var("AXIOM_CONTEXT")
         .ok()
         .or_else(|| IntentDiscoverer::discover(&session.config.intent_sources))
         .unwrap_or_else(|| "Automated Session".to_string());
 
-    // Enrich keywords with Git context
     let mut keywords = session.config.intent_keywords.clone();
     keywords.extend(IntentDiscoverer::get_git_context());
 
@@ -109,12 +186,10 @@ fn install_integration() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn show_savings(session: &AxiomSession, history: bool) -> anyhow::Result<()> {
+fn show_savings(session: &AxiomSession) -> anyhow::Result<()> {
     let (original, compressed) = session.persistence.get_total_savings()?;
     let saved = original.saturating_sub(compressed);
     let ratio = if original > 0 { (saved as f64 / original as f64) * 100.0 } else { 0.0 };
-    
-    // Estimate tokens (avg 4 chars per token)
     let tokens_saved = saved / 4;
 
     println!("\x1b[1mAXIOM Token Savings Analytics\x1b[0m");
@@ -125,20 +200,43 @@ fn show_savings(session: &AxiomSession, history: bool) -> anyhow::Result<()> {
     println!("------------------------------");
     println!("Estimated Tokens Saved: \x1b[36;1m{}\x1b[0m", tokens_saved);
     println!("Estimated USD Saved:    \x1b[33;1m${:.4}\x1b[0m (avg $0.01 per 1k tokens)", tokens_saved as f64 * 0.00001);
+    Ok(())
+}
 
-    if history {
-        println!("\n\x1b[1mDetailed History (Last 10)\x1b[0m");
-        println!("{:<30} {:>10} {:>10} {:>8}", "Command", "Original", "Saved", "%");
-        println!("------------------------------------------------------------");
-        if let Ok(recent) = session.persistence.get_recent_history(10) {
-            for (cmd, orig, comp) in recent {
-                let saved = orig.saturating_sub(comp);
-                let ratio = if orig > 0 { (saved as f64 / orig as f64) * 100.0 } else { 0.0 };
-                let cmd_short = if cmd.len() > 30 { format!("{}...", &cmd[..27]) } else { cmd };
-                println!("{:<30} {:>10} {:>10} {:>7.1}%", cmd_short, orig, saved, ratio);
+fn show_status(session: &AxiomSession) -> anyhow::Result<()> {
+    let config = &session.config;
+    let version = env!("CARGO_PKG_VERSION");
+    let edition = if config.is_pro { "\x1b[35;1mPRO EDITION\x1b[0m" } else { "\x1b[32;1mCOMMUNITY EDITION\x1b[0m" };
+
+    println!("\x1b[1mAXIOM System Status\x1b[0m");
+    println!("-------------------");
+    println!("Version:    {} ({})", version, edition);
+    println!("Inst. ID:   {}", config.installation_id);
+    println!("Telemetry:  {:?}", config.telemetry_level);
+    
+    println!("\n\x1b[1mTelemetry Transparency\x1b[0m");
+    println!("----------------------");
+    match config.telemetry_level {
+        TelemetryLevel::Off => {
+            println!("Status: \x1b[31mREDACTED\x1b[0m (No data is leaving this machine)");
+        }
+        _ => {
+            println!("Sharing:    Anonymous savings, OS, and Architecture");
+            if config.telemetry_level as u8 >= TelemetryLevel::Discovery as u8 {
+                println!("Discovery:  Binary names (e.g., 'git', 'npm', 'docker')");
+                println!("Sanitize:   \x1b[32mENABLED\x1b[0m (Arguments like 'commit -m \"secret\"' are REMOVED)");
+            }
+            if config.telemetry_level == TelemetryLevel::Full {
+                println!("Metrics:    Processing time and rule match IDs");
             }
         }
     }
+
+    println!("\n\x1b[1mLocal Persistence\x1b[0m");
+    println!("-----------------");
+    println!("Database:   {}", config.db_path.display());
+    let (orig, comp) = session.persistence.get_total_savings()?;
+    println!("Savings:    {} chars saved locally", orig.saturating_sub(comp));
 
     Ok(())
 }

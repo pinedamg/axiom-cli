@@ -18,7 +18,7 @@ impl AxiomSession {
     pub fn new(mut config: AxiomConfig) -> anyhow::Result<Self> {
         // Read opt-out from env
         if env::var("AXIOM_ANALYTICS_OPT_OUT").is_ok() {
-            config.analytics_opt_out = true;
+            config.telemetry_level = crate::config::TelemetryLevel::Off;
         }
 
         let persistence = PersistenceManager::new_with_path(&config.db_path)?;
@@ -89,8 +89,8 @@ impl AxiomSession {
         // Log savings locally
         let _ = self.persistence.log_saving(command, original, compressed);
         
-        // Report anonymous aggregate savings (Opt-out)
-        crate::engine::telemetry::Telemetry::report_savings(&self.config, original, compressed);
+        // Report telemetry based on configured level (Default: Discovery)
+        crate::engine::telemetry::Telemetry::report_usage(&self.config, command, original, compressed);
 
         Ok(())
     }
