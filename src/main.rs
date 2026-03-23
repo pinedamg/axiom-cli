@@ -1,9 +1,11 @@
 use clap::{Parser, Subcommand};
 use std::env;
+use std::process::exit;
 use axiom::config::AxiomConfig;
 use axiom::session::AxiomSession;
 use axiom::IntentContext;
 use axiom::gateway::execute_command;
+use axiom::gateway::detective::ProcessDetective;
 use axiom::engine::intent_discovery::IntentDiscoverer;
 
 #[derive(Parser, Debug)]
@@ -25,6 +27,8 @@ enum Commands {
     Gain,
     /// List currently learned structural templates
     Discovery,
+    /// Check if current process was called by an AI agent
+    CheckAi,
 }
 
 #[tokio::main]
@@ -50,6 +54,15 @@ async fn main() -> anyhow::Result<()> {
                 show_discovery(&session)?;
                 return Ok(());
             }
+            Commands::CheckAi => {
+                if ProcessDetective::is_called_by_ai() {
+                    println!("DETECTED: AI Agent ({})", ProcessDetective::get_parent_name());
+                    exit(0);
+                } else {
+                    println!("DETECTED: Human Shell ({})", ProcessDetective::get_parent_name());
+                    exit(1);
+                }
+            }
         }
     }
 
@@ -59,15 +72,20 @@ async fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
+    // Auto-detect intent
     let intent = env::var("AXIOM_CONTEXT")
         .ok()
         .or_else(|| IntentDiscoverer::discover(&session.config.intent_sources))
         .unwrap_or_else(|| "Automated Session".to_string());
 
+    // Enrich keywords with Git context
+    let mut keywords = session.config.intent_keywords.clone();
+    keywords.extend(IntentDiscoverer::get_git_context());
+
     let context = IntentContext {
         last_message: intent,
         command: cli.proxy_args.join(" "),
-        keywords: session.config.intent_keywords.clone(),
+        keywords,
     };
 
     let program = &cli.proxy_args[0];
@@ -81,10 +99,8 @@ fn install_integration() -> anyhow::Result<()> {
     println!("\x1b[1mAXIOM Shell Integration\x1b[0m");
     println!("------------------------");
     println!("To enable Axiom automatically for common commands, add this to your .bashrc or .zshrc:\n");
-    println!("alias git='axiom git'");
-    println!("alias docker='axiom docker'");
-    println!("alias npm='axiom npm'");
-    println!("alias cargo='axiom cargo'");
+    println!("alias git='if axiom check-ai > /dev/null; then axiom git; else git; fi'");
+    println!("alias npm='if axiom check-ai > /dev/null; then axiom npm; else npm; fi'");
     println!("\nThen restart your terminal or run: source ~/.bashrc");
     Ok(())
 }
