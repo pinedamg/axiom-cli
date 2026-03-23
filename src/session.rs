@@ -1,6 +1,5 @@
 use std::fs;
-use std::env;
-use crate::config::AxiomConfig;
+use crate::config::{AxiomConfig, IntelligenceMode};
 use crate::persistence::PersistenceManager;
 use crate::schema::ToolSchema;
 use crate::privacy::PrivacyRedactor;
@@ -15,12 +14,7 @@ pub struct AxiomSession {
 }
 
 impl AxiomSession {
-    pub fn new(mut config: AxiomConfig) -> anyhow::Result<Self> {
-        // Read opt-out from env
-        if env::var("AXIOM_ANALYTICS_OPT_OUT").is_ok() {
-            config.telemetry_level = crate::config::TelemetryLevel::Off;
-        }
-
+    pub fn new(config: AxiomConfig) -> anyhow::Result<Self> {
         let persistence = PersistenceManager::new_with_path(&config.db_path)?;
         let schemas = Self::load_schemas(&config)?;
         
@@ -29,23 +23,27 @@ impl AxiomSession {
             config.pii_patterns.clone()
         );
         
-        // Strategy Selection: Select intelligence provider
+        // Strategy Selection: Based on consolidated config
         let intelligence: Box<dyn crate::engine::intelligence::IntelligenceProvider> = 
-            if env::var("AXIOM_FORCE_NEURAL").is_ok() {
-                // If it fails to load, fallback to Fuzzy gracefully
-                match NeuralIntelligence::new() {
-                    Ok(n) => Box::new(n),
-                    Err(e) => {
-                        eprintln!("\x1b[31m[AXIOM] Failed to load Neural Engine: {}. Falling back to Fuzzy.\x1b[0m", e);
-                        Box::new(FuzzyIntelligence)
+            match config.intelligence_mode {
+                IntelligenceMode::Neural => {
+                    match NeuralIntelligence::new() {
+                        Ok(n) => Box::new(n),
+                        Err(e) => {
+                            eprintln!("\x1b[31m[AXIOM] Failed to load Neural Engine: {}. Falling back to Fuzzy.\x1b[0m", e);
+                            Box::new(FuzzyIntelligence)
+                        }
                     }
                 }
-            } else {
-                Box::new(FuzzyIntelligence)
+                IntelligenceMode::Fuzzy => Box::new(FuzzyIntelligence),
             };
         
         let mut engine = AxiomEngine::new(redactor, schemas, intelligence);
         
+        if config.markdown_enabled {
+            engine.set_markdown_mode(true);
+        }
+
         // Initialize WASM plugins
         if let Ok(plugin_manager) = WasmPluginManager::new(&config.plugins_dir) {
             engine = engine.with_plugins(plugin_manager);
@@ -86,12 +84,9 @@ impl AxiomSession {
             let _ = self.persistence.upsert_template(&template, freq);
         }
         
-        // Log savings locally
+        // Log savings
         let _ = self.persistence.log_saving(command, original, compressed);
         
-        // Report telemetry based on configured level (Default: Discovery)
-        crate::engine::telemetry::Telemetry::report_usage(&self.config, command, original, compressed);
-
         Ok(())
     }
 }
