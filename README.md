@@ -51,7 +51,30 @@ Axiom isn't just for AI. Use it to clean up massive `docker logs`, `ps`, or `ls`
 
 ---
 
-## 🛠️ Installation & Setup
+## 🏗️ How it Works: The Signal Funnel
+
+Axiom acts as a local high-performance filter between your tools and your context window.
+
+```mermaid
+graph TD
+    A[Raw Terminal Command] -->|Interception| B{AXIOM PROXY}
+    
+    subgraph "LOCAL EXECUTION (Sub-10ms)"
+    B --> C[🛡️ PRIVACY SHIELD]
+    C -->|Entropy & PII Redaction| D[🧠 SEMANTIC ENGINE]
+    D -->|Smart Aggregation & Filtering| E[⚡ HIGH-SIGNAL STREAM]
+    end
+    
+    E --> F[🤖 AI AGENT / CURSOR / CLAUDE]
+    E --> G[👤 DEVELOPER ZEN]
+
+    style C fill:#ff9999,stroke:#333,stroke-width:2px
+    style D fill:#99ccff,stroke:#333,stroke-width:2px
+    style E fill:#99ff99,stroke:#333,stroke-width:4px
+```
+
+---
+
 
 ### 1. One-Step Install
 ```bash
