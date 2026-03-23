@@ -20,7 +20,6 @@ pub struct AxiomEngine {
     pub plugins: Option<WasmPluginManager>,
     pub intelligence: Box<dyn IntelligenceProvider>,
     pub markdown_mode: bool,
-    /// Counter for volume control
     line_counter: usize,
 }
 
@@ -63,72 +62,94 @@ impl AxiomEngine {
         self.discovery.templates.iter().map(|(k, v)| (k.clone(), *v)).collect()
     }
 
-    /// Flushes all buffered variables into a list of human-readable summaries
     pub fn flush_summaries(&mut self) -> Vec<String> {
         self.discovery.flush_variable_summary()
     }
 
-    /// The main pipeline orchestrator
+    /// The main pipeline orchestrator. Adheres to a strict stage-based flow.
     pub fn process_line(&mut self, line: &str, command: &str, context: &IntentContext) -> Option<String> {
         self.line_counter += 1;
 
-        // 1. Structural Pre-processing (Markdown)
-        let working_line = if self.markdown_mode && ContentTransformer::looks_like_table(line) {
-            ContentTransformer::to_markdown(line)
-        } else {
-            line.to_string()
-        };
+        // Stage 1: Structural Pre-processing (Markdown tables)
+        let working_line = self.apply_structural_transform(line);
 
-        // 2. Resource Management (Guardian Mode)
-        if ContentTransformer::should_guard(command, self.line_counter, context) {
-            if self.line_counter == 101 {
-                return Some("[AXIOM] (Guardian Mode: File too long. Summary follows...)".to_string());
-            }
-            if self.discovery.process_and_check_noise(&working_line) {
-                return None;
-            }
+        // Stage 2: Resource Guarding (Preventing buffer overflows/token burns)
+        if let Some(guard_result) = self.apply_resource_guard(&working_line, command, context) {
+            return guard_result;
         }
 
-        // 3. Security (Privacy Redaction)
+        // Stage 3: Security & Privacy (Mandatory redaction)
         let redacted = self.redactor.redact(&working_line);
 
-        // 4. Intelligence (Intent Priority)
-        if context.is_relevant(&redacted) || self.intelligence.is_relevant(&context.last_message, &redacted, 0.7) {
+        // Stage 4: Semantic Relevance (Intent Priority Overriding)
+        if self.is_semantically_relevant(&redacted, context) {
             return Some(redacted);
         }
 
-        // 5. Schema Application (Rules)
-        let mut final_line = Some(redacted.clone());
-        if let Some(schema) = self.schemas.iter().find(|s| s.matches(command)) {
-            if let Some(action) = schema.apply_rules(&redacted) {
-                match action {
-                    Action::Keep => final_line = Some(redacted),
-                    Action::Collapse => {
-                        self.discovery.process_and_check_noise(&redacted);
-                        final_line = None;
-                    }
-                    Action::Redact => final_line = Some("[REDACTED_BY_SCHEMA]".to_string()),
-                    Action::Hidden => final_line = None,
-                }
-            }
+        // Stage 5: Pattern-based Compression (YAML Schemas & Auto-Discovery)
+        let final_line = self.apply_compression(&redacted, command);
+
+        // Stage 6: External Logic (WASM Plugins)
+        self.apply_plugins(final_line)
+    }
+
+    // --- Private Stage Helpers (Encapsulation) ---
+
+    fn apply_structural_transform(&self, line: &str) -> String {
+        if self.markdown_mode && ContentTransformer::looks_like_table(line) {
+            ContentTransformer::to_markdown(line)
         } else {
-            // 6. Discovery (Auto-collapse fallback when no schema matches)
-            if self.discovery.process_and_check_noise(&redacted) {
-                final_line = None;
+            line.to_string()
+        }
+    }
+
+    fn apply_resource_guard(&mut self, line: &str, command: &str, context: &IntentContext) -> Option<Option<String>> {
+        if ContentTransformer::should_guard(command, self.line_counter, context) {
+            if self.line_counter == 101 {
+                return Some(Some("[AXIOM] (Guardian Mode: File too long. Summary follows...)".to_string()));
+            }
+            if self.discovery.process_and_check_noise(line) {
+                return Some(None);
             }
         }
-
-        // 7. Extensions (WASM Plugins)
-        if let Some(mut current_line) = final_line {
-            if let Some(plugin_manager) = &mut self.plugins {
-                current_line = plugin_manager.transform(&current_line);
-                if current_line.is_empty() { return None; }
-                return Some(current_line);
-            }
-            return Some(current_line);
-        }
-
         None
+    }
+
+    fn is_semantically_relevant(&mut self, line: &str, context: &IntentContext) -> bool {
+        context.is_relevant(line) || self.intelligence.is_relevant(&context.last_message, line, 0.7)
+    }
+
+    fn apply_compression(&mut self, line: &str, command: &str) -> Option<String> {
+        if let Some(schema) = self.schemas.iter().find(|s| s.matches(command)) {
+            if let Some(action) = schema.apply_rules(line) {
+                return match action {
+                    Action::Keep => Some(line.to_string()),
+                    Action::Collapse => {
+                        self.discovery.process_and_check_noise(line);
+                        None
+                    },
+                    Action::Redact => Some("[REDACTED_BY_SCHEMA]".to_string()),
+                    Action::Hidden => None,
+                };
+            }
+        }
+        
+        // Fallback to auto-discovery
+        if self.discovery.process_and_check_noise(line) {
+            None
+        } else {
+            Some(line.to_string())
+        }
+    }
+
+    fn apply_plugins(&mut self, line: Option<String>) -> Option<String> {
+        match (line, &mut self.plugins) {
+            (Some(mut current), Some(manager)) => {
+                current = manager.transform(&current);
+                if current.is_empty() { None } else { Some(current) }
+            }
+            (l, _) => l,
+        }
     }
 }
 

@@ -5,7 +5,9 @@ pub mod engine;
 pub mod persistence;
 pub mod config;
 pub mod session;
+pub mod error;
 
+pub use error::{AxiomError, Result};
 use serde::{Deserialize, Serialize};
 
 /// Represents the context of the user message (the "intent")
