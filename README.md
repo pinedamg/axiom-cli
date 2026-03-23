@@ -10,82 +10,31 @@
 
 ---
 
-## 🚀 Why Axiom?
+## 📖 Documentation / Documentación
 
-Current AI agents are powerful, but they are "context-hungry." When you run a command like `npm install` or `docker logs`, 90% of the output is repetitive noise that:
-1.  **Drains your wallet:** You pay for thousands of unnecessary tokens.
-2.  **Loses context:** Critical errors get buried under thousands of lines of successful logs.
-3.  **Leaks Secrets:** Sensitive data (API keys, PII) can be sent to LLM providers accidentally.
+We have moved our full documentation to the `docs/` folder, organized by language.
 
-**Axiom fixes this locally, in real-time, with sub-10ms overhead.**
+Hemos movido nuestra documentación completa a la carpeta `docs/`, organizada por idioma.
 
----
+### 🇺🇸 English
+**[Official Documentation Index (EN)](docs/en/README.md)**
 
-## ✨ Key Features
+- 🚀 **[Getting Started & Installation](docs/en/getting-started/installation.md)**
+- 💡 **[Core Concepts](docs/en/user-guide/core-concepts.md)**
+- 🛡️ **[Telemetry & Privacy](docs/en/user-guide/telemetry-and-privacy.md)**
 
-### 🛡️ Privacy Shield (Local-First)
-Axiom ensures sensitive data never leaves your machine.
-- **Entropy Scanning**: Automatically detects and redacts high-entropy strings (API keys, secrets) using Shannon Entropy metrics.
-- **PII Redaction**: Built-in engine to mask emails, IPs, and sensitive patterns before they reach the AI.
+### 🇪🇸 Español
+**[Índice de Documentación Oficial (ES)](docs/es/README.md)**
 
-### 🧠 Intent-Aware Compression
-Axiom doesn't just filter; it understands. 
-- **Smart Aggregation**: Compresses 100+ lines of success into a single dense summary: `[AXIOM] 124 items processed successfully. IDs: [0x1...0x7B]`.
-- **Intent Overriding**: If you are debugging a specific error, Axiom force-shows relevant logs while suppressing the rest.
-
-### ⚡ Built for Speed
-- **Native Rust**: Zero-cost abstractions and non-blocking I/O.
-- **WASM Plugin System**: Extend Axiom with secure, portable plugins.
+- 🚀 **[Instalación y Configuración](docs/es/empezando/instalacion.md)**
+- ⚡ **[Inicio Rápido](docs/es/empezando/inicio-rapido.md)**
+- 💡 **[Conceptos Clave](docs/es/guia-usuario/conceptos-clave.md)**
 
 ---
 
-## 📊 Token Savings Analytics
+## 🤝 Contributing
 
-Axiom tracks your savings in a local SQLite database. 
-```bash
-axiom gain --history
-```
-*Typical results show **60% to 90% reduction** in token usage for common dev tasks.*
-
----
-
-## 🔒 Privacy & Telemetry
-
-Axiom is built for privacy. We only collect **anonymous aggregate metrics** (e.g., total bytes saved) to improve the compression algorithms and prove ROI to the community.
-- **NO** command strings are ever sent.
-- **NO** PII or secrets are ever sent.
-- **NO** user identifiable data is collected.
-
-### Opt-out
-If you wish to opt-out of anonymous telemetry, set the following environment variable in your shell:
-```bash
-export AXIOM_ANALYTICS_OPT_OUT=1
-```
-
----
-
-## 🛠️ Installation
-
-```bash
-git clone https://github.com/pinedamg/axiom.git
-cd axiom
-cargo build --release
-cp target/release/axiom /usr/local/bin/
-```
-
-### Usage
-Simply prefix any command:
-```bash
-axiom npm install
-axiom git diff
-axiom docker-compose up
-```
-
----
-
-## 🤝 Contributing & License
-
-We welcome contributions! Please read our [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the CLA.
+We welcome contributions! Please read our [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the CLA, and check the [Developer Guide](docs/en/developer-guide/schemas.md) to learn how to add new CLI schemas.
 
 Axiom Core is licensed under the **Apache License 2.0**.
 
