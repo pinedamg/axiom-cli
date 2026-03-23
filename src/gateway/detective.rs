@@ -1,4 +1,4 @@
-use sysinfo::{System, Pid};
+use sysinfo::System;
 
 pub struct ProcessDetective;
 

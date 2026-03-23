@@ -15,7 +15,12 @@ pub struct AxiomSession {
 }
 
 impl AxiomSession {
-    pub fn new(config: AxiomConfig) -> anyhow::Result<Self> {
+    pub fn new(mut config: AxiomConfig) -> anyhow::Result<Self> {
+        // Read opt-out from env
+        if env::var("AXIOM_ANALYTICS_OPT_OUT").is_ok() {
+            config.analytics_opt_out = true;
+        }
+
         let persistence = PersistenceManager::new_with_path(&config.db_path)?;
         let schemas = Self::load_schemas(&config)?;
         
@@ -81,9 +86,12 @@ impl AxiomSession {
             let _ = self.persistence.upsert_template(&template, freq);
         }
         
-        // Log savings
+        // Log savings locally
         let _ = self.persistence.log_saving(command, original, compressed);
         
+        // Report anonymous aggregate savings (Opt-out)
+        crate::engine::telemetry::Telemetry::report_savings(&self.config, original, compressed);
+
         Ok(())
     }
 }
