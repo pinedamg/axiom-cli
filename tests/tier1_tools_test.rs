@@ -1,15 +1,9 @@
-use axiom::config::AxiomConfig;
-use axiom::session::AxiomSession;
+mod common;
 use axiom::IntentContext;
-
-fn setup_session() -> AxiomSession {
-    let config = AxiomConfig::default();
-    AxiomSession::new(config).expect("Failed to setup session for testing")
-}
 
 #[test]
 fn test_ls_efficiency() {
-    let mut session = setup_session();
+    let mut session = common::setup_session();
     let command = "ls -la";
     let context = IntentContext {
         last_message: "show files".to_string(),
@@ -46,7 +40,7 @@ drwxr-xr-x 20 user group  4096 Mar 22 10:00 ..
 
 #[test]
 fn test_ripgrep_aggregation() {
-    let mut session = setup_session();
+    let mut session = common::setup_session();
     let command = "rg 'search'";
     let context = IntentContext {
         last_message: "just searching".to_string(),
@@ -69,7 +63,7 @@ fn test_ripgrep_aggregation() {
 
 #[test]
 fn test_cat_guardian_mode() {
-    let mut session = setup_session();
+    let mut session = common::setup_session();
     let command = "cat giant_file.log";
     let context = IntentContext {
         last_message: "show logs".to_string(),

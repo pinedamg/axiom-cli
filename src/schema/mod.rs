@@ -32,7 +32,7 @@ pub enum Action {
 }
 
 impl ToolSchema {
-    /// Compiles all regexes in the schema
+    /// Compiles all regexes in the schema for efficient matching
     pub fn compile(&mut self) -> anyhow::Result<()> {
         self.compiled_command_re = Some(Regex::new(&self.command_pattern)?);
         for rule in &mut self.rules {
@@ -42,10 +42,15 @@ impl ToolSchema {
     }
 
     pub fn matches(&self, command: &str) -> bool {
-        if let Some(re) = &self.compiled_command_re {
-            re.is_match(command)
-        } else {
-            false
-        }
+        self.compiled_command_re.as_ref().map_or(false, |re| re.is_match(command))
+    }
+
+    /// Applies rules to a line and returns the action to take
+    pub fn apply_rules(&self, line: &str) -> Option<Action> {
+        // Find the matching rule with the highest priority
+        self.rules.iter()
+            .filter(|r| r.compiled_re.as_ref().map_or(false, |re| re.is_match(line)))
+            .max_by_key(|r| r.priority)
+            .map(|r| r.action)
     }
 }
