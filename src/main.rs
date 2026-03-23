@@ -117,11 +117,15 @@ async fn main() -> anyhow::Result<()> {
     keywords.extend(IntentDiscoverer::get_git_context());
 
     let context = IntentContext {
-        last_message: intent,
+        last_message: intent.clone(),
         command: cli.proxy_args.join(" "),
         keywords,
     };
 
+    // 4. Prepare Intelligence Engine (cache embeddings, etc)
+    let _ = session.engine.prepare_session(&intent);
+
+    // 5. Execute
     let program = &cli.proxy_args[0];
     let cmd_args = &cli.proxy_args[1..];
     execute_command(program, cmd_args, &context, &mut session).await?;
@@ -144,7 +148,6 @@ fn show_savings(session: &AxiomSession) -> anyhow::Result<()> {
     let saved = original.saturating_sub(compressed);
     let ratio = if original > 0 { (saved as f64 / original as f64) * 100.0 } else { 0.0 };
     
-    // Estimate tokens (avg 4 chars per token)
     let tokens_saved = saved / 4;
 
     println!("\x1b[1mAXIOM Token Savings Analytics\x1b[0m");
