@@ -1,0 +1,32 @@
+db_path: axiom.db
+schemas_dir: config/schemas
+plugins_dir: config/plugins
+entropy_threshold: 4.5
+semantic_threshold: 0.75
+intelligence_mode: fuzzy
+markdown_enabled: false
+telemetry_level: off
+installation_id: local-dev
+intent_keywords:
+- error
+- fail
+- package
+- version
+- diff
+- log
+- debug
+- trace
+- crash
+pii_patterns:
+- '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+- \b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b
+intent_sources:
+- name: Claude Code
+  path: .claude/history.json
+  strategy: tailjson
+- name: Gemini CLI
+  path: .gemini/last_prompt.log
+  strategy: lastline
+- name: Axiom Local Context
+  path: .axiom_context
+  strategy: lastline

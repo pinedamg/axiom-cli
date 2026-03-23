@@ -7,6 +7,12 @@ use tokenizers::Tokenizer;
 /// Interface for all intelligence engines in Axiom
 pub trait IntelligenceProvider: Send + Sync {
     fn name(&self) -> &str;
+    
+    /// Called once at session start to cache intent-related data (e.g. embeddings)
+    fn pre_compute_intent(&mut self, _intent: &str) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn is_relevant(&self, intent: &str, line: &str, threshold: f32) -> bool;
 }
 
@@ -38,6 +44,8 @@ pub struct NeuralIntelligence {
     model: BertModel,
     tokenizer: Tokenizer,
     device: Device,
+    /// Cached embedding of the user's intent for the current session
+    intent_embedding: Option<Tensor>,
 }
 
 impl NeuralIntelligence {
@@ -54,13 +62,17 @@ impl NeuralIntelligence {
         let config: Config = serde_json::from_str(&config_str)?;
         let tokenizer = Tokenizer::from_file(tokenizer_filename).map_err(anyhow::Error::msg)?;
         
-        // Correct API for loading safetensors in recent candle-nn
         let vb = unsafe {
             candle_nn::VarBuilder::from_mmaped_safetensors(&[weights_filename], candle_core::DType::F32, &device)?
         };
         let model = BertModel::load(vb, &config)?;
 
-        Ok(Self { model, tokenizer, device })
+        Ok(Self { 
+            model, 
+            tokenizer, 
+            device,
+            intent_embedding: None,
+        })
     }
 
     fn get_embedding(&self, text: &str) -> anyhow::Result<Tensor> {
@@ -82,19 +94,26 @@ impl NeuralIntelligence {
 
 impl IntelligenceProvider for NeuralIntelligence {
     fn name(&self) -> &str { "neural" }
+
+    fn pre_compute_intent(&mut self, intent: &str) -> anyhow::Result<()> {
+        let emb = self.get_embedding(intent)?;
+        self.intent_embedding = Some(emb);
+        Ok(())
+    }
     
-    fn is_relevant(&self, intent: &str, line: &str, threshold: f32) -> bool {
-        let e1 = match self.get_embedding(intent) {
-            Ok(e) => e,
-            Err(_) => return false,
+    fn is_relevant(&self, _intent: &str, line: &str, threshold: f32) -> bool {
+        let intent_emb = match &self.intent_embedding {
+            Some(e) => e,
+            None => return false, // Or compute on the fly as fallback
         };
-        let e2 = match self.get_embedding(line) {
+
+        let line_emb = match self.get_embedding(line) {
             Ok(e) => e,
             Err(_) => return false,
         };
 
         // Cosine similarity
-        let similarity = match e1 * e2 {
+        let similarity = match (intent_emb * line_emb) {
             Ok(t) => t.sum_all().unwrap().to_scalar::<f32>().unwrap(),
             Err(_) => 0.0,
         };
@@ -116,8 +135,10 @@ mod tests {
     #[test]
     #[ignore]
     fn test_neural_similarity_logic() {
-        let engine = NeuralIntelligence::new().unwrap();
+        let mut engine = NeuralIntelligence::new().unwrap();
         let intent = "The website is down";
+        engine.pre_compute_intent(intent).unwrap();
+        
         let line = "Connection refused at port 80";
         let score = engine.is_relevant(intent, line, 0.5);
         assert!(score);

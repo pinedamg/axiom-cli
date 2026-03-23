@@ -66,6 +66,11 @@ impl AxiomEngine {
         self.discovery.flush_variable_summary()
     }
 
+    /// Pre-calculates session data (like embeddings) to improve per-line latency
+    pub fn prepare_session(&mut self, intent: &str) -> anyhow::Result<()> {
+        self.intelligence.pre_compute_intent(intent)
+    }
+
     /// The main pipeline orchestrator. Adheres to a strict stage-based flow.
     pub fn process_line(&mut self, line: &str, command: &str, context: &IntentContext) -> Option<String> {
         self.line_counter += 1;
