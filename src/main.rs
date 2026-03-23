@@ -26,7 +26,7 @@ enum Commands {
     /// Show token savings analytics
     Gain {
         /// Show detailed history of recent commands
-        #[arg(short, long)]
+        #[arg(short = 's', long)]
         history: bool,
     },
     /// List currently learned structural templates
