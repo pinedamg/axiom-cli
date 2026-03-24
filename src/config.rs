@@ -74,8 +74,19 @@ impl Default for AxiomConfig {
                 "debug".to_string(), "trace".to_string(), "crash".to_string(),
             ],
             pii_patterns: vec![
-                r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}".to_string(),
-                r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b".to_string(),
+                r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}".to_string(), // Email
+                r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b".to_string(),         // IP Address
+
+                // --- Secrets & API Keys Regexes ---
+                // These regex patterns are explicit to capture known formats of keys that may
+                // fall under the default entropy threshold (4.5), ensuring sub-10ms CLI performance.
+                r"\b(?:AKIA|ABIA|ACCA|ASIA)[A-Z0-9]{16}\b".to_string(),        // AWS
+                r"\bsk-ant-api03-[a-zA-Z0-9_-]{20,}\b".to_string(),            // Anthropic
+                r"\bgsk_[a-zA-Z0-9]{32,}\b".to_string(),                       // Groq
+                r"\b(?:sk|pk)_(?:test|live)_[0-9a-zA-Z]{10,}\b".to_string(),   // Stripe
+                r"\bya29\.[a-zA-Z0-9_-]{20,}\b".to_string(),                   // Google OAuth
+                r"\bsk-proj-[a-zA-Z0-9_-]{20,}\b".to_string(),                 // OpenAI Project
+                r"\bsk-[a-zA-Z0-9]{48}\b".to_string(),                         // OpenAI Legacy
             ],
             intent_sources: vec![
                 IntentSource {

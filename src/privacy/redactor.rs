@@ -25,8 +25,15 @@ impl PrivacyRedactor {
 impl Default for PrivacyRedactor {
     fn default() -> Self {
         Self::new(4.5, vec![
-            r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}".to_string(),
-            r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b".to_string(),
+            r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}".to_string(), // Email
+            r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b".to_string(),         // IP Address
+            r"\b(?:AKIA|ABIA|ACCA|ASIA)[A-Z0-9]{16}\b".to_string(),        // AWS
+            r"\bsk-ant-api03-[a-zA-Z0-9_-]{20,}\b".to_string(),            // Anthropic
+            r"\bgsk_[a-zA-Z0-9]{32,}\b".to_string(),                       // Groq
+            r"\b(?:sk|pk)_(?:test|live)_[0-9a-zA-Z]{10,}\b".to_string(),   // Stripe
+            r"\bya29\.[a-zA-Z0-9_-]{20,}\b".to_string(),                   // Google OAuth
+            r"\bsk-proj-[a-zA-Z0-9_-]{20,}\b".to_string(),                 // OpenAI Project
+            r"\bsk-[a-zA-Z0-9]{48}\b".to_string(),                         // OpenAI Legacy
         ])
     }
 }
@@ -44,7 +51,13 @@ impl PrivacyRedactor {
         // We use Cow::Owned to avoid lifetime issues with the captures reference
         self.word_regex.replace_all(&output, |caps: &regex::Captures| {
             let word = &caps[0];
-            if word.len() > 10 && calculate_entropy(word) > self.entropy_threshold {
+
+            // Skip entropy redaction for common hex strings (like Git SHAs or Docker IDs)
+            // to reduce false positives. Git SHAs are 40 chars, Docker IDs are 64 chars.
+            let is_hex_hash = (word.len() == 40 || word.len() == 64)
+                && word.chars().all(|c| c.is_ascii_hexdigit());
+
+            if !is_hex_hash && word.len() > 10 && calculate_entropy(word) > self.entropy_threshold {
                 std::borrow::Cow::Owned("[REDACTED_SECRET]".to_string())
             } else {
                 std::borrow::Cow::Owned(word.to_string())

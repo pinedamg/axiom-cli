@@ -45,6 +45,48 @@ fn test_core_generic_scenarios() {
 }
 
 #[test]
+fn test_adversarial_secrets() {
+    let config = AxiomConfig::default();
+    let session = AxiomSession::new(config).expect("Failed to create session");
+
+    let fake_keys = vec![
+        "AKIAIOSFODNN7EXAMPLE",                                // AWS
+        "sk-ant-api03-abcdefghijklmnopqrstuvwxyz1234567890",   // Anthropic
+        "gsk_ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",            // Groq
+        "sk_live_51MzhABCDEF1234567890",                       // Stripe
+        "ya29.a0AfB_byCDEF1234567890",                         // Google OAuth
+        "sk-proj-abcDEFghiJKLmnoPQRstuVWXyz123456",            // OpenAI Project
+        "sk-123456789012345678901234567890123456789012345678", // OpenAI Legacy
+    ];
+
+    for key in fake_keys {
+        let line = format!("Found key: {}", key);
+        // The engine might return None if it considers the line completely noisy,
+        // but since we provided "check security" context and we're looking at secrets,
+        // we should make sure we correctly handle it if it aggregates.
+        // To force output, we use flush_summaries or process directly through redactor to verify the regex.
+        // Actually, we can just use the privacy redactor directly to test the new patterns
+        // to avoid Engine noise-filtering logic getting in the way.
+        let result = session.engine.redactor.redact(&line);
+        assert!(
+            result.contains("[REDACTED_PII]") || result.contains("[REDACTED_SECRET]"),
+            "Secret not redacted: {}", key
+        );
+        assert!(!result.contains(key), "Secret leaked in output: {}", key);
+    }
+
+    // Test false positives (Git SHA and Docker IDs should NOT be redacted)
+    let git_sha = "9b4662d55d3e020e98031e405a415053e1a0678d"; // 40 chars
+    let docker_id = "65239e235a9f6e14a1f68153eb268df1d02c81729ecf6168e36fa33c7f1a3028"; // 64 chars
+
+    let result_git = session.engine.redactor.redact(&format!("commit {}", git_sha));
+    assert!(result_git.contains(git_sha), "Git SHA falsely redacted");
+
+    let result_docker = session.engine.redactor.redact(&format!("container {}", docker_id));
+    assert!(result_docker.contains(docker_id), "Docker ID falsely redacted");
+}
+
+#[test]
 fn test_aggregator_no_information_loss() {
     let config = AxiomConfig::default();
     let mut session = AxiomSession::new(config).expect("Failed to create session");
