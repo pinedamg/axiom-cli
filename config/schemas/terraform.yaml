@@ -1,23 +1,35 @@
 name: cloud-terraform
-command_pattern: "^terraform"
+command_pattern: "^(terraform|tf)"
 rules:
   - name: RefreshingState
     pattern: ".*: Refreshing state... \\[id=.*\\]"
     action: collapse
     priority: 5
   - name: PlanSummary
-    pattern: "Plan: [0-9]+ to add, [0-9]+ to change, [0-9]+ to destroy."
+    pattern: "^Plan: [0-9]+ to add, [0-9]+ to change, [0-9]+ to destroy\\."
     action: keep
     priority: 10
   - name: ReadingResource
-    pattern: ".*: Reading...$"
+    pattern: ".*: (Reading...|Read complete after.*)$"
     action: collapse
     priority: 1
   - name: ResourceAttribute
-    pattern: "^\\s*[~+]\\s+[a-zA-Z0-9_-]+\\s+=.*"
+    pattern: "^\\s*([~+]|[\\+-]/|-) [a-zA-Z0-9_-]+\\s+.*"
     action: collapse
     priority: 2
   - name: NoChanges
     pattern: "No changes. Your infrastructure matches the configuration."
+    action: keep
+    priority: 10
+  - name: ResourceIdentifier
+    pattern: "^\\s*[#] [a-zA-Z0-9_-]+.*(will be created|will be updated in-place|will be destroyed)$"
+    action: collapse
+    priority: 5
+  - name: TerraformAction
+    pattern: "^Terraform will perform the following actions:$"
+    action: keep
+    priority: 8
+  - name: PlanOutput
+    pattern: "^Plan: [0-9]+ to add, [0-9]+ to change, [0-9]+ to destroy.$"
     action: keep
     priority: 10
