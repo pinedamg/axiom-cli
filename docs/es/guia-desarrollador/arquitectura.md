@@ -45,14 +45,14 @@ Axiom sigue una **Arquitectura Limpia por Capas (Layered Clean Architecture)** a
 
 ## 3. Flujo de Datos (El Pipeline de Flujo)
 
-1.  **Ejecución de Comando**: Inicia `axiom npm install`.
-2.  **Detective de Procesos**: Identifica `npm` y el contexto actual del proyecto.
-3.  **Captura de Flujo**: Se leen bytes en bruto del subproceso.
-4.  **Escudo de Privacidad**: Las líneas se escanean y se redactan si es necesario.
-5.  **Coincidencia Semántica**: El Engine comprueba si una línea coincide con una "Regla de Ruido" (ej. progreso de descarga).
-6.  **Transformación**: La línea se pasa, se descarta o se añade a un buffer de colapso.
-7.  **Salida Final**: La salida de alta señal se imprime en la terminal para que el agente de IA la consuma.
-8.  **Analíticas**: Se calculan los ahorros y se almacenan en la BD local SQLite.
+El orquestador del motor (`src/engine/mod.rs`) procesa cada línea a través de un pipeline estricto:
+
+1. **Fase 1: Preprocesamiento Estructural**: Transforma las líneas que parecen tablas en formato Markdown real si el modo markdown está habilitado.
+2. **Fase 2: Protección de Recursos**: Previene desbordamientos de buffer o quema de tokens mediante la aplicación de límites de longitud de archivo (ej. resumiendo después de 100 líneas) y comprobaciones de ruido de auto-descubrimiento.
+3. **Fase 3: Seguridad y Privacidad**: El paso obligatorio del `PrivacyRedactor`, donde se eliminan los patrones sensibles de la línea de trabajo.
+4. **Fase 4: Relevancia Semántica**: Evalúa si la línea es explícitamente relevante para el `IntentContext` actual (a través de la anulación por prioridad de intención) y elude la compresión en caso de serlo.
+5. **Fase 5: Compresión Basada en Patrones**: Coincide la línea con las reglas YAML de `ToolSchema`. Las líneas pueden mantenerse, colapsarse en resúmenes, redactarse o ocultarse completamente.
+6. **Fase 6: Lógica Externa (Plugins WASM)**: Aplica plugins de WebAssembly cargados para transformaciones lógicas externas.
 
 ## 4. Estándares de Seguridad
 

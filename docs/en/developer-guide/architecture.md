@@ -45,14 +45,14 @@ Axiom follows a **Layered Clean Architecture** adapted for Rust's performance ne
 
 ## 3. Data Flow (The Stream Pipeline)
 
-1.  **Command Execution**: `axiom npm install` starts.
-2.  **Process Detective**: Identifies `npm` and the current project context.
-3.  **Stream Capture**: Raw bytes are read from the sub-process.
-4.  **Privacy Shield**: Lines are scanned and redacted if necessary.
-5.  **Semantic Match**: The Engine checks if a line matches a "Noise Rule" (e.g., download progress).
-6.  **Transformation**: The line is either passed, dropped, or added to a collapse buffer.
-7.  **Final Output**: High-signal output is printed to the terminal for the AI agent to consume.
-8.  **Analytics**: Savings are calculated and stored in the local SQLite DB.
+The engine orchestrator (`src/engine/mod.rs`) processes each line through a strict pipeline:
+
+1. **Stage 1: Structural Pre-processing**: Transforms lines resembling Markdown tables into actual Markdown format if the markdown mode is enabled.
+2. **Stage 2: Resource Guarding**: Prevents buffer overflows or token burns by applying file length limits (e.g., summarizing after 100 lines) and auto-discovery noise checks.
+3. **Stage 3: Security & Privacy**: The mandatory `PrivacyRedactor` step where sensitive patterns are scrubbed from the working line.
+4. **Stage 4: Semantic Relevance**: Evaluates if the line is explicitly relevant to the current `IntentContext` (via intent priority overriding) and bypasses compression if true.
+5. **Stage 5: Pattern-based Compression**: Matches the line against YAML `ToolSchema` rules. Lines are kept, collapsed into summaries, redacted by schema rules, or completely hidden.
+6. **Stage 6: External Logic (WASM Plugins)**: Applies loaded WebAssembly plugins for external logic transformations.
 
 ## 4. Security Standards
 

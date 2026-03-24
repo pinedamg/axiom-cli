@@ -2,6 +2,10 @@
 
 La interfaz de comandos (CLI) de Axiom proporciona varios comandos para gestionar tu instalación, ver análisis y depurar configuraciones.
 
+## Banderas Globales (Flags)
+
+- **`--markdown`**: Habilita la transformación de tablas Markdown de forma global.
+
 ## Comandos Principales
 
 ### `axiom <comando>`
@@ -9,32 +13,28 @@ El uso principal. Actúa como un proxy para el comando proporcionado.
 - **Uso**: `axiom npm install`, `axiom docker logs mi-contenedor`
 - **Comportamiento**: Intercepta la salida del comando, aplica filtros de privacidad, compresión semántica y entrega el flujo optimizado.
 
+### `axiom install`
+Instala la integración de Axiom en tu shell.
+- **Uso**: `axiom install`
+- **Comportamiento**: Muestra los comandos necesarios para habilitar Axiom automáticamente en comandos comunes para tu configuración de shell.
+
 ### `axiom gain`
 Muestra análisis sobre tus ahorros de tokens y costos.
 - **Uso**: `axiom gain`
 - **Banderas (Flags)**:
-  - `--history`: Muestra una lista detallada de las ejecuciones de comandos recientes y el ahorro exacto de tokens para cada una.
+  - `--history`, `-s`: Muestra una lista detallada de las ejecuciones de comandos recientes y el ahorro exacto de tokens para cada una.
 
-### `axiom status`
-Muestra la salud actual, la configuración y el estado de la telemetría de tu instalación de Axiom.
-- **Uso**: `axiom status`
-- **Salida**: Edición (Community/Pro), Nivel de Telemetría, ID de Instalación y esquemas activos.
+### `axiom discovery`
+Lista las plantillas estructurales aprendidas actualmente.
+- **Uso**: `axiom discovery`
 
-### `axiom proxy <cmd>`
-Ejecuta el comando en bruto sin filtrado. Útil para depuración o para saltarse Axiom por completo en una ejecución específica.
-- **Uso**: `axiom proxy npm install`
-
-### `axiom discover`
-*(Beta)* Analiza el historial de agentes de IA locales (como Claude Code) para encontrar oportunidades perdidas donde Axiom podría haber ahorrado tokens.
-- **Uso**: `axiom discover`
+### `axiom check-ai`
+Verifica si el proceso actual fue llamado por un agente de IA.
+- **Uso**: `axiom check-ai`
+- **Comportamiento**: Retorna un código de salida 0 si fue llamado por un agente de IA, o 1 si fue llamado por un humano desde la terminal.
 
 ## Comandos de Configuración
 
-### `axiom config telemetry <nivel>`
-Establece tu nivel de telemetría preferido.
-- **Niveles**: `full`, `discovery`, `anonymous`, `off` (solo Pro).
-- **Ejemplo**: `axiom config telemetry discovery`
-
-### `axiom config license <clave>`
-Aplica una clave de licencia Pro para desbloquear funciones premium como el modo de telemetría Offline.
-- **Ejemplo**: `axiom config license abc-123-xyz`
+### `axiom config init`
+Inicializa un archivo `.axiom.yaml` local con los valores por defecto.
+- **Uso**: `axiom config init`

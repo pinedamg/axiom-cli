@@ -98,30 +98,30 @@ This section defines the expansion of default schemas and intelligent modes for 
 *Goal: Remove structural noise from everyday commands.*
 - [x] **ls / tree**: Collapse hidden files, metadata, and junk directories.
 - [ ] **cat / tail / head**: "Guardian Mode" for files > 50 lines (auto-summary).
-- [ ] **grep / rg (ripgrep)**: Aggregate matches per file and provide density summaries.
+- [x] **grep / rg (ripgrep)**: Aggregate matches per file and provide density summaries.
 - [ ] **curl / wget**: Hide progress bars and redundant HTTP headers.
 
 ### 🟡 Tier 2: Build & Dev Ecosytems (Context-Aware)
 *Goal: Filter successful boilerplate and focus on warnings/errors.*
 - [x] **npm / pnpm / yarn**: Basic installer noise reduction.
-- [ ] **cargo (Rust)**: Collapse dependency downloading/compiling. Force-show local crate warnings.
-- [ ] **go build / test**: Summarize test results.
+- [x] **cargo (Rust)**: Collapse dependency downloading/compiling. Force-show local crate warnings.
+- [x] **go build / test**: Summarize test results.
 - [ ] **pip / poetry / conda**: Clean virtualenv setup and logs.
 
 ### 🟠 Tier 3: Infrastructure & Cloud (Volume Control)
 *Goal: Prevent context window saturation from massive infrastructure outputs.*
 - [x] **docker / docker-compose**: Collapse layer pull progress and health-check loops.
-- [ ] **kubectl**: Summarize pod states, clean resource descriptions.
-- [ ] **terraform**: Synthesize `terraform plan`.
+- [x] **kubectl**: Summarize pod states, clean resource descriptions.
+- [x] **terraform**: Synthesize `terraform plan`.
 - [ ] **aws / gcloud / az**: Transform JSON/Table listings into dense summaries.
 
 ### 🔵 Tier 4: Data & System (Structural Synthesis)
 *Goal: Maintain data shape while reducing token count.*
-- [ ] **jq / yq**: Identify JSON structure and summarize arrays.
+- [x] **jq / yq**: Identify JSON structure and summarize arrays.
 - [x] **ps / journalctl**: Deep cleaning of system/kernel noise.
 - [ ] **netstat / lsof / ss**: Filter system-reserved ports.
 
 ### 🚀 Advanced Intelligent Modes (Behavioral Flags)
-- **`--markdown`**: Automatically transform table outputs into real Markdown tables.
-- **`--diff-only`**: Show only what changed since the last execution.
-- **`--explain`**: Prepend a natural language summary of what Axiom compressed.
+- [x] **`--markdown`**: Automatically transform table outputs into real Markdown tables.
+- [ ] **`--diff-only`**: Show only what changed since the last execution.
+- [ ] **`--explain`**: Prepend a natural language summary of what Axiom compressed.
