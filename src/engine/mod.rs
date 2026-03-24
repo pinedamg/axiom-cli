@@ -79,12 +79,12 @@ impl AxiomEngine {
         let working_line = self.apply_structural_transform(line);
 
         // Stage 2: Resource Guarding (Preventing buffer overflows/token burns)
-        if let Some(guard_result) = self.apply_resource_guard(&working_line, command, context) {
+        if let Some(guard_result) = self.apply_resource_guard(working_line.as_ref(), command, context) {
             return guard_result;
         }
 
         // Stage 3: Security & Privacy (Mandatory redaction)
-        let redacted = self.redactor.redact(&working_line);
+        let redacted = self.redactor.redact(working_line.as_ref());
 
         // Stage 4: Semantic Relevance (Intent Priority Overriding)
         if self.is_semantically_relevant(&redacted, context) {
@@ -100,11 +100,11 @@ impl AxiomEngine {
 
     // --- Private Stage Helpers (Encapsulation) ---
 
-    fn apply_structural_transform(&self, line: &str) -> String {
+    fn apply_structural_transform<'a>(&self, line: &'a str) -> std::borrow::Cow<'a, str> {
         if self.markdown_mode && ContentTransformer::looks_like_table(line) {
-            ContentTransformer::to_markdown(line)
+            std::borrow::Cow::Owned(ContentTransformer::to_markdown(line))
         } else {
-            line.to_string()
+            std::borrow::Cow::Borrowed(line)
         }
     }
 

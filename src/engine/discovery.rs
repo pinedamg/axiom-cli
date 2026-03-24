@@ -1,19 +1,20 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
+use std::sync::OnceLock;
 use regex::Regex;
 
 pub struct DiscoveryEngine {
     /// Map of Template -> Frequency of appearance
-    pub templates: HashMap<String, usize>,
+    pub templates: BTreeMap<String, usize>,
     /// Buffer for variables captured from collapsed lines: Template -> Vec<VariableList>
-    pub variable_buffer: HashMap<String, Vec<Vec<String>>>,
+    pub variable_buffer: BTreeMap<String, Vec<Vec<String>>>,
     pub threshold: usize,
 }
 
 impl Default for DiscoveryEngine {
     fn default() -> Self {
         Self {
-            templates: HashMap::new(),
-            variable_buffer: HashMap::new(),
+            templates: BTreeMap::new(),
+            variable_buffer: BTreeMap::new(),
             threshold: 5,
         }
     }
@@ -29,38 +30,48 @@ impl DiscoveryEngine {
 
     /// Extracts the structural "Skeleton" and the dynamic "Variables" from a line
     pub fn extract_parts(&self, line: &str) -> (String, Vec<String>) {
-        let mut variables = Vec::new();
+        // Bolt: Vec::with_capacity(4) is used here because lines typically have fewer than 4 variables
+        // pre-allocation reduces heap re-allocation during hot paths.
+        let mut variables = Vec::with_capacity(4);
         
+        static RE_UUID: OnceLock<Regex> = OnceLock::new();
+        static RE_PATH: OnceLock<Regex> = OnceLock::new();
+        static RE_TIME: OnceLock<Regex> = OnceLock::new();
+        static RE_HEX: OnceLock<Regex> = OnceLock::new();
+        static RE_NUM: OnceLock<Regex> = OnceLock::new();
+
         // 1. Handle UUIDs
-        let re_uuid = Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").unwrap();
+        // Bolt: Using statically initialized Regexes prevents compiling them on every single line processed
+        // drastically reducing memory and CPU overhead.
+        let re_uuid = RE_UUID.get_or_init(|| Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").unwrap());
         let s = re_uuid.replace_all(line, |caps: &regex::Captures| {
             variables.push(caps[0].to_string());
             "<UUID>"
         });
 
         // 2. Handle File Paths (Basic detection)
-        let re_path = Regex::new(r"(/[a-zA-Z0-9\._-]+)+").unwrap();
+        let re_path = RE_PATH.get_or_init(|| Regex::new(r"(/[a-zA-Z0-9\._-]+)+").unwrap());
         let s = re_path.replace_all(&s, |caps: &regex::Captures| {
             variables.push(caps[0].to_string());
             "<PATH>"
         });
 
         // 3. Handle Timestamps
-        let re_time = Regex::new(r"\d{2}:\d{2}:\d{2}").unwrap();
+        let re_time = RE_TIME.get_or_init(|| Regex::new(r"\d{2}:\d{2}:\d{2}").unwrap());
         let s = re_time.replace_all(&s, |caps: &regex::Captures| {
             variables.push(caps[0].to_string());
             "<TIME>"
         });
 
         // 4. Handle Hashes/Hexadecimal
-        let re_hex = Regex::new(r"0x[0-9a-fA-F]+|[0-9a-f]{8,}").unwrap();
+        let re_hex = RE_HEX.get_or_init(|| Regex::new(r"0x[0-9a-fA-F]+|[0-9a-f]{8,}").unwrap());
         let s = re_hex.replace_all(&s, |caps: &regex::Captures| {
             variables.push(caps[0].to_string());
             "<HEX>"
         });
         
         // 5. Handle remaining numbers
-        let re_num = Regex::new(r"\d+").unwrap();
+        let re_num = RE_NUM.get_or_init(|| Regex::new(r"\d+").unwrap());
         let s = re_num.replace_all(&s, |caps: &regex::Captures| {
             variables.push(caps[0].to_string());
             "<NUM>"
@@ -87,9 +98,14 @@ impl DiscoveryEngine {
 
     /// Generates a summary of all buffered variables and clears the buffer
     pub fn flush_variable_summary(&mut self) -> Vec<String> {
-        let mut summaries = Vec::new();
+        let mut summaries = Vec::with_capacity(self.variable_buffer.len());
         
-        for (template, var_sets) in self.variable_buffer.drain() {
+        // BTreeMap doesn't have .drain() that returns an iterator in stable Rust in the same way,
+        // so we swap it with a new empty map and iterate over the old one.
+        let mut buffer_to_drain = BTreeMap::new();
+        std::mem::swap(&mut self.variable_buffer, &mut buffer_to_drain);
+
+        for (template, var_sets) in buffer_to_drain.into_iter() {
             if var_sets.is_empty() { continue; }
             
             // Collect unique variables across all sets to avoid spamming
