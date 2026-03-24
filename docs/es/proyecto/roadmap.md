@@ -67,9 +67,9 @@ Esta sección define la expansión de esquemas predeterminados y modos inteligen
 ### 🟢 Nivel 1: Los Fundamentos (Alta Frecuencia)
 *Objetivo: Eliminar el ruido estructural de los comandos diarios.*
 - [x] **ls / tree**: Colapsar archivos ocultos, metadatos y directorios basura.
-- [ ] **cat / tail / head**: "Modo Guardián" para archivos > 50 líneas (auto-resumen).
+- [x] **cat / tail / head**: "Modo Guardián" para archivos > 50 líneas (auto-resumen).
 - [ ] **grep / rg (ripgrep)**: Agregar coincidencias por archivo y proporcionar resúmenes de densidad.
-- [ ] **curl / wget**: Ocultar barras de progreso y cabeceras HTTP redundantes.
+- [x] **curl / wget**: Ocultar barras de progreso y cabeceras HTTP redundantes.
 
 ### 🟡 Nivel 2: Ecosistemas de Construcción y Desarrollo (Contexto)
 *Objetivo: Filtrar boilerplate de éxito y enfocarse en advertencias/errores.*
@@ -81,15 +81,15 @@ Esta sección define la expansión de esquemas predeterminados y modos inteligen
 ### 🟠 Nivel 3: Infraestructura y Nube (Control de Volumen)
 *Objetivo: Prevenir la saturación de la ventana de contexto por salidas masivas.*
 - [x] **docker / docker-compose**: Colapsar progreso de descarga de capas y bucles de health-check.
-- [ ] **kubectl**: Resumir estados de pods, limpiar descripciones de recursos.
-- [ ] **terraform**: Sintetizar `terraform plan`.
-- [ ] **aws / gcloud / az**: Transformar listados masivos de JSON/Tablas en resúmenes densos.
+- [x] **kubectl**: Resumir estados de pods, limpiar descripciones de recursos.
+- [x] **terraform**: Sintetizar `terraform plan`.
+- [x] **aws / gcloud / az**: Transformar listados masivos de JSON/Tablas en resúmenes densos.
 
 ### 🔵 Nivel 4: Datos y Sistema (Síntesis Estructural)
 *Objetivo: Mantener la forma de los datos reduciendo el conteo de tokens.*
-- [ ] **jq / yq**: Identificar la estructura JSON y resumir arrays.
+- [x] **jq / yq**: Identificar la estructura JSON y resumir arrays.
 - [x] **ps / journalctl**: Limpieza profunda de ruido del sistema/kernel.
-- [ ] **netstat / lsof / ss**: Filtrar puertos reservados del sistema.
+- [x] **netstat / lsof / ss**: Filtrar puertos reservados del sistema.
 
 ### 🚀 Modos Inteligentes Avanzados (Flags de Comportamiento)
 - **`--markdown`**: Transformar automáticamente las tablas de salida en tablas Markdown reales.

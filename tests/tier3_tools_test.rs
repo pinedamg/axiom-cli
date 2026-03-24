@@ -61,13 +61,25 @@ fn test_terraform_advanced_plan() {
 Plan: 0 to add, 1 to change, 0 to destroy.
     ";
 
-    let mut lines_printed = 0;
+    let mut plan_summary_count = 0;
+    let mut instance_id_count = 0;
+    let mut lines_processed = 0;
+
     for line in raw_output.lines() {
-        if let Some(_) = session.engine.process_line(line, command, &context) {
-            lines_printed += 1;
+        if let Some(processed) = session.engine.process_line(line, command, &context) {
+            lines_processed += 1;
+            if processed.contains("Plan:") {
+                plan_summary_count += 1;
+            }
+            if processed.contains("aws_instance.web") {
+                instance_id_count += 1;
+            }
         }
     }
 
-    // High signal lines (the change and the summary) should remain
-    assert!(lines_printed > 0);
+    assert_eq!(plan_summary_count, 1, "Plan summary must be kept");
+    // Depending on the 'action: collapse' behavior, it might be hidden or replaced with a summary line.
+    // If Axiom's engine is configured to hide collapsed lines by default in the test setup:
+    // assert!(instance_id_count == 0 || instance_id_count == 1);
 }
+

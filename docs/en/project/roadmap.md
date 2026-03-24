@@ -112,7 +112,7 @@ This section defines the expansion of default schemas and intelligent modes for 
 *Goal: Prevent context window saturation from massive infrastructure outputs.*
 - [x] **docker / docker-compose**: Collapse layer pull progress and health-check loops.
 - [x] **kubectl**: Summarize pod states, clean resource descriptions.
-- [ ] **terraform**: Synthesize `terraform plan`.
+- [x] **terraform**: Synthesize `terraform plan`.
 - [x] **aws / gcloud / az**: Transform JSON/Table listings into dense summaries.
 
 ### 🔵 Tier 4: Data & System (Structural Synthesis)
