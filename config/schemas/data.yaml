@@ -1,0 +1,23 @@
+name: system-data
+command_pattern: "^(jq|yq|netstat|lsof)"
+rules:
+  - name: JsonArrayElement
+    pattern: "^\\s*\"[a-zA-Z0-9_-]+\":.*"
+    action: keep
+    priority: 1
+  - name: NetworkListen
+    pattern: ".*LISTEN.*"
+    action: collapse
+    priority: 5
+  - name: NetworkEstablished
+    pattern: ".*ESTABLISHED.*"
+    action: collapse
+    priority: 5
+  - name: SystemPorts
+    pattern: ".*127.0.0.1:[0-9]+.*"
+    action: collapse
+    priority: 3
+  - name: JqStructure
+    pattern: "^[\\{\\}\\[\\]\\s,]+$"
+    action: hidden
+    priority: 10

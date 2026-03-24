@@ -1,0 +1,19 @@
+name: linux-io
+command_pattern: "^(cat|tail|head|curl|wget)"
+rules:
+  - name: LargeFileWarning
+    pattern: "^.*$"
+    action: keep
+    priority: 1
+  - name: CurlProgress
+    pattern: "^[\\s%0-9\\.]+\\s+[0-9a-z\\.]+\\s+.*$"
+    action: collapse
+    priority: 10
+  - name: HttpHeaders
+    pattern: "^(HTTP/|Date:|Server:|Content-Type:|Transfer-Encoding:).*"
+    action: collapse
+    priority: 5
+  - name: WgetProgress
+    pattern: ".*[0-9]+% .*\\[.*\\] .*"
+    action: collapse
+    priority: 10
