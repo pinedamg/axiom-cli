@@ -13,3 +13,15 @@ rules:
     pattern: ".*Refreshing state.*"
     action: collapse
     priority: 1
+  - name: DescribeLabels
+    pattern: "^Labels:.*"
+    action: collapse
+    priority: 3
+  - name: DescribeAnnotations
+    pattern: "^Annotations:.*"
+    action: collapse
+    priority: 3
+  - name: ManagedFields
+    pattern: ".*managedFields:.*"
+    action: hidden
+    priority: 10

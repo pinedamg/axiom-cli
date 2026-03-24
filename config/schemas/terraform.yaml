@@ -13,3 +13,11 @@ rules:
     pattern: ".*: Reading...$"
     action: collapse
     priority: 1
+  - name: ResourceAttribute
+    pattern: "^\\s*[~+]\\s+[a-zA-Z0-9_-]+\\s+=.*"
+    action: collapse
+    priority: 2
+  - name: NoChanges
+    pattern: "No changes. Your infrastructure matches the configuration."
+    action: keep
+    priority: 10

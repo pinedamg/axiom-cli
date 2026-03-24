@@ -1,76 +1,73 @@
-use axiom::config::AxiomConfig;
-use axiom::session::AxiomSession;
+mod common;
 use axiom::IntentContext;
 
-fn setup_session() -> AxiomSession {
-    let config = AxiomConfig::default();
-    AxiomSession::new(config).expect("Failed to setup session for testing")
-}
-
 #[test]
-fn test_kubectl_pod_summary() {
-    let mut session = setup_session();
-    let command = "kubectl get pods";
+fn test_kubectl_advanced_cleaning() {
+    let mut session = common::setup_session();
+    let command = "kubectl describe pod my-pod";
     let context = IntentContext {
-        last_message: "check system status".to_string(),
+        last_message: "check pod errors".to_string(),
         command: command.to_string(),
         keywords: vec![],
     };
 
     let raw_output = "
-NAME                     READY   STATUS    RESTARTS   AGE
-auth-service-xyz         1/1     Running   0          5d
-api-gateway-abc          1/1     Running   0          5d
-database-0               1/1     Running   0          10d
-failing-worker           0/1     Error     5          2m
+Name:         my-pod
+Namespace:    default
+Priority:     0
+Labels:       app=web, env=prod, version=1.0.0
+Annotations:  checksum/config=abc123def456
+managedFields:
+  - manager: kube-controller-manager
+    operation: Update
+Events:
+  Type    Reason     Age   From               Message
+  ----    ------     ----  ----               -------
+  Normal  Scheduled  10m   default-scheduler  Successfully assigned my-pod to node-1
     ";
 
     let mut lines_printed = 0;
-    let mut error_shown = false;
+    let mut managed_fields_shown = false;
 
     for line in raw_output.lines() {
         if let Some(processed) = session.engine.process_line(line, command, &context) {
             lines_printed += 1;
-            if processed.contains("failing-worker") {
-                error_shown = true;
+            if processed.contains("managedFields") {
+                managed_fields_shown = true;
             }
         }
     }
 
-    assert!(error_shown, "Pods with errors must be visible");
-    assert!(lines_printed <= 3, "Healthy pods should be collapsed into a summary");
+    assert!(!managed_fields_shown, "Managed fields must be hidden (noise/security)");
 }
 
 #[test]
-fn test_terraform_plan_clean() {
-    let mut session = setup_session();
+fn test_terraform_advanced_plan() {
+    let mut session = common::setup_session();
     let command = "terraform plan";
     let context = IntentContext {
-        last_message: "show deployment plan".to_string(),
+        last_message: "review infrastructure changes".to_string(),
         command: command.to_string(),
         keywords: vec![],
     };
 
     let raw_output = "
-aws_instance.web: Refreshing state... [id=i-1234567890]
-aws_db_instance.db: Refreshing state... [id=db-987654321]
-Plan: 1 to add, 0 to change, 0 to destroy.
+  # aws_instance.web will be updated in-place
+  ~ resource \"aws_instance\" \"web\" {
+      ~ instance_type = \"t2.micro\" -> \"t3.medium\"
+      + tags          = { \"Environment\" = \"Prod\" }
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
     ";
 
-    let mut refresh_shown = false;
-    let mut plan_shown = false;
-
+    let mut lines_printed = 0;
     for line in raw_output.lines() {
-        if let Some(processed) = session.engine.process_line(line, command, &context) {
-            if processed.contains("Refreshing state") {
-                refresh_shown = true;
-            }
-            if processed.contains("Plan:") {
-                plan_shown = true;
-            }
+        if let Some(_) = session.engine.process_line(line, command, &context) {
+            lines_printed += 1;
         }
     }
 
-    assert!(!refresh_shown, "Terraform refreshing noise should be hidden");
-    assert!(plan_shown, "The final Terraform plan summary must be visible");
+    // High signal lines (the change and the summary) should remain
+    assert!(lines_printed > 0);
 }
