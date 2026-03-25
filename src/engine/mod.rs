@@ -4,6 +4,7 @@ pub mod plugins;
 pub mod intelligence;
 pub mod telemetry;
 pub mod transformer;
+pub mod commands;
 
 use crate::privacy::PrivacyRedactor;
 use crate::schema::{ToolSchema, Action};
@@ -12,6 +13,7 @@ use crate::engine::discovery::DiscoveryEngine;
 use crate::engine::plugins::WasmPluginManager;
 use crate::engine::intelligence::IntelligenceProvider;
 use crate::engine::transformer::ContentTransformer;
+use crate::engine::commands::{CommandHandler, get_all_handlers};
 
 pub struct AxiomEngine {
     pub redactor: PrivacyRedactor,
@@ -19,6 +21,7 @@ pub struct AxiomEngine {
     pub discovery: DiscoveryEngine,
     pub plugins: Option<WasmPluginManager>,
     pub intelligence: Box<dyn IntelligenceProvider>,
+    pub handlers: Vec<Box<dyn CommandHandler>>,
     pub markdown_mode: bool,
     pub last_command: String,
     line_counter: usize,
@@ -36,6 +39,7 @@ impl AxiomEngine {
             discovery: DiscoveryEngine::default(),
             plugins: None,
             intelligence,
+            handlers: get_all_handlers(),
             markdown_mode: false,
             last_command: String::new(),
             line_counter: 0,
@@ -76,12 +80,16 @@ impl AxiomEngine {
     }
 
     fn generate_semantic_insight(&self) -> Option<String> {
+        if let Some(handler) = self.handlers.iter().find(|h| h.matches(&self.last_command)) {
+            if let Some(insight) = handler.generate_insight(&self.last_command, &self.discovery.synthesis_buffer) {
+                return Some(insight);
+            }
+        }
+
         if self.last_command.starts_with("ls") {
             return self.generate_ls_insight();
         } else if self.last_command.starts_with("ps") {
             return self.generate_ps_insight();
-        } else if self.last_command.starts_with("git") {
-            return self.generate_git_insight();
         } else if self.last_command.starts_with("docker") {
             return self.generate_docker_insight();
         }
@@ -133,30 +141,6 @@ impl AxiomEngine {
             } else {
                 Some(format!("System health stable. Total active processes: {}. No single process exceeding 10% CPU.", total_procs))
             }
-        } else {
-            None
-        }
-    }
-
-    fn generate_git_insight(&self) -> Option<String> {
-        let mut modified = 0;
-        let mut untracked = 0;
-        let mut log_commits = 0;
-
-        for (key, items) in &self.discovery.synthesis_buffer {
-            if key.contains("MODIFIED") { modified += items.len(); }
-            else if key.contains("UNTRACKED") { untracked += items.len(); }
-            else if key.contains("LOG_COMMIT") { log_commits += items.len(); }
-        }
-
-        if self.last_command.contains("status") {
-            if modified > 0 || untracked > 0 {
-                Some(format!("Repository has pending changes: {} modified, {} untracked. Recommend 'git commit'.", modified, untracked))
-            } else {
-                Some("Repository clean. No pending changes detected.".to_string())
-            }
-        } else if self.last_command.contains("log") {
-            Some(format!("Detected active history with {} commits in this view. Use 'git show' for details.", log_commits))
         } else {
             None
         }
@@ -222,11 +206,12 @@ impl AxiomEngine {
     }
 
     fn apply_resource_guard(&mut self, line: &str, command: &str, context: &IntentContext) -> Option<Option<String>> {
+        let handler = self.handlers.iter().find(|h| h.matches(command)).map(|h| h.as_ref());
         if ContentTransformer::should_guard(command, self.line_counter, context) {
             if self.line_counter == 101 {
                 return Some(Some("(Guardian Mode: File too long. Summary follows...)".to_string()));
             }
-            if self.discovery.process_and_check_noise(line) {
+            if self.discovery.process_and_check_noise(line, handler) {
                 return Some(None);
             }
         }
@@ -238,25 +223,26 @@ impl AxiomEngine {
     }
 
     fn apply_compression(&mut self, line: &str, command: &str) -> Option<String> {
+        let handler = self.handlers.iter().find(|h| h.matches(command)).map(|h| h.as_ref());
         if let Some(schema) = self.schemas.iter().find(|s| s.matches(command)) {
             if let Some(action) = schema.apply_rules(line) {
                 return match action {
                     Action::Keep => Some(line.to_string()),
                     Action::Collapse => {
-                        self.discovery.process_and_check_noise(line);
+                        self.discovery.process_and_check_noise(line, handler);
                         None
                     },
                     Action::Redact => Some("[REDACTED_BY_SCHEMA]".to_string()),
                     Action::Hidden => None,
                     Action::Synthesize => {
-                        self.discovery.process_and_check_noise(line);
+                        self.discovery.process_and_check_noise(line, handler);
                         None
                     },
                 };
             }
         }
 
-        if self.discovery.process_and_check_noise(line) {
+        if self.discovery.process_and_check_noise(line, handler) {
             None
         } else {
             Some(line.to_string())
