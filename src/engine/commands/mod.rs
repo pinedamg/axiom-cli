@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 pub mod git;
 // pub mod docker;
-// pub mod ls;
+pub mod ls;
 // pub mod ps;
 
 pub type DiscoveryBuffer = HashMap<String, Vec<LineMetadata>>;
@@ -20,5 +20,6 @@ pub trait CommandHandler: Send + Sync {
 pub fn get_all_handlers() -> Vec<Box<dyn CommandHandler>> {
     vec![
         Box::new(git::GitHandler),
+        Box::new(ls::LsHandler),
     ]
 }

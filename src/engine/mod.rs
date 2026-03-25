@@ -86,34 +86,12 @@ impl AxiomEngine {
             }
         }
 
-        if self.last_command.starts_with("ls") {
-            return self.generate_ls_insight();
-        } else if self.last_command.starts_with("ps") {
+        if self.last_command.starts_with("ps") {
             return self.generate_ps_insight();
         } else if self.last_command.starts_with("docker") {
             return self.generate_docker_insight();
         }
         None
-    }
-
-    fn generate_ls_insight(&self) -> Option<String> {
-        let mut project_type = None;
-        for template in self.discovery.templates.keys() {
-            let lower = template.to_lowercase();
-            if lower.contains("cargo.toml") { project_type = Some("Detected Rust Project Workspace."); break; }
-            if lower.contains("package.json") { project_type = Some("Detected Node.js Project."); break; }
-            if lower.contains("go.mod") { project_type = Some("Detected Go Module."); break; }
-        }
-        if project_type.is_none() {
-            for items in self.discovery.synthesis_buffer.values() {
-                for item in items {
-                    let lower_name = item.name.to_lowercase();
-                    if lower_name == "cargo.toml" { project_type = Some("Detected Rust Project Workspace."); break; }
-                    if lower_name == "package.json" { project_type = Some("Detected Node.js Project."); break; }
-                }
-            }
-        }
-        project_type.map(|s| s.to_string())
     }
 
     fn generate_ps_insight(&self) -> Option<String> {
