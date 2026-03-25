@@ -1,0 +1,7 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.20s
+     Running `target/debug/axiom ls -la`
+[1;33m[AXIOM][0m
+[33m• Semantic Insight: Detected Rust Project Workspace.[0m
+[33m• DIR [rwx] | config, docs, .gemini, .git, lab, src, target, tests[0m
+[33m• FILE [rw-] | AGENTS.md, axiom.db, axiom.db-shm, axiom.db-wal, AXIOM_MANIFESTO.md, .axiom.yaml, Cargo.lock, Cargo.toml, CONTRIBUTING.md, .env, .gitignore, LICENSE, README.md[0m
+[33m• FILE [rwx] | npm_sim.sh, sim_auto_intent.sh, unknown_tool.sh[0m

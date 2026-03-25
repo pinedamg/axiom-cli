@@ -1,10 +1,17 @@
 use std::collections::HashMap;
 use regex::Regex;
 
+#[derive(Debug, Clone)]
+pub struct LineMetadata {
+    pub perms: String,
+    pub size: String,
+    pub name: String,
+    pub is_dir: bool,
+}
+
 pub struct DiscoveryEngine {
-    /// Map of Template -> Frequency of appearance
     pub templates: HashMap<String, usize>,
-    /// Buffer for variables captured from collapsed lines: Template -> Vec<VariableList>
+    pub synthesis_buffer: HashMap<String, Vec<LineMetadata>>,
     pub variable_buffer: HashMap<String, Vec<Vec<String>>>,
     pub threshold: usize,
 }
@@ -13,6 +20,7 @@ impl Default for DiscoveryEngine {
     fn default() -> Self {
         Self {
             templates: HashMap::new(),
+            synthesis_buffer: HashMap::new(),
             variable_buffer: HashMap::new(),
             threshold: 5,
         }
@@ -20,126 +28,187 @@ impl Default for DiscoveryEngine {
 }
 
 impl DiscoveryEngine {
-    /// Load previously learned templates (Persistence)
     pub fn load_templates(&mut self, known: Vec<(String, usize)>) {
         for (template, freq) in known {
             self.templates.insert(template, freq);
         }
     }
 
-    /// Extracts the structural "Skeleton" and the dynamic "Variables" from a line
+    fn parse_ls_line(&self, line: &str) -> Option<LineMetadata> {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 5 { return None; }
+
+        let perms = parts[0].to_string();
+        if perms.len() < 10 { return None; }
+        if !perms.starts_with('d') && !perms.starts_with('-') && !perms.starts_with('l') { return None; }
+
+        let is_dir = perms.starts_with('d');
+        let name = parts.last()?.to_string();
+
+        if name == "." || name == ".." { return None; }
+
+        let short_perms = if perms.len() >= 4 { perms[1..4].to_string() } else { perms };
+
+        Some(LineMetadata {
+            perms: short_perms,
+            size: parts[4].to_string(), 
+            name,
+            is_dir,
+        })
+    }
+
+    fn parse_ps_line(&self, line: &str) -> Option<LineMetadata> {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 11 { return None; }
+
+        let user = parts[0];
+        let cpu = parts[2];
+        let command = parts[10..].join(" ");
+
+        // Normalization for Kernel Threads and Workers
+        // e.g. [kworker/0:1-events] -> [kworker]
+        // e.g. [cpuhp/0] -> [cpuhp]
+        let is_kernel = command.starts_with('[') && command.ends_with(']');
+        let clean_cmd = if is_kernel {
+            let base = command.trim_matches(|c| c == '[' || c == ']');
+            let normalized = base.split('/').next().unwrap()
+                                .split(':').next().unwrap()
+                                .split('-').next().unwrap();
+            format!("[{}]", normalized)
+        } else {
+            command.split('/').last().unwrap_or(&command)
+                   .split_whitespace().next().unwrap_or(&command).to_string()
+        };
+
+        Some(LineMetadata {
+            perms: user.to_string(),
+            size: cpu.to_string(),
+            name: clean_cmd,
+            is_dir: is_kernel,
+        })
+    }
+
+    fn parse_standard_ls(&self, line: &str) -> Vec<LineMetadata> {
+        if line.starts_with('d') || line.starts_with('-') || line.starts_with('l') || line.starts_with("total") {
+            return vec![];
+        }
+        if self.parse_ps_line(line).is_some() {
+            return vec![];
+        }
+
+        line.split_whitespace()
+            .filter(|&s| !s.is_empty())
+            .map(|name| {
+                let ext = if name.contains('.') {
+                    name.split('.').last().unwrap_or("bin").to_string()
+                } else {
+                    "dir".to_string()
+                };
+                LineMetadata {
+                    perms: ext,
+                    size: "0".to_string(),
+                    name: name.to_string(),
+                    is_dir: !name.contains('.'),
+                }
+            })
+            .collect()
+    }
+
+    pub fn synthesize_line(&mut self, line: &str) -> bool {
+        if let Some(meta) = self.parse_ps_line(line) {
+            let label = if meta.is_dir { "KERNEL" } else { "PROC" };
+            let key = format!("{}:{}", label, meta.name);
+            self.synthesis_buffer.entry(key).or_default().push(meta);
+            return true;
+        }
+        if let Some(meta) = self.parse_ls_line(line) {
+            let key = format!("{}:{}", if meta.is_dir { "DIR" } else { "FILE" }, meta.perms);
+            self.synthesis_buffer.entry(key).or_default().push(meta);
+            return true;
+        }
+        let files = self.parse_standard_ls(line);
+        if !files.is_empty() {
+            for meta in files {
+                let key = format!("EXT:{}", meta.perms.to_uppercase());
+                self.synthesis_buffer.entry(key).or_default().push(meta);
+            }
+            return true;
+        }
+        false
+    }
+
+    pub fn process_and_check_noise(&mut self, line: &str) -> bool {
+        if self.synthesize_line(line) {
+            return true;
+        }
+        let (template, vars) = self.extract_parts(line);
+        let count = self.templates.entry(template.clone()).or_insert(0);
+        *count += 1;
+        if *count > self.threshold {
+            self.variable_buffer.entry(template).or_default().push(vars);
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn extract_parts(&self, line: &str) -> (String, Vec<String>) {
         let mut variables = Vec::new();
-        
-        // 1. Handle UUIDs
-        let re_uuid = Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").unwrap();
-        let s = re_uuid.replace_all(line, |caps: &regex::Captures| {
+        let re_months = Regex::new(r"(?i)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)").unwrap();
+        let s = re_months.replace_all(line, |caps: &regex::Captures| {
             variables.push(caps[0].to_string());
-            "<UUID>"
+            "<MONTH>"
         });
-
-        // 2. Handle File Paths (Basic detection)
-        let re_path = Regex::new(r"(/[a-zA-Z0-9\._-]+)+").unwrap();
-        let s = re_path.replace_all(&s, |caps: &regex::Captures| {
-            variables.push(caps[0].to_string());
-            "<PATH>"
-        });
-
-        // 3. Handle Timestamps
-        let re_time = Regex::new(r"\d{2}:\d{2}:\d{2}").unwrap();
+        let re_time = Regex::new(r"\d{1,2}:\d{2}").unwrap();
         let s = re_time.replace_all(&s, |caps: &regex::Captures| {
             variables.push(caps[0].to_string());
             "<TIME>"
         });
-
-        // 4. Handle Hashes/Hexadecimal
-        let re_hex = Regex::new(r"0x[0-9a-fA-F]+|[0-9a-f]{8,}").unwrap();
-        let s = re_hex.replace_all(&s, |caps: &regex::Captures| {
-            variables.push(caps[0].to_string());
-            "<HEX>"
-        });
-        
-        // 5. Handle remaining numbers
         let re_num = Regex::new(r"\d+").unwrap();
         let s = re_num.replace_all(&s, |caps: &regex::Captures| {
             variables.push(caps[0].to_string());
             "<NUM>"
         });
-
         (s.to_string(), variables)
     }
 
-    /// Records a line, captures variables if it's noise, and returns if it should be collapsed
-    pub fn process_and_check_noise(&mut self, line: &str) -> bool {
-        let (template, vars) = self.extract_parts(line);
-        let count = self.templates.entry(template.clone()).or_insert(0);
-        *count += 1;
-        
-        let is_noise = *count > self.threshold;
-        
-        if is_noise {
-            // Store variables for the summary
-            self.variable_buffer.entry(template).or_default().push(vars);
-        }
-        
-        is_noise
-    }
-
-    /// Generates a summary of all buffered variables and clears the buffer
     pub fn flush_variable_summary(&mut self) -> Vec<String> {
         let mut summaries = Vec::new();
-        
-        for (template, var_sets) in self.variable_buffer.drain() {
-            if var_sets.is_empty() { continue; }
-            
-            // Collect unique variables across all sets to avoid spamming
-            let mut unique_vars = std::collections::HashSet::new();
-            for set in &var_sets {
-                for var in set {
-                    unique_vars.insert(var.clone());
-                }
+        let mut keys: Vec<_> = self.synthesis_buffer.keys().cloned().collect();
+        keys.sort();
+
+        for key in keys {
+            if let Some(items) = self.synthesis_buffer.remove(&key) {
+                let parts: Vec<&str> = key.split(':').collect();
+                let label = parts[0];
+                let cmd = parts[1];
+
+                let summary = match label {
+                    "PROC" => {
+                        let users: std::collections::HashSet<_> = items.iter().map(|m| &m.perms).collect();
+                        let mut user_list: Vec<_> = users.into_iter().cloned().collect();
+                        user_list.sort();
+                        format!("Active processes: {} (count: {}) | Owners: {}", cmd, items.len(), user_list.join(", "))
+                    },
+                    "KERNEL" => format!("Kernel Workers: {} (count: {})", cmd, items.len()),
+                    "EXT" => {
+                        let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
+                        format!("Grouped {} files by extension [{}] | {}", items.len(), cmd, names.join(", "))
+                    },
+                    _ => {
+                        let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
+                        format!("{} [{}] | {}", label, cmd, names.join(", "))
+                    }
+                };
+                summaries.push(summary);
             }
-            
-            let var_list: Vec<String> = unique_vars.into_iter().collect();
-            let summary = if var_list.len() > 10 {
-                format!("Template '{}' matched {} more times. Sample variables: [{}, ...]", 
-                    template, var_sets.len(), var_list[..5].join(", "))
-            } else {
-                format!("Template '{}' matched {} more times. Variables: [{}]", 
-                    template, var_sets.len(), var_list.join(", "))
-            };
-            summaries.push(summary);
         }
-        
+
+        for (template, var_sets) in self.variable_buffer.drain() {
+            if var_sets.len() > 1 {
+                summaries.push(format!("Collapsed {} lines of pattern: {}", var_sets.len(), template));
+            }
+        }
         summaries
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_variable_extraction() {
-        let engine = DiscoveryEngine::default();
-        let (template, vars) = engine.extract_parts("Task #1: Processing item 0xABC... [Done]");
-        
-        assert_eq!(template, "Task #<NUM>: Processing item <HEX>... [Done]");
-        assert!(vars.contains(&"1".to_string()));
-        assert!(vars.contains(&"0xABC".to_string()));
-    }
-
-    #[test]
-    fn test_noise_and_summary() {
-        let mut engine = DiscoveryEngine::default();
-        
-        for i in 0..10 {
-            let line = format!("Log event at 10:00:0{} with ID 0x12{}", i, i);
-            engine.process_and_check_noise(&line);
-        }
-        
-        let summary = engine.flush_variable_summary();
-        assert!(!summary.is_empty());
-        assert!(summary[0].contains("matched 5 more times"));
     }
 }

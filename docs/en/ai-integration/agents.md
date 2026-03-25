@@ -20,3 +20,10 @@ Please use `axiom` for the following tools:
 ### Example
 Instead of: `npm install`
 Use: `axiom npm install`
+
+## Discovery Intent Levels (Intelligence Mode)
+Axiom operates using three distinct intelligence levels to filter output based on user/agent intent. You can manipulate these modes to adjust the context depth you receive:
+
+1. **OFF (`axiom intent disable`)**: Disables relevance filtering. Axiom only performs basic noise reduction, secret redaction, and formatting. Use this when you need an unfiltered, raw view of the execution logs.
+2. **FUZZY (`axiom intent enable fuzzy`)**: The **default** mode. Axiom filters output based on predefined keywords (like `error`, `fail`) and recent Git context. Best for standard workflows.
+3. **NEURAL (`axiom intent enable neural`)**: Uses local semantic embeddings to deeply analyze the session intent. Use this proactively for complex architectural debugging or obscure bugs where keyword filtering is insufficient.

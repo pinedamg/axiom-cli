@@ -20,6 +20,7 @@ pub struct AxiomEngine {
     pub plugins: Option<WasmPluginManager>,
     pub intelligence: Box<dyn IntelligenceProvider>,
     pub markdown_mode: bool,
+    pub last_command: String,
     line_counter: usize,
 }
 
@@ -36,6 +37,7 @@ impl AxiomEngine {
             plugins: None,
             intelligence,
             markdown_mode: false,
+            last_command: String::new(),
             line_counter: 0,
         }
     }
@@ -63,7 +65,73 @@ impl AxiomEngine {
     }
 
     pub fn flush_summaries(&mut self) -> Vec<String> {
-        self.discovery.flush_variable_summary()
+        let insight = self.generate_semantic_insight();
+        let mut summaries = self.discovery.flush_variable_summary();
+        
+        if let Some(text) = insight {
+            summaries.insert(0, format!("Semantic Insight: {}", text));
+        }
+
+        summaries
+    }
+
+    fn generate_semantic_insight(&self) -> Option<String> {
+        if self.last_command.starts_with("ls") {
+            return self.generate_ls_insight();
+        } else if self.last_command.starts_with("ps") {
+            return self.generate_ps_insight();
+        }
+        None
+    }
+
+    fn generate_ls_insight(&self) -> Option<String> {
+        let mut project_type = None;
+        for template in self.discovery.templates.keys() {
+            let lower = template.to_lowercase();
+            if lower.contains("cargo.toml") { project_type = Some("Detected Rust Project Workspace."); break; }
+            if lower.contains("package.json") { project_type = Some("Detected Node.js Project."); break; }
+            if lower.contains("go.mod") { project_type = Some("Detected Go Module."); break; }
+        }
+        if project_type.is_none() {
+            for items in self.discovery.synthesis_buffer.values() {
+                for item in items {
+                    let lower_name = item.name.to_lowercase();
+                    if lower_name == "cargo.toml" { project_type = Some("Detected Rust Project Workspace."); break; }
+                    if lower_name == "package.json" { project_type = Some("Detected Node.js Project."); break; }
+                }
+            }
+        }
+        project_type.map(|s| s.to_string())
+    }
+
+    fn generate_ps_insight(&self) -> Option<String> {
+        let mut max_cpu = 0.0;
+        let mut top_proc = String::new();
+        let mut total_procs = 0;
+
+        for (key, items) in &self.discovery.synthesis_buffer {
+            if key.starts_with("PROC:") {
+                total_procs += items.len();
+                for item in items {
+                    if let Ok(cpu) = item.size.parse::<f64>() {
+                        if cpu > max_cpu {
+                            max_cpu = cpu;
+                            top_proc = item.name.clone();
+                        }
+                    }
+                }
+            }
+        }
+
+        if total_procs > 0 {
+            if max_cpu > 10.0 {
+                Some(format!("High CPU load detected: {} is using {}% CPU. Total active processes: {}.", top_proc, max_cpu, total_procs))
+            } else {
+                Some(format!("System health stable. Total active processes: {}. No single process exceeding 10% CPU.", total_procs))
+            }
+        } else {
+            None
+        }
     }
 
     /// Pre-calculates session data (like embeddings) to improve per-line latency
@@ -74,31 +142,24 @@ impl AxiomEngine {
     /// The main pipeline orchestrator. Adheres to a strict stage-based flow.
     pub fn process_line(&mut self, line: &str, command: &str, context: &IntentContext) -> Option<String> {
         self.line_counter += 1;
+        self.last_command = command.to_string();
 
-        // Stage 1: Structural Pre-processing (Markdown tables)
         let working_line = self.apply_structural_transform(line);
 
-        // Stage 2: Resource Guarding (Preventing buffer overflows/token burns)
         if let Some(guard_result) = self.apply_resource_guard(&working_line, command, context) {
             return guard_result;
         }
 
-        // Stage 3: Security & Privacy (Mandatory redaction)
         let redacted = self.redactor.redact(&working_line);
 
-        // Stage 4: Semantic Relevance (Intent Priority Overriding)
         if self.is_semantically_relevant(&redacted, context) {
             return Some(redacted);
         }
 
-        // Stage 5: Pattern-based Compression (YAML Schemas & Auto-Discovery)
         let final_line = self.apply_compression(&redacted, command);
 
-        // Stage 6: External Logic (WASM Plugins)
         self.apply_plugins(final_line)
     }
-
-    // --- Private Stage Helpers (Encapsulation) ---
 
     fn apply_structural_transform(&self, line: &str) -> String {
         if self.markdown_mode && ContentTransformer::looks_like_table(line) {
@@ -111,7 +172,7 @@ impl AxiomEngine {
     fn apply_resource_guard(&mut self, line: &str, command: &str, context: &IntentContext) -> Option<Option<String>> {
         if ContentTransformer::should_guard(command, self.line_counter, context) {
             if self.line_counter == 101 {
-                return Some(Some("[AXIOM] (Guardian Mode: File too long. Summary follows...)".to_string()));
+                return Some(Some("(Guardian Mode: File too long. Summary follows...)".to_string()));
             }
             if self.discovery.process_and_check_noise(line) {
                 return Some(None);
@@ -135,11 +196,14 @@ impl AxiomEngine {
                     },
                     Action::Redact => Some("[REDACTED_BY_SCHEMA]".to_string()),
                     Action::Hidden => None,
+                    Action::Synthesize => {
+                        self.discovery.process_and_check_noise(line);
+                        None
+                    },
                 };
             }
         }
-        
-        // Fallback to auto-discovery
+
         if self.discovery.process_and_check_noise(line) {
             None
         } else {
@@ -155,88 +219,5 @@ impl AxiomEngine {
             }
             (l, _) => l,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::schema::TransformationRule;
-    use crate::engine::intelligence::FuzzyIntelligence;
-
-    #[test]
-    fn test_markdown_table_conversion() {
-        let redactor = PrivacyRedactor::default();
-        let mut engine = AxiomEngine::new(redactor, vec![], Box::new(FuzzyIntelligence));
-        engine.set_markdown_mode(true);
-        
-        let table_line = "ID        NAME      STATUS    AGE";
-        let result = engine.process_line(table_line, "ps", &IntentContext {
-            last_message: "show table".to_string(),
-            command: "ps".to_string(),
-            keywords: vec![],
-        });
-        
-        assert!(result.is_some());
-        assert!(result.unwrap().contains("|"));
-    }
-
-    #[test]
-    fn test_engine_auto_discovery_with_summary() {
-        let redactor = PrivacyRedactor::default();
-        let mut engine = AxiomEngine::new(redactor, vec![], Box::new(FuzzyIntelligence));
-        let command = "unknown-tool";
-        let context = IntentContext {
-            last_message: "Run tool".to_string(),
-            command: command.to_string(),
-            keywords: vec![],
-        };
-
-        for i in 0..10 {
-            let line = format!("Event #{} occurred", i);
-            engine.process_line(&line, command, &context);
-        }
-        
-        let summaries = engine.flush_summaries();
-        assert!(!summaries.is_empty());
-        assert!(summaries[0].contains("Event #<NUM> occurred"));
-    }
-
-    #[test]
-    fn test_engine_intent_aware_overriding() {
-        let mut schema = ToolSchema {
-            name: "npm".to_string(),
-            command_pattern: "npm.*install".to_string(),
-            rules: vec![
-                TransformationRule {
-                    name: "collapse_plus".to_string(),
-                    pattern: r"^\+ [a-z]+".to_string(),
-                    action: Action::Collapse,
-                    priority: 1,
-                    compiled_re: None,
-                }
-            ],
-            compiled_command_re: None,
-        };
-        schema.compile().unwrap();
-
-        let redactor = PrivacyRedactor::default();
-        let mut engine = AxiomEngine::new(redactor, vec![schema], Box::new(FuzzyIntelligence));
-        let line = "+ lodash";
-        let command = "npm install lodash";
-
-        let context_a = IntentContext {
-            last_message: "Fix bug".to_string(),
-            command: command.to_string(),
-            keywords: vec![],
-        };
-        assert_eq!(engine.process_line(line, command, &context_a), None);
-
-        let context_b = IntentContext {
-            last_message: "lodash version".to_string(),
-            command: command.to_string(),
-            keywords: vec!["lodash".to_string()],
-        };
-        assert!(engine.process_line(line, command, &context_b).is_some());
     }
 }

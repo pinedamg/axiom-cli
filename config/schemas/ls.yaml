@@ -1,19 +1,19 @@
 name: linux-ls
-command_pattern: "^ls"
+command_pattern: "^ls.*"
 rules:
+  - name: SynthesizeLongListing
+    pattern: "^[dlxbcps-][rwx-]{9}.*"
+    action: synthesize
+    priority: 10
+  - name: SynthesizeStandard
+    pattern: "^[^\\s].*\\s{2,}.*"
+    action: synthesize
+    priority: 5
+  - name: TotalSummary
+    pattern: "^total\\s\\d+"
+    action: collapse
+    priority: 8
   - name: HiddenFiles
     pattern: "^\\..*"
-    action: collapse
-    priority: 1
-  - name: NodeModules
-    pattern: ".*node_modules.*"
-    action: collapse
-    priority: 10
-  - name: CommonMetadata
-    pattern: "^(total [0-9]+)"
-    action: collapse
-    priority: 5
-  - name: LongPerms
-    pattern: "^[-dclpsb][rwx-]{9}.*"
-    action: collapse
-    priority: 3
+    action: redact # Privacidad por defecto para archivos ocultos en V3
+    priority: 6

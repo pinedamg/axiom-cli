@@ -113,7 +113,7 @@ impl IntelligenceProvider for NeuralIntelligence {
         };
 
         // Cosine similarity
-        let similarity = match (intent_emb * line_emb) {
+        let similarity = match intent_emb * line_emb {
             Ok(t) => t.sum_all().unwrap().to_scalar::<f32>().unwrap(),
             Err(_) => 0.0,
         };

@@ -46,7 +46,7 @@ pub async fn execute_command(
         }
     }
 
-    // Print final summaries if any
+    // Flush final summaries and insights once the command execution is finished
     flush_and_print_summaries(session, false);
 
     session.finalize(&command_str, total_original, total_compressed)?;
@@ -65,9 +65,6 @@ fn process_line_output(
 ) {
     *total_original += line.len();
     if let Some(processed) = session.engine.process_line(line, command, context) {
-        // Before printing a new relevant line, flush any pending summaries
-        flush_and_print_summaries(session, is_stderr);
-        
         *total_compressed += processed.len();
         if is_stderr { eprintln!("{}", processed); } else { println!("{}", processed); }
     }
@@ -75,8 +72,14 @@ fn process_line_output(
 
 fn flush_and_print_summaries(session: &mut AxiomSession, is_stderr: bool) {
     let summaries = session.engine.flush_summaries();
+    if summaries.is_empty() { return; }
+
+    // Compact Header for token efficiency
+    let header = "\x1b[1;33m[AXIOM]\x1b[0m";
+    if is_stderr { eprintln!("{}", header); } else { println!("{}", header); }
+
     for summary in summaries {
-        let msg = format!("\x1b[33m[AXIOM] {}\x1b[0m", summary);
+        let msg = format!("\x1b[33m• {}\x1b[0m", summary);
         if is_stderr { eprintln!("{}", msg); } else { println!("{}", msg); }
     }
 }

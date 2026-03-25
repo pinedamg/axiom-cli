@@ -8,6 +8,7 @@ use crate::engine::intelligence::{FuzzyIntelligence, NeuralIntelligence};
 use crate::engine::AxiomEngine;
 
 pub struct AxiomSession {
+    pub id: String,
     pub config: AxiomConfig,
     pub persistence: PersistenceManager,
     pub engine: AxiomEngine,
@@ -16,6 +17,24 @@ pub struct AxiomSession {
 impl AxiomSession {
     pub fn new(config: AxiomConfig) -> anyhow::Result<Self> {
         let persistence = PersistenceManager::new_with_path(&config.db_path)?;
+        
+        // Use Parent PID (PPID) as a session identifier for isolation
+        // This ensures the session persists across multiple axiom executions in the same shell
+        let ppid = sysinfo::Pid::from_u32(std::process::id())
+            .as_u32(); // Fallback if we can't get PPID
+            
+        let mut system = sysinfo::System::new();
+        system.refresh_processes();
+        
+        let session_id = if let Some(process) = system.process(sysinfo::Pid::from_u32(std::process::id())) {
+            if let Some(parent_pid) = process.parent() {
+                format!("shell-{}", parent_pid)
+            } else {
+                format!("shell-{}", ppid)
+            }
+        } else {
+            format!("shell-{}", ppid)
+        };
         let schemas = Self::load_schemas(&config)?;
         
         let redactor = PrivacyRedactor::new(
@@ -36,6 +55,7 @@ impl AxiomSession {
                     }
                 }
                 IntelligenceMode::Fuzzy => Box::new(FuzzyIntelligence),
+                IntelligenceMode::Off => Box::new(FuzzyIntelligence), // Fallback to fuzzy but transformer will skip filtering
             };
         
         let mut engine = AxiomEngine::new(redactor, schemas, intelligence);
@@ -55,6 +75,7 @@ impl AxiomSession {
         }
 
         Ok(Self {
+            id: session_id,
             config,
             persistence,
             engine,

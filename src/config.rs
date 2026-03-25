@@ -36,8 +36,9 @@ pub enum IntentStrategy {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum IntelligenceMode {
-    Fuzzy,
-    Neural,
+    Off,    // Solo limpieza de ruido y formateo, no oculta por relevancia
+    Fuzzy,  // Basado en palabras clave
+    Neural, // Basado en embeddings (IA Local)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

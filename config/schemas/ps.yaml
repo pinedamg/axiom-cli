@@ -1,23 +1,15 @@
 name: linux-ps
-command_pattern: "^ps"
+command_pattern: "^ps.*"
 rules:
   - name: Header
-    pattern: "^(USER|PID|%CPU).*"
-    action: keep
-    priority: 10
-  - name: KernelTasks
+    pattern: "^(USER|PID|%CPU|%MEM).*"
+    action: collapse
+    priority: 20
+  - name: ProcessTable
+    pattern: "^[a-zA-Z0-9_-]+\\s+\\d+\\s+.*"
+    action: synthesize
+    priority: 15
+  - name: KernelThreads
     pattern: ".*\\[[a-zA-Z0-9/-]+\\].*"
-    action: collapse
-    priority: 5
-  - name: SystemdTasks
-    pattern: ".*/lib/systemd/.*"
-    action: collapse
-    priority: 5
-  - name: BrowserNoise
-    pattern: ".*(--type=renderer|--type=gpu-process|--type=utility).*"
-    action: collapse
-    priority: 3
-  - name: IdleProcs
-    pattern: ".*\\s+0:00\\s+.*"
-    action: collapse
-    priority: 1
+    action: synthesize
+    priority: 18
