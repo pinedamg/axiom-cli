@@ -35,36 +35,13 @@ impl DiscoveryEngine {
         }
     }
 
-    fn parse_ps_line(&self, line: &str) -> Option<LineMetadata> {
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() < 11 { return None; }
-        let user = parts[0];
-        // Anti-collision
-        if line.contains("modified:") || line.contains("new file:") || line.starts_with("On branch") || 
-           line.starts_with("commit ") || line.starts_with("CONTAINER ID") || (parts[0].len() == 12 && parts[0].chars().all(|c| c.is_ascii_hexdigit())) {
-            return None;
-        }
-        let cpu = parts[2];
-        let command = parts[10..].join(" ");
-        let is_kernel = command.starts_with('[') && command.ends_with(']');
-        let clean_cmd = if is_kernel {
-            let base = command.trim_matches(|c| c == '[' || c == ']');
-            let normalized = base.split('/').next().unwrap().split(':').next().unwrap().split('-').next().unwrap();
-            format!("[{}]", normalized)
-        } else {
-            command.split('/').last().unwrap_or(&command).split_whitespace().next().unwrap_or(&command).to_string()
-        };
-        Some(LineMetadata { perms: user.to_string(), size: cpu.to_string(), name: clean_cmd, is_dir: is_kernel })
-    }
-
     fn parse_standard_ls(&self, line: &str, handler: Option<&dyn CommandHandler>) -> Vec<LineMetadata> {
         let trimmed = line.trim();
         if trimmed.is_empty() || trimmed.starts_with('(') || trimmed.len() > 100 { return vec![]; }
         if line.starts_with('d') || line.starts_with('-') || line.starts_with('l') || line.starts_with("total") { return vec![]; }
         
-        // Anti-collision with specific parsers or the current handler
-        if self.parse_ps_line(line).is_some() || 
-           handler.map_or(false, |h| h.parse_line(line).is_some()) { 
+        // Anti-collision with the current handler
+        if handler.map_or(false, |h| h.parse_line(line).is_some()) { 
             return vec![]; 
         }
 
@@ -80,16 +57,22 @@ impl DiscoveryEngine {
             if let Some(meta) = h.parse_line(line) {
                 let prefix = if meta.perms == "LOG_COMMIT" { 
                     "GIT" 
-                } else if meta.is_dir { 
-                    "DIR" 
                 } else if meta.perms == "Running" || meta.perms == "Stopped" || meta.perms == "Created" {
                     "DOCKER"
+                } else if meta.is_dir && h.matches("ps") {
+                    "KERNEL"
+                } else if !meta.is_dir && h.matches("ps") {
+                    "PROC"
+                } else if meta.is_dir { 
+                    "DIR" 
                 } else { 
                     "FILE" 
                 };
                 
                 let key = if prefix == "GIT" || prefix == "DOCKER" {
                     format!("{}:{}:{}", prefix, meta.perms, meta.size)
+                } else if prefix == "PROC" || prefix == "KERNEL" {
+                    format!("{}:{}", prefix, meta.name)
                 } else {
                     format!("{}:{}", prefix, meta.perms)
                 };
@@ -97,14 +80,6 @@ impl DiscoveryEngine {
                 self.synthesis_buffer.entry(key).or_default().push(meta);
                 return true;
             }
-        }
-
-        // Fallbacks for commands not yet migrated to handlers
-        if let Some(meta) = self.parse_ps_line(line) {
-            let label = if meta.is_dir { "KERNEL" } else { "PROC" };
-            let key = format!("{}:{}", label, meta.name);
-            self.synthesis_buffer.entry(key).or_default().push(meta);
-            return true;
         }
 
         let files = self.parse_standard_ls(line, handler);
@@ -183,7 +158,8 @@ impl DiscoveryEngine {
                     "KERNEL" => summaries.push(format!("Kernel Workers: {} (count: {})", parts[1], items.len())),
                     "DIR" | "FILE" => {
                         let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                        summaries.push(format!("{} [{}] | {}", label, parts[1], names.join(", ")));
+                        let perms = parts.get(1).unwrap_or(&"---");
+                        summaries.push(format!("{} [{}] | {}", label, perms, names.join(", ")));
                     },
                     "EXT" => {
                         let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
