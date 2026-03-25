@@ -88,8 +88,6 @@ impl AxiomEngine {
 
         if self.last_command.starts_with("ps") {
             return self.generate_ps_insight();
-        } else if self.last_command.starts_with("docker") {
-            return self.generate_docker_insight();
         }
         None
     }
@@ -118,30 +116,6 @@ impl AxiomEngine {
                 Some(format!("High CPU load detected: {} is using {}% CPU. Total active processes: {}.", top_proc, max_cpu, total_procs))
             } else {
                 Some(format!("System health stable. Total active processes: {}. No single process exceeding 10% CPU.", total_procs))
-            }
-        } else {
-            None
-        }
-    }
-
-    fn generate_docker_insight(&self) -> Option<String> {
-        let mut running = 0;
-        let mut stopped = 0;
-        let mut total = 0;
-
-        for (key, items) in &self.discovery.synthesis_buffer {
-            if key.starts_with("DOCKER:") {
-                total += items.len();
-                if key.contains("Running") { running += items.len(); }
-                else if key.contains("Stopped") { stopped += items.len(); }
-            }
-        }
-
-        if total > 0 {
-            if stopped > 10 {
-                Some(format!("Detected {} stopped containers. Suggesting 'docker system prune' to recover space.", stopped))
-            } else {
-                Some(format!("Docker environment: {} running, {} stopped containers.", running, stopped))
             }
         } else {
             None
