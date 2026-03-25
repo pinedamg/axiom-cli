@@ -18,3 +18,10 @@
 `axiom git status`
 
 *Axiom: Protegiendo tu contexto, asegurando mis datos.*
+
+## Niveles de Discovery Intent (Modo de Inteligencia)
+Axiom opera utilizando tres niveles de inteligencia distintos para filtrar la salida en función de la intención del usuario/agente. Puedes manipular estos modos para ajustar la profundidad del contexto que recibes:
+
+1. **OFF (`axiom intent disable`)**: Desactiva el filtrado de relevancia. Axiom solo realiza reducción básica de ruido, redacción de secretos y formateo. Úsalo cuando necesites una vista cruda y sin filtros de los logs de ejecución.
+2. **FUZZY (`axiom intent enable fuzzy`)**: El modo **por defecto**. Axiom filtra la salida basándose en palabras clave predefinidas (como `error`, `fail`) y el contexto reciente de Git. Ideal para flujos de trabajo estándar.
+3. **NEURAL (`axiom intent enable neural`)**: Utiliza embeddings semánticos locales para analizar profundamente la intención de la sesión. Úsalo de forma proactiva para depuración arquitectónica compleja o errores oscuros donde el filtrado por palabras clave es insuficiente.

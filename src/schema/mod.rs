@@ -29,6 +29,7 @@ pub enum Action {
     Collapse,
     Redact,
     Hidden,
+    Synthesize, // Nueva acción para agrupamiento inteligente
 }
 
 impl ToolSchema {

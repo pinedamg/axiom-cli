@@ -53,7 +53,39 @@ impl PersistenceManager {
             [],
         )?;
 
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS session_settings (
+                session_id TEXT PRIMARY KEY,
+                intelligence_mode TEXT,
+                last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            [],
+        )?;
+
         Ok(Self { conn })
+    }
+
+    pub fn set_session_intelligence(&self, session_id: &str, mode: &str) -> anyhow::Result<()> {
+        self.conn.execute(
+            "INSERT INTO session_settings (session_id, intelligence_mode) 
+             VALUES (?1, ?2) 
+             ON CONFLICT(session_id) DO UPDATE SET 
+                intelligence_mode = excluded.intelligence_mode,
+                last_updated = CURRENT_TIMESTAMP",
+            params![session_id, mode],
+        )?;
+        Ok(())
+    }
+
+    pub fn get_session_intelligence(&self, session_id: &str) -> anyhow::Result<Option<String>> {
+        let mut stmt = self.conn.prepare("SELECT intelligence_mode FROM session_settings WHERE session_id = ?")?;
+        let mut rows = stmt.query(params![session_id])?;
+        
+        if let Some(row) = rows.next()? {
+            Ok(Some(row.get(0)?))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn new() -> anyhow::Result<Self> {

@@ -90,6 +90,26 @@ Basado en la auditoría técnica del proyecto, se han identificado los siguiente
 
 ---
 
+## 💎 Phase 5: Advanced Token Economics (RTK-Inspired)
+**Goal**: Maximize the Return on Investment (ROI) of every token and automate system evolution.
+
+### 5.1 Token ROI & Prediction Engine
+- [ ] **Axiom Gain**: Advanced analytics dashboard showing cumulative savings in USD/Tokens.
+- [ ] **Predictive Warning**: Alert agents when a command (e.g., `cat` on a huge file) will exceed a "Token Budget".
+- [ ] **Economic Arbitration**: Suggest cheaper alternatives (e.g., `grep` vs `cat | grep`) before execution.
+
+### 5.2 Autonomous Learning Loop (`axiom learn`)
+- [ ] **Pattern Discovery**: Analyze shell history to identify "high-noise" commands without schemas.
+- [ ] **Schema Auto-Generation**: Use LLM to suggest YAML schemas based on captured noisy outputs.
+- [ ] **Error Correction**: Learn from "Agent Retries" (e.g., if an agent runs `ls` then `ls -a`, Axiom should adjust the default `ls` schema for that context).
+
+### 5.3 Deep Structural Synthesis
+- [ ] **Schema-Only Mode**: Transform massive JSON/YAML objects into "Shape Summaries" (keys and types only).
+- [ ] **Semantic Diff**: Ultra-condensed diffs that prioritize logic changes over whitespace or trivial updates.
+- [ ] **Universal Minifier**: A "lossy" compression mode for logs that preserves semantic meaning while destroying 90% of the characters.
+
+---
+
 ## 🧰 Developer Toolset Expansion Roadmap
 
 This section defines the expansion of default schemas and intelligent modes for Linux developers.

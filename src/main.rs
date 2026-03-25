@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::env;
 use std::process::exit;
-use axiom::config::AxiomConfig;
+use axiom::config::{AxiomConfig, IntelligenceMode};
 use axiom::session::AxiomSession;
 use axiom::IntentContext;
 use axiom::gateway::execute_command;
@@ -42,6 +42,25 @@ enum Commands {
         #[command(subcommand)]
         action: ConfigAction,
     },
+    /// Manage Intent Discovery and Intelligence Levels
+    Intent {
+        #[command(subcommand)]
+        action: IntentAction,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum IntentAction {
+    /// Enable intent intelligence (fuzzy or neural)
+    Enable {
+        /// Intelligence mode: fuzzy (keywords) or neural (AI embeddings)
+        #[arg(default_value = "fuzzy")]
+        mode: String,
+    },
+    /// Disable intent intelligence (maintain formatting but show all files)
+    Disable,
+    /// Show current intent discovery status and relevant files
+    Status,
 }
 
 #[derive(Subcommand, Debug)]
@@ -61,6 +80,16 @@ async fn main() -> anyhow::Result<()> {
     }
     
     let mut session = AxiomSession::new(config)?;
+
+    // 1.5 Override config with session-specific settings
+    if let Ok(Some(mode_str)) = session.persistence.get_session_intelligence(&session.id) {
+        session.config.intelligence_mode = match mode_str.as_str() {
+            "off" => IntelligenceMode::Off,
+            "fuzzy" => IntelligenceMode::Fuzzy,
+            "neural" => IntelligenceMode::Neural,
+            _ => session.config.intelligence_mode,
+        };
+    }
 
     // 2. Handle Subcommands
     if let Some(cmd) = cli.command {
@@ -85,6 +114,37 @@ async fn main() -> anyhow::Result<()> {
                     println!("DETECTED: Human Shell ({})", ProcessDetective::get_parent_name());
                     exit(1);
                 }
+            }
+            Commands::Intent { action } => {
+                match action {
+                    IntentAction::Enable { mode } => {
+                        let normalized_mode = mode.to_lowercase();
+                        if normalized_mode != "fuzzy" && normalized_mode != "neural" {
+                            println!("Error: Invalid mode '{}'. Use 'fuzzy' or 'neural'.", mode);
+                            exit(1);
+                        }
+                        session.persistence.set_session_intelligence(&session.id, &normalized_mode)?;
+                        println!("Intent Discovery ENABLED (Mode: {})", normalized_mode);
+                    }
+                    IntentAction::Disable => {
+                        session.persistence.set_session_intelligence(&session.id, "off")?;
+                        println!("Intent Discovery DISABLED (Mode: off)");
+                    }
+                    IntentAction::Status => {
+                        let mode = session.config.intelligence_mode;
+                        println!("\x1b[1mAXIOM Intent Status\x1b[0m");
+                        println!("---------------------");
+                        println!("Session ID:        {}", session.id);
+                        println!("Intelligence Mode: {:?}", mode);
+                        println!("Parent Process:    {}", ProcessDetective::get_parent_name());
+                        
+                        if mode != IntelligenceMode::Off {
+                            let intent = IntentDiscoverer::discover(&session.config.intent_sources).unwrap_or_default();
+                            println!("Last Intent:       \"{}\"", intent);
+                        }
+                    }
+                }
+                return Ok(());
             }
             Commands::Config { action } => {
                 match action {
@@ -122,7 +182,7 @@ async fn main() -> anyhow::Result<()> {
         keywords,
     };
 
-    // 4. Prepare Intelligence Engine (cache embeddings, etc)
+    // 4. Prepare Intelligence Engine
     let _ = session.engine.prepare_session(&intent);
 
     // 5. Execute
@@ -136,10 +196,9 @@ async fn main() -> anyhow::Result<()> {
 fn install_integration() -> anyhow::Result<()> {
     println!("\x1b[1mAXIOM Shell Integration\x1b[0m");
     println!("------------------------");
-    println!("To enable Axiom automatically for common commands, add this to your .bashrc or .zshrc:\n");
-    println!("alias git='if axiom check-ai > /dev/null; then axiom git; else git; fi'");
-    println!("alias npm='if axiom check-ai > /dev/null; then axiom npm; else npm; fi'");
-    println!("\nThen restart your terminal or run: source ~/.bashrc");
+    println!("To enable Axiom automatically, add this to your shell config:\n");
+    println!("alias git='axiom git'");
+    println!("alias ls='axiom ls'");
     Ok(())
 }
 
@@ -147,30 +206,14 @@ fn show_savings(session: &AxiomSession) -> anyhow::Result<()> {
     let (original, compressed) = session.persistence.get_total_savings()?;
     let saved = original.saturating_sub(compressed);
     let ratio = if original > 0 { (saved as f64 / original as f64) * 100.0 } else { 0.0 };
-    
-    let tokens_saved = saved / 4;
-
-    println!("\x1b[1mAXIOM Token Savings Analytics\x1b[0m");
-    println!("------------------------------");
-    println!("Total Streamed:    {:>10} chars", original);
-    println!("Total Compressed:  {:>10} chars", compressed);
-    println!("\x1b[32;1mTotal Saved:       {:>10} chars ({:.1}%)\x1b[0m", saved, ratio);
-    println!("------------------------------");
-    println!("Estimated Tokens Saved: \x1b[36;1m{}\x1b[0m", tokens_saved);
-    println!("Estimated USD Saved:    \x1b[33;1m${:.4}\x1b[0m (avg $0.01 per 1k tokens)", tokens_saved as f64 * 0.00001);
+    println!("Total Saved: {} chars ({:.1}%)", saved, ratio);
     Ok(())
 }
 
 fn show_discovery(session: &AxiomSession) -> anyhow::Result<()> {
-    println!("\x1b[1mAXIOM Learned Structures\x1b[0m");
-    println!("-------------------------");
-    let templates = session.engine.get_learned_templates();
-    if templates.is_empty() {
-        println!("No structural patterns learned yet. Run some commands first!");
-    } else {
-        for (template, frequency) in templates {
-            println!("[{}] {}", frequency, template);
-        }
+    println!("Learned Structures:");
+    for (template, freq) in session.engine.get_learned_templates() {
+        println!("[{}] {}", freq, template);
     }
     Ok(())
 }
