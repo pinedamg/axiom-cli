@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use regex::Regex;
+use crate::engine::commands::CommandHandler;
 
 #[derive(Debug, Clone)]
 pub struct LineMetadata {
@@ -69,46 +70,18 @@ impl DiscoveryEngine {
         Some(LineMetadata { perms: user.to_string(), size: cpu.to_string(), name: clean_cmd, is_dir: is_kernel })
     }
 
-    fn parse_git_line(&self, line: &str) -> Option<LineMetadata> {
-        let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with('(') || trimmed.contains("files:") { return None; }
-        if line.starts_with("commit ") {
-            let hash = trimmed.split_whitespace().nth(1).unwrap_or("unknown");
-            return Some(LineMetadata { perms: "LOG_COMMIT".to_string(), size: hash[..7.min(hash.len())].to_string(), name: "commit".to_string(), is_dir: false });
-        }
-        let (state, path) = if line.contains("modified:") {
-            ("MODIFIED", trimmed.trim_start_matches("modified:").trim())
-        } else if line.contains("new file:") {
-            ("NEW", trimmed.trim_start_matches("new file:").trim())
-        } else if line.contains("deleted:") {
-            ("DELETED", trimmed.trim_start_matches("deleted:").trim())
-        } else if line.starts_with("\t") || (line.starts_with("    ") && !line.contains(':')) {
-            ("UNTRACKED", trimmed)
-        } else {
-            return None;
-        };
-        if path.is_empty() || path.contains("nothing to commit") { return None; }
-        let folder = if path.contains('/') { path.split('/').next().unwrap_or("root").to_string() } else { "root".to_string() };
-        Some(LineMetadata { perms: state.to_string(), size: folder, name: path.to_string(), is_dir: path.contains('/') })
-    }
-
     fn parse_docker_line(&self, line: &str) -> Option<LineMetadata> {
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() < 7 { return None; }
         
-        // Container ID is usually the first 12 hex chars
         if parts[0].len() != 12 || !parts[0].chars().all(|c| c.is_ascii_hexdigit()) {
             return None;
         }
 
         let image = parts[1];
-        let status = if line.contains("Up ") {
-            "Running"
-        } else if line.contains("Exited") {
-            "Stopped"
-        } else {
-            "Created"
-        };
+        let status = if line.contains("Up ") { "Running" } 
+                    else if line.contains("Exited") { "Stopped" } 
+                    else { "Created" };
 
         Some(LineMetadata {
             perms: status.to_string(),
@@ -118,11 +91,17 @@ impl DiscoveryEngine {
         })
     }
 
-    fn parse_standard_ls(&self, line: &str) -> Vec<LineMetadata> {
+    fn parse_standard_ls(&self, line: &str, handler: Option<&dyn CommandHandler>) -> Vec<LineMetadata> {
         let trimmed = line.trim();
         if trimmed.is_empty() || trimmed.starts_with('(') || trimmed.len() > 100 { return vec![]; }
         if line.starts_with('d') || line.starts_with('-') || line.starts_with('l') || line.starts_with("total") { return vec![]; }
-        if self.parse_ps_line(line).is_some() || self.parse_git_line(line).is_some() || self.parse_docker_line(line).is_some() { return vec![]; }
+        
+        // Anti-collision with specific parsers or the current handler
+        if self.parse_ps_line(line).is_some() || 
+           self.parse_docker_line(line).is_some() || 
+           handler.map_or(false, |h| h.parse_line(line).is_some()) { 
+            return vec![]; 
+        }
 
         line.split_whitespace().filter(|&s| !s.is_empty()).map(|name| {
             let ext = if name.contains('.') { name.split('.').last().unwrap_or("bin").to_string() } else { "dir".to_string() };
@@ -130,14 +109,20 @@ impl DiscoveryEngine {
         }).collect()
     }
 
-    pub fn synthesize_line(&mut self, line: &str) -> bool {
+    pub fn synthesize_line(&mut self, line: &str, handler: Option<&dyn CommandHandler>) -> bool {
+        // 1. Try command-specific handler first (SOLID: Extension)
+        if let Some(h) = handler {
+            if let Some(meta) = h.parse_line(line) {
+                let prefix = if meta.perms == "LOG_COMMIT" { "GIT" } else { "GIT" };
+                let key = format!("{}:{}:{}", prefix, meta.perms, meta.size);
+                self.synthesis_buffer.entry(key).or_default().push(meta);
+                return true;
+            }
+        }
+
+        // Fallbacks for commands not yet migrated to handlers
         if let Some(meta) = self.parse_docker_line(line) {
             let key = format!("DOCKER:{}:{}", meta.perms, meta.size);
-            self.synthesis_buffer.entry(key).or_default().push(meta);
-            return true;
-        }
-        if let Some(meta) = self.parse_git_line(line) {
-            let key = format!("GIT:{}:{}", meta.perms, meta.size);
             self.synthesis_buffer.entry(key).or_default().push(meta);
             return true;
         }
@@ -152,7 +137,8 @@ impl DiscoveryEngine {
             self.synthesis_buffer.entry(key).or_default().push(meta);
             return true;
         }
-        let files = self.parse_standard_ls(line);
+
+        let files = self.parse_standard_ls(line, handler);
         if !files.is_empty() {
             for meta in files {
                 let key = format!("EXT:{}", meta.perms.to_uppercase());
@@ -163,8 +149,8 @@ impl DiscoveryEngine {
         false
     }
 
-    pub fn process_and_check_noise(&mut self, line: &str) -> bool {
-        if self.synthesize_line(line) { return true; }
+    pub fn process_and_check_noise(&mut self, line: &str, handler: Option<&dyn CommandHandler>) -> bool {
+        if self.synthesize_line(line, handler) { return true; }
         let (template, vars) = self.extract_parts(line);
         let count = self.templates.entry(template.clone()).or_insert(0);
         *count += 1;
