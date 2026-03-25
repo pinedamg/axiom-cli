@@ -21,13 +21,9 @@ fn test_docker_ps_insight() {
 
     let summaries = session.engine.flush_summaries();
     
-    let mut found_insight = false;
     let mut found_prune_suggestion = false;
     
     for summary in summaries {
-        if summary.contains("Semantic Insight:") && summary.contains("Docker environment") {
-            found_insight = true;
-        }
         if summary.contains("docker system prune") {
             found_prune_suggestion = true;
         }
