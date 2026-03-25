@@ -35,19 +35,6 @@ impl DiscoveryEngine {
         }
     }
 
-    fn parse_ls_line(&self, line: &str) -> Option<LineMetadata> {
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() < 5 { return None; }
-        let perms = parts[0].to_string();
-        if perms.len() < 10 { return None; }
-        if !perms.starts_with('d') && !perms.starts_with('-') && !perms.starts_with('l') { return None; }
-        let is_dir = perms.starts_with('d');
-        let name = parts.last()?.to_string();
-        if name == "." || name == ".." { return None; }
-        let short_perms = if perms.len() >= 4 { perms[1..4].to_string() } else { perms };
-        Some(LineMetadata { perms: short_perms, size: parts[4].to_string(), name, is_dir })
-    }
-
     fn parse_ps_line(&self, line: &str) -> Option<LineMetadata> {
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() < 11 { return None; }
@@ -113,8 +100,22 @@ impl DiscoveryEngine {
         // 1. Try command-specific handler first (SOLID: Extension)
         if let Some(h) = handler {
             if let Some(meta) = h.parse_line(line) {
-                let prefix = if meta.perms == "LOG_COMMIT" { "GIT" } else { "GIT" };
-                let key = format!("{}:{}:{}", prefix, meta.perms, meta.size);
+                let prefix = if meta.perms == "LOG_COMMIT" { 
+                    "GIT" 
+                } else if meta.is_dir { 
+                    "DIR" 
+                } else if meta.perms == "Running" || meta.perms == "Stopped" {
+                    "DOCKER"
+                } else { 
+                    "FILE" 
+                };
+                
+                let key = if prefix == "GIT" || prefix == "DOCKER" {
+                    format!("{}:{}:{}", prefix, meta.perms, meta.size)
+                } else {
+                    format!("{}:{}", prefix, meta.perms)
+                };
+
                 self.synthesis_buffer.entry(key).or_default().push(meta);
                 return true;
             }
@@ -129,11 +130,6 @@ impl DiscoveryEngine {
         if let Some(meta) = self.parse_ps_line(line) {
             let label = if meta.is_dir { "KERNEL" } else { "PROC" };
             let key = format!("{}:{}", label, meta.name);
-            self.synthesis_buffer.entry(key).or_default().push(meta);
-            return true;
-        }
-        if let Some(meta) = self.parse_ls_line(line) {
-            let key = format!("{}:{}", if meta.is_dir { "DIR" } else { "FILE" }, meta.perms);
             self.synthesis_buffer.entry(key).or_default().push(meta);
             return true;
         }

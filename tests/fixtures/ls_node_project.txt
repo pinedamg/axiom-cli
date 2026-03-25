@@ -1,0 +1,5 @@
+drwxr-xr-x  2 user group  4096 Mar 24 10:00 .
+drwxr-xr-x 20 user group  4096 Mar 24 10:00 ..
+-rw-r--r--  1 user group   300 Mar 24 10:00 package.json
+drwxr-xr-x  2 user group  4096 Mar 24 10:00 node_modules
+-rw-r--r--  1 user group   100 Mar 24 10:00 index.js
