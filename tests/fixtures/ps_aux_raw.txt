@@ -1,0 +1,7 @@
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root           1  0.0  0.0 168672 12028 ?        Ss   Mar22   0:06 /sbin/init
+mpineda    12345 85.0  2.5 1234567 800000 ?      Sl   23:45   5:00 rustc --crate-name axiom src/lib.rs
+mpineda    12346  0.5  0.1  50000 20000 ?        S    23:46   0:01 /usr/bin/bash
+root       12347  0.0  0.0      0     0 ?        I<   23:47   0:00 [kworker/u16:0-events_unbound]
+root       12348  0.0  0.0      0     0 ?        I<   23:48   0:00 [kworker/u16:1-events_highpri]
+mpineda    12349  1.2  0.5 200000 100000 ?       Sl   23:49   0:10 /usr/bin/gnome-shell

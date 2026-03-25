@@ -85,41 +85,7 @@ impl AxiomEngine {
                 return Some(insight);
             }
         }
-
-        if self.last_command.starts_with("ps") {
-            return self.generate_ps_insight();
-        }
         None
-    }
-
-    fn generate_ps_insight(&self) -> Option<String> {
-        let mut max_cpu = 0.0;
-        let mut top_proc = String::new();
-        let mut total_procs = 0;
-
-        for (key, items) in &self.discovery.synthesis_buffer {
-            if key.starts_with("PROC:") {
-                total_procs += items.len();
-                for item in items {
-                    if let Ok(cpu) = item.size.parse::<f64>() {
-                        if cpu > max_cpu {
-                            max_cpu = cpu;
-                            top_proc = item.name.clone();
-                        }
-                    }
-                }
-            }
-        }
-
-        if total_procs > 0 {
-            if max_cpu > 10.0 {
-                Some(format!("High CPU load detected: {} is using {}% CPU. Total active processes: {}.", top_proc, max_cpu, total_procs))
-            } else {
-                Some(format!("System health stable. Total active processes: {}. No single process exceeding 10% CPU.", total_procs))
-            }
-        } else {
-            None
-        }
     }
 
     /// Pre-calculates session data (like embeddings) to improve per-line latency

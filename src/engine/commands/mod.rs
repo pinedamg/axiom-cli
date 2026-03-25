@@ -4,7 +4,7 @@ use std::collections::HashMap;
 pub mod git;
 pub mod docker;
 pub mod ls;
-// pub mod ps;
+pub mod ps;
 
 pub type DiscoveryBuffer = HashMap<String, Vec<LineMetadata>>;
 
@@ -22,5 +22,6 @@ pub fn get_all_handlers() -> Vec<Box<dyn CommandHandler>> {
         Box::new(git::GitHandler),
         Box::new(docker::DockerHandler),
         Box::new(ls::LsHandler),
+        Box::new(ps::PsHandler),
     ]
 }
