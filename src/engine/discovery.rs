@@ -51,8 +51,9 @@ impl DiscoveryEngine {
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() < 11 { return None; }
         let user = parts[0];
-        // Anti-collision with Git
-        if line.contains("modified:") || line.contains("new file:") || line.starts_with("On branch") || line.starts_with("commit ") {
+        // Anti-collision
+        if line.contains("modified:") || line.contains("new file:") || line.starts_with("On branch") || 
+           line.starts_with("commit ") || line.starts_with("CONTAINER ID") || (parts[0].len() == 12 && parts[0].chars().all(|c| c.is_ascii_hexdigit())) {
             return None;
         }
         let cpu = parts[2];
@@ -71,19 +72,10 @@ impl DiscoveryEngine {
     fn parse_git_line(&self, line: &str) -> Option<LineMetadata> {
         let trimmed = line.trim();
         if trimmed.is_empty() || trimmed.starts_with('(') || trimmed.contains("files:") { return None; }
-
-        // --- GIT LOG DETECTION ---
         if line.starts_with("commit ") {
             let hash = trimmed.split_whitespace().nth(1).unwrap_or("unknown");
-            return Some(LineMetadata {
-                perms: "LOG_COMMIT".to_string(),
-                size: hash[..7].to_string(),
-                name: "commit".to_string(),
-                is_dir: false,
-            });
+            return Some(LineMetadata { perms: "LOG_COMMIT".to_string(), size: hash[..7.min(hash.len())].to_string(), name: "commit".to_string(), is_dir: false });
         }
-
-        // --- GIT STATUS DETECTION ---
         let (state, path) = if line.contains("modified:") {
             ("MODIFIED", trimmed.trim_start_matches("modified:").trim())
         } else if line.contains("new file:") {
@@ -95,17 +87,42 @@ impl DiscoveryEngine {
         } else {
             return None;
         };
-
         if path.is_empty() || path.contains("nothing to commit") { return None; }
         let folder = if path.contains('/') { path.split('/').next().unwrap_or("root").to_string() } else { "root".to_string() };
         Some(LineMetadata { perms: state.to_string(), size: folder, name: path.to_string(), is_dir: path.contains('/') })
+    }
+
+    fn parse_docker_line(&self, line: &str) -> Option<LineMetadata> {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 7 { return None; }
+        
+        // Container ID is usually the first 12 hex chars
+        if parts[0].len() != 12 || !parts[0].chars().all(|c| c.is_ascii_hexdigit()) {
+            return None;
+        }
+
+        let image = parts[1];
+        let status = if line.contains("Up ") {
+            "Running"
+        } else if line.contains("Exited") {
+            "Stopped"
+        } else {
+            "Created"
+        };
+
+        Some(LineMetadata {
+            perms: status.to_string(),
+            size: image.to_string(),
+            name: parts.last().unwrap_or(&"unknown").to_string(),
+            is_dir: false,
+        })
     }
 
     fn parse_standard_ls(&self, line: &str) -> Vec<LineMetadata> {
         let trimmed = line.trim();
         if trimmed.is_empty() || trimmed.starts_with('(') || trimmed.len() > 100 { return vec![]; }
         if line.starts_with('d') || line.starts_with('-') || line.starts_with('l') || line.starts_with("total") { return vec![]; }
-        if self.parse_ps_line(line).is_some() || self.parse_git_line(line).is_some() { return vec![]; }
+        if self.parse_ps_line(line).is_some() || self.parse_git_line(line).is_some() || self.parse_docker_line(line).is_some() { return vec![]; }
 
         line.split_whitespace().filter(|&s| !s.is_empty()).map(|name| {
             let ext = if name.contains('.') { name.split('.').last().unwrap_or("bin").to_string() } else { "dir".to_string() };
@@ -114,6 +131,11 @@ impl DiscoveryEngine {
     }
 
     pub fn synthesize_line(&mut self, line: &str) -> bool {
+        if let Some(meta) = self.parse_docker_line(line) {
+            let key = format!("DOCKER:{}:{}", meta.perms, meta.size);
+            self.synthesis_buffer.entry(key).or_default().push(meta);
+            return true;
+        }
         if let Some(meta) = self.parse_git_line(line) {
             let key = format!("GIT:{}:{}", meta.perms, meta.size);
             self.synthesis_buffer.entry(key).or_default().push(meta);
@@ -179,6 +201,12 @@ impl DiscoveryEngine {
                 let label = parts[0];
 
                 match label {
+                    "DOCKER" => {
+                        let status = parts[1];
+                        let image = parts[2];
+                        let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
+                        summaries.push(format!("Docker {}: {} containers from image [{}] | {}", status, items.len(), image, names.join(", ")));
+                    },
                     "GIT" => {
                         let state = parts[1];
                         if state == "LOG_COMMIT" {
