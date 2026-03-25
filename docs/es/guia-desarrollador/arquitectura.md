@@ -48,11 +48,14 @@ Axiom sigue una **Arquitectura Limpia por Capas (Layered Clean Architecture)** a
 1.  **Ejecución de Comando**: Inicia `axiom npm install`.
 2.  **Detective de Procesos**: Identifica `npm` y el contexto actual del proyecto.
 3.  **Captura de Flujo**: Se leen bytes en bruto del subproceso.
-4.  **Escudo de Privacidad**: Las líneas se escanean y se redactan si es necesario.
-5.  **Coincidencia Semántica**: El Engine comprueba si una línea coincide con una "Regla de Ruido" (ej. progreso de descarga).
-6.  **Transformación**: La línea se pasa, se descarta o se añade a un buffer de colapso.
-7.  **Salida Final**: La salida de alta señal se imprime en la terminal para que el agente de IA la consuma.
-8.  **Analíticas**: Se calculan los ahorros y se almacenan en la BD local SQLite.
+4.  **Transformación Estructural**: Convierte automáticamente estructuras complejas como tablas a formato Markdown claro.
+5.  **Guardia de Recursos**: Aplica umbrales de seguridad (ej. el "Modo Guardián" se activa si la salida es > 100 líneas, mostrando una síntesis en lugar de inundar el contexto).
+6.  **Redacción de Privacidad**: El "Escáner de Entropía" (Entropy Scanner) identifica y enmascara secretos, mientras que reglas explícitas de PII ocultan correos electrónicos e IPs.
+7.  **Relevancia Semántica**: El Proveedor de Inteligencia (`IntelligenceMode`) decide si la línea realmente ayuda a responder a la intención de la consulta.
+8.  **Compresión**: Los esquemas aplican reglas para mantener, ocultar, colapsar o sintetizar el ruido estructural.
+9.  **Plugins**: Funciones WebAssembly personalizadas procesan el flujo antes de generar la salida.
+10. **Salida Final**: La salida de alta señal se imprime en la terminal para que el agente de IA la consuma.
+11. **Analíticas**: Se calculan los ahorros y se almacenan en la BD local SQLite.
 
 ## 4. Estándares de Seguridad
 

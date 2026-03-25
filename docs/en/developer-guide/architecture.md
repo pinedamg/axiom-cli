@@ -48,11 +48,14 @@ Axiom follows a **Layered Clean Architecture** adapted for Rust's performance ne
 1.  **Command Execution**: `axiom npm install` starts.
 2.  **Process Detective**: Identifies `npm` and the current project context.
 3.  **Stream Capture**: Raw bytes are read from the sub-process.
-4.  **Privacy Shield**: Lines are scanned and redacted if necessary.
-5.  **Semantic Match**: The Engine checks if a line matches a "Noise Rule" (e.g., download progress).
-6.  **Transformation**: The line is either passed, dropped, or added to a collapse buffer.
-7.  **Final Output**: High-signal output is printed to the terminal for the AI agent to consume.
-8.  **Analytics**: Savings are calculated and stored in the local SQLite DB.
+4.  **Structural Transform**: Automatically converts complex structures like tables to clear Markdown formatting.
+5.  **Resource Guard**: Applies safety thresholds (e.g., Guardian Mode kicks in if the output is > 100 lines, showing a synthesis instead of flooding the context).
+6.  **Privacy Redaction**: The "Entropy Scanner" identifies and masks secrets, while explicit PII rules redact emails and IPs.
+7.  **Semantic Relevance**: The Intelligence Provider (`IntelligenceMode`) decides if the line actually helps answer the prompt's intent.
+8.  **Compression**: Schemas apply rules to keep, hide, collapse or synthesize structural noise.
+9.  **Plugins**: Custom WebAssembly functions process the stream before outputting.
+10. **Final Output**: High-signal output is printed to the terminal for the AI agent to consume.
+11. **Analytics**: Savings are calculated and stored in the local SQLite DB.
 
 ## 4. Security Standards
 

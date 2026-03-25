@@ -118,14 +118,14 @@ This section defines the expansion of default schemas and intelligent modes for 
 *Goal: Remove structural noise from everyday commands.*
 - [x] **ls / tree**: Collapse hidden files, metadata, and junk directories.
 - [x] **cat / tail / head**: "Guardian Mode" for files > 50 lines (auto-summary).
-- [ ] **grep / rg (ripgrep)**: Aggregate matches per file and provide density summaries.
+- [x] **grep / rg (ripgrep)**: Aggregate matches per file and provide density summaries.
 - [x] **curl / wget**: Hide progress bars and redundant HTTP headers.
 
 ### 🟡 Tier 2: Build & Dev Ecosytems (Context-Aware)
 *Goal: Filter successful boilerplate and focus on warnings/errors.*
 - [x] **npm / pnpm / yarn**: Basic installer noise reduction.
-- [ ] **cargo (Rust)**: Collapse dependency downloading/compiling. Force-show local crate warnings.
-- [ ] **go build / test**: Summarize test results.
+- [x] **cargo (Rust)**: Collapse dependency downloading/compiling. Force-show local crate warnings.
+- [x] **go build / test**: Summarize test results.
 - [ ] **pip / poetry / conda**: Clean virtualenv setup and logs.
 
 ### 🟠 Tier 3: Infrastructure & Cloud (Volume Control)
