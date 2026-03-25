@@ -2,7 +2,7 @@ use crate::engine::discovery::LineMetadata;
 use std::collections::HashMap;
 
 pub mod git;
-// pub mod docker;
+pub mod docker;
 pub mod ls;
 // pub mod ps;
 
@@ -20,6 +20,7 @@ pub trait CommandHandler: Send + Sync {
 pub fn get_all_handlers() -> Vec<Box<dyn CommandHandler>> {
     vec![
         Box::new(git::GitHandler),
+        Box::new(docker::DockerHandler),
         Box::new(ls::LsHandler),
     ]
 }

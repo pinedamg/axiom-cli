@@ -57,27 +57,6 @@ impl DiscoveryEngine {
         Some(LineMetadata { perms: user.to_string(), size: cpu.to_string(), name: clean_cmd, is_dir: is_kernel })
     }
 
-    fn parse_docker_line(&self, line: &str) -> Option<LineMetadata> {
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() < 7 { return None; }
-        
-        if parts[0].len() != 12 || !parts[0].chars().all(|c| c.is_ascii_hexdigit()) {
-            return None;
-        }
-
-        let image = parts[1];
-        let status = if line.contains("Up ") { "Running" } 
-                    else if line.contains("Exited") { "Stopped" } 
-                    else { "Created" };
-
-        Some(LineMetadata {
-            perms: status.to_string(),
-            size: image.to_string(),
-            name: parts.last().unwrap_or(&"unknown").to_string(),
-            is_dir: false,
-        })
-    }
-
     fn parse_standard_ls(&self, line: &str, handler: Option<&dyn CommandHandler>) -> Vec<LineMetadata> {
         let trimmed = line.trim();
         if trimmed.is_empty() || trimmed.starts_with('(') || trimmed.len() > 100 { return vec![]; }
@@ -85,7 +64,6 @@ impl DiscoveryEngine {
         
         // Anti-collision with specific parsers or the current handler
         if self.parse_ps_line(line).is_some() || 
-           self.parse_docker_line(line).is_some() || 
            handler.map_or(false, |h| h.parse_line(line).is_some()) { 
             return vec![]; 
         }
@@ -104,7 +82,7 @@ impl DiscoveryEngine {
                     "GIT" 
                 } else if meta.is_dir { 
                     "DIR" 
-                } else if meta.perms == "Running" || meta.perms == "Stopped" {
+                } else if meta.perms == "Running" || meta.perms == "Stopped" || meta.perms == "Created" {
                     "DOCKER"
                 } else { 
                     "FILE" 
@@ -122,11 +100,6 @@ impl DiscoveryEngine {
         }
 
         // Fallbacks for commands not yet migrated to handlers
-        if let Some(meta) = self.parse_docker_line(line) {
-            let key = format!("DOCKER:{}:{}", meta.perms, meta.size);
-            self.synthesis_buffer.entry(key).or_default().push(meta);
-            return true;
-        }
         if let Some(meta) = self.parse_ps_line(line) {
             let label = if meta.is_dir { "KERNEL" } else { "PROC" };
             let key = format!("{}:{}", label, meta.name);
