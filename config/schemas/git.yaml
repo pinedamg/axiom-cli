@@ -1,6 +1,7 @@
-name: git-status
-command_pattern: "^git status.*"
+name: git-suite
+command_pattern: "^git.*"
 rules:
+  # --- COMMON / BOILERPLATE ---
   - name: Boilerplate
     pattern: "^(Changes|Untracked|nothing|no changes|\\s*\\(use).*"
     action: hidden
@@ -9,6 +10,22 @@ rules:
     pattern: "^.* files:.*"
     action: hidden
     priority: 25
+
+  # --- LOG SPECIFIC ---
+  - name: GitLogCommit
+    pattern: "^commit\\s+[a-f0-9]{7,40}.*" # Detects long and short hashes
+    action: synthesize
+    priority: 30
+  - name: GitLogMetadata
+    pattern: "^(Author|Date):.*"
+    action: collapse
+    priority: 28
+  - name: GitLogMerge
+    pattern: "^Merge:.*"
+    action: collapse
+    priority: 28
+
+  # --- STATUS SPECIFIC ---
   - name: StatusHeader
     pattern: "^On branch.*"
     action: keep
@@ -16,12 +33,12 @@ rules:
   - name: ModifiedFiles
     pattern: "^\\s*modified:.*"
     action: synthesize
-    priority: 10
+    priority: 15
   - name: NewFiles
     pattern: "^\\s*new file:.*"
     action: synthesize
-    priority: 10
+    priority: 15
   - name: UntrackedFiles
     pattern: "^\\s+[^\\s(].*"
     action: synthesize
-    priority: 5
+    priority: 10

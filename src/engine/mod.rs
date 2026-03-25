@@ -138,24 +138,25 @@ impl AxiomEngine {
 
     fn generate_git_insight(&self) -> Option<String> {
         let mut modified = 0;
-        let mut new = 0;
         let mut untracked = 0;
+        let mut log_commits = 0;
 
         for (key, items) in &self.discovery.synthesis_buffer {
             if key.contains("MODIFIED") { modified += items.len(); }
-            else if key.contains("NEW") { new += items.len(); }
             else if key.contains("UNTRACKED") { untracked += items.len(); }
+            else if key.contains("LOG_COMMIT") { log_commits += items.len(); }
         }
 
-        if modified > 0 || new > 0 || untracked > 0 {
-            let mut parts = Vec::new();
-            if modified > 0 { parts.push(format!("{} modified", modified)); }
-            if new > 0 { parts.push(format!("{} new", new)); }
-            if untracked > 0 { parts.push(format!("{} untracked", untracked)); }
-
-            Some(format!("Repository has pending changes: {}. Recommend 'git add' and 'git commit'.", parts.join(", ")))
+        if self.last_command.contains("status") {
+            if modified > 0 || untracked > 0 {
+                Some(format!("Repository has pending changes: {} modified, {} untracked. Recommend 'git commit'.", modified, untracked))
+            } else {
+                Some("Repository clean. No pending changes detected.".to_string())
+            }
+        } else if self.last_command.contains("log") {
+            Some(format!("Detected active history with {} commits in this view. Use 'git show' for details.", log_commits))
         } else {
-            Some("Repository clean. No pending changes detected.".to_string())
+            None
         }
     }
 
