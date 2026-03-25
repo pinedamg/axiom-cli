@@ -96,7 +96,11 @@ impl AxiomEngine {
     /// The main pipeline orchestrator. Adheres to a strict stage-based flow.
     pub fn process_line(&mut self, line: &str, command: &str, context: &IntentContext) -> Option<String> {
         self.line_counter += 1;
-        self.last_command = command.to_string();
+
+        // Optimize Hot Path: avoid continuous string allocations if command doesn't change
+        if self.last_command != command {
+            self.last_command = command.to_string();
+        }
 
         let working_line = self.apply_structural_transform(line);
 

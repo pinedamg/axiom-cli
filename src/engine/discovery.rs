@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
+use std::sync::OnceLock;
 use regex::Regex;
 use crate::engine::commands::CommandHandler;
 
@@ -10,19 +11,22 @@ pub struct LineMetadata {
     pub is_dir: bool,
 }
 
+/// BTreeMap is more efficient here as the number of active variables and templates
+/// per command execution is relatively small and it avoids hash collisions,
+/// while keeping the output strictly ordered without needing an extra allocation and sort step.
 pub struct DiscoveryEngine {
-    pub templates: HashMap<String, usize>,
-    pub synthesis_buffer: HashMap<String, Vec<LineMetadata>>,
-    pub variable_buffer: HashMap<String, Vec<Vec<String>>>,
+    pub templates: BTreeMap<String, usize>,
+    pub synthesis_buffer: BTreeMap<String, Vec<LineMetadata>>,
+    pub variable_buffer: BTreeMap<String, Vec<Vec<String>>>,
     pub threshold: usize,
 }
 
 impl Default for DiscoveryEngine {
     fn default() -> Self {
         Self {
-            templates: HashMap::new(),
-            synthesis_buffer: HashMap::new(),
-            variable_buffer: HashMap::new(),
+            templates: BTreeMap::new(),
+            synthesis_buffer: BTreeMap::new(),
+            variable_buffer: BTreeMap::new(),
             threshold: 5,
         }
     }
@@ -107,30 +111,47 @@ impl DiscoveryEngine {
     }
 
     pub fn extract_parts(&self, line: &str) -> (String, Vec<String>) {
-        let mut variables = Vec::new();
-        let re_months = Regex::new(r"(?i)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)").unwrap();
-        let s = re_months.replace_all(line, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<MONTH>" });
-        let re_time = Regex::new(r"\d{1,2}:\d{2}").unwrap();
+        static RE_MONTHS: OnceLock<Regex> = OnceLock::new();
+        static RE_TIME: OnceLock<Regex> = OnceLock::new();
+        static RE_NUM: OnceLock<Regex> = OnceLock::new();
+        static RE_HEX: OnceLock<Regex> = OnceLock::new();
+        static RE_UUID: OnceLock<Regex> = OnceLock::new();
+        static RE_PATH: OnceLock<Regex> = OnceLock::new();
+
+        let re_months = RE_MONTHS.get_or_init(|| Regex::new(r"(?i)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)").unwrap());
+        let re_time = RE_TIME.get_or_init(|| Regex::new(r"\d{1,2}:\d{2}").unwrap());
+        let re_num = RE_NUM.get_or_init(|| Regex::new(r"\d+").unwrap());
+        let re_uuid = RE_UUID.get_or_init(|| Regex::new(r"[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}").unwrap());
+        let re_hex = RE_HEX.get_or_init(|| Regex::new(r"0x[a-fA-F0-9]+|[a-fA-F0-9]{12,64}").unwrap());
+        let re_path = RE_PATH.get_or_init(|| Regex::new(r"(?:/[a-zA-Z0-9_.-]+)+").unwrap());
+
+        // We use with_capacity as typically a line won't have more than 4-6 matches, reducing vector reallocations
+        let mut variables = Vec::with_capacity(4);
+
+        let s = re_uuid.replace_all(line, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<UUID>" });
+        let s = re_hex.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<HEX>" });
+        let s = re_months.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<MONTH>" });
         let s = re_time.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<TIME>" });
-        let re_num = Regex::new(r"\d+").unwrap();
         let s = re_num.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<NUM>" });
+        let s = re_path.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<PATH>" });
+
         (s.to_string(), variables)
     }
 
     pub fn flush_variable_summary(&mut self) -> Vec<String> {
         let mut summaries = Vec::new();
-        let mut keys: Vec<_> = self.synthesis_buffer.keys().cloned().collect();
-        keys.sort();
 
         let mut log_count = 0;
         let mut log_hashes = Vec::new();
 
-        for key in keys {
-            if let Some(items) = self.synthesis_buffer.remove(&key) {
-                let parts: Vec<&str> = key.split(':').collect();
-                let label = parts[0];
+        // Using std::mem::take to avoid cloning keys and the BTreeMap guarantees sorted iteration natively
+        let synthesis_buffer = std::mem::take(&mut self.synthesis_buffer);
 
-                match label {
+        for (key, items) in synthesis_buffer {
+            let parts: Vec<&str> = key.split(':').collect();
+            let label = parts[0];
+
+            match label {
                     "DOCKER" => {
                         let status = parts[1];
                         let image = parts[2];
@@ -161,20 +182,20 @@ impl DiscoveryEngine {
                         let perms = parts.get(1).unwrap_or(&"---");
                         summaries.push(format!("{} [{}] | {}", label, perms, names.join(", ")));
                     },
-                    "EXT" => {
-                        let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                        summaries.push(format!("Grouped {} files by extension [{}] | {}", items.len(), parts[1], names.join(", ")));
-                    },
-                    _ => summaries.push(format!("Summary for {}: {} items", label, items.len()))
-                };
-            }
+                "EXT" => {
+                    let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
+                    summaries.push(format!("Grouped {} files by extension [{}] | {}", items.len(), parts[1], names.join(", ")));
+                },
+                _ => summaries.push(format!("Summary for {}: {} items", label, items.len()))
+            };
         }
 
         if log_count > 0 {
             summaries.push(format!("Git History: {} recent commits | Hashes: {}...", log_count, log_hashes.join(", ")));
         }
 
-        for (template, var_sets) in self.variable_buffer.drain() {
+        // Iterate through drain for memory efficiency (clean buffer)
+        for (template, var_sets) in std::mem::take(&mut self.variable_buffer) {
             if var_sets.len() > 1 {
                 summaries.push(format!("Collapsed {} lines of pattern: {}", var_sets.len(), template));
             }
