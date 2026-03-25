@@ -62,12 +62,13 @@ impl DiscoveryEngine {
         if parts.len() < 11 { return None; }
 
         let user = parts[0];
+        if line.contains("modified:") || line.contains("new file:") || line.starts_with("On branch") {
+            return None;
+        }
+
         let cpu = parts[2];
         let command = parts[10..].join(" ");
 
-        // Normalization for Kernel Threads and Workers
-        // e.g. [kworker/0:1-events] -> [kworker]
-        // e.g. [cpuhp/0] -> [cpuhp]
         let is_kernel = command.starts_with('[') && command.ends_with(']');
         let clean_cmd = if is_kernel {
             let base = command.trim_matches(|c| c == '[' || c == ']');
@@ -88,11 +89,49 @@ impl DiscoveryEngine {
         })
     }
 
+    fn parse_git_line(&self, line: &str) -> Option<LineMetadata> {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('(') || trimmed.contains("files:") { return None; }
+
+        let (state, path) = if line.contains("modified:") {
+            ("MODIFIED", trimmed.trim_start_matches("modified:").trim())
+        } else if line.contains("new file:") {
+            ("NEW", trimmed.trim_start_matches("new file:").trim())
+        } else if line.contains("deleted:") {
+            ("DELETED", trimmed.trim_start_matches("deleted:").trim())
+        } else if line.starts_with("\t") || line.starts_with("    ") {
+            ("UNTRACKED", trimmed)
+        } else {
+            return None;
+        };
+
+        if path.is_empty() || path.contains("nothing to commit") { return None; }
+
+        let folder = if path.contains('/') {
+            path.split('/').next().unwrap_or("root").to_string()
+        } else {
+            "root".to_string()
+        };
+
+        Some(LineMetadata {
+            perms: state.to_string(),
+            size: folder,
+            name: path.to_string(),
+            is_dir: path.contains('/'),
+        })
+    }
+
     fn parse_standard_ls(&self, line: &str) -> Vec<LineMetadata> {
+        let trimmed = line.trim();
+        // Stricter check for standard LS output
+        if trimmed.is_empty() || trimmed.starts_with('(') || trimmed.len() > 100 {
+            return vec![];
+        }
+
         if line.starts_with('d') || line.starts_with('-') || line.starts_with('l') || line.starts_with("total") {
             return vec![];
         }
-        if self.parse_ps_line(line).is_some() {
+        if self.parse_ps_line(line).is_some() || self.parse_git_line(line).is_some() {
             return vec![];
         }
 
@@ -115,6 +154,11 @@ impl DiscoveryEngine {
     }
 
     pub fn synthesize_line(&mut self, line: &str) -> bool {
+        if let Some(meta) = self.parse_git_line(line) {
+            let key = format!("GIT:{}:{}", meta.perms, meta.size);
+            self.synthesis_buffer.entry(key).or_default().push(meta);
+            return true;
+        }
         if let Some(meta) = self.parse_ps_line(line) {
             let label = if meta.is_dir { "KERNEL" } else { "PROC" };
             let key = format!("{}:{}", label, meta.name);
@@ -181,24 +225,31 @@ impl DiscoveryEngine {
             if let Some(items) = self.synthesis_buffer.remove(&key) {
                 let parts: Vec<&str> = key.split(':').collect();
                 let label = parts[0];
-                let cmd = parts[1];
 
                 let summary = match label {
+                    "GIT" => {
+                        let state = parts[1];
+                        let folder = parts[2];
+                        let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
+                        format!("Git {}: {} files in [{}] | {}", state, items.len(), folder, names.join(", "))
+                    },
                     "PROC" => {
+                        let cmd = parts[1];
                         let users: std::collections::HashSet<_> = items.iter().map(|m| &m.perms).collect();
                         let mut user_list: Vec<_> = users.into_iter().cloned().collect();
                         user_list.sort();
                         format!("Active processes: {} (count: {}) | Owners: {}", cmd, items.len(), user_list.join(", "))
                     },
-                    "KERNEL" => format!("Kernel Workers: {} (count: {})", cmd, items.len()),
+                    "KERNEL" => format!("Kernel Workers: {} (count: {})", parts[1], items.len()),
+                    "DIR" | "FILE" => {
+                        let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
+                        format!("{} [{}] | {}", label, parts[1], names.join(", "))
+                    },
                     "EXT" => {
                         let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                        format!("Grouped {} files by extension [{}] | {}", items.len(), cmd, names.join(", "))
+                        format!("Grouped {} files by extension [{}] | {}", items.len(), parts[1], names.join(", "))
                     },
-                    _ => {
-                        let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                        format!("{} [{}] | {}", label, cmd, names.join(", "))
-                    }
+                    _ => format!("Summary for {}: {} items", label, items.len())
                 };
                 summaries.push(summary);
             }

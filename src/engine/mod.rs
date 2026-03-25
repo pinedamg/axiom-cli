@@ -80,6 +80,8 @@ impl AxiomEngine {
             return self.generate_ls_insight();
         } else if self.last_command.starts_with("ps") {
             return self.generate_ps_insight();
+        } else if self.last_command.starts_with("git") {
+            return self.generate_git_insight();
         }
         None
     }
@@ -131,6 +133,29 @@ impl AxiomEngine {
             }
         } else {
             None
+        }
+    }
+
+    fn generate_git_insight(&self) -> Option<String> {
+        let mut modified = 0;
+        let mut new = 0;
+        let mut untracked = 0;
+
+        for (key, items) in &self.discovery.synthesis_buffer {
+            if key.contains("MODIFIED") { modified += items.len(); }
+            else if key.contains("NEW") { new += items.len(); }
+            else if key.contains("UNTRACKED") { untracked += items.len(); }
+        }
+
+        if modified > 0 || new > 0 || untracked > 0 {
+            let mut parts = Vec::new();
+            if modified > 0 { parts.push(format!("{} modified", modified)); }
+            if new > 0 { parts.push(format!("{} new", new)); }
+            if untracked > 0 { parts.push(format!("{} untracked", untracked)); }
+
+            Some(format!("Repository has pending changes: {}. Recommend 'git add' and 'git commit'.", parts.join(", ")))
+        } else {
+            Some("Repository clean. No pending changes detected.".to_string())
         }
     }
 
