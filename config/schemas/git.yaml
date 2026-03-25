@@ -1,15 +1,27 @@
-name: git-cli
-command_pattern: "^git"
+name: git-status
+command_pattern: "^git status.*"
 rules:
-  - name: CommitHashes
-    pattern: "^commit [a-f0-9]{40}"
+  - name: Boilerplate
+    pattern: "^(Changes|Untracked|nothing|no changes|\\s*\\(use).*"
+    action: hidden
+    priority: 25
+  - name: SectionHeaders
+    pattern: "^.* files:.*"
+    action: hidden
+    priority: 25
+  - name: StatusHeader
+    pattern: "^On branch.*"
     action: keep
+    priority: 20
+  - name: ModifiedFiles
+    pattern: "^\\s*modified:.*"
+    action: synthesize
     priority: 10
-  - name: AuthorDate
-    pattern: "^(Author:|Date:).*"
-    action: collapse
-    priority: 5
-  - name: DiffMetadata
-    pattern: "^(index|similarity|rename).*"
-    action: collapse
+  - name: NewFiles
+    pattern: "^\\s*new file:.*"
+    action: synthesize
+    priority: 10
+  - name: UntrackedFiles
+    pattern: "^\\s+[^\\s(].*"
+    action: synthesize
     priority: 5
