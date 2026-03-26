@@ -15,26 +15,40 @@ Displays analytics on your token and cost savings.
 - **Flags**:
   - `--history`: Shows a detailed list of recent command executions and the exact token savings for each.
 
-### `axiom status`
-Shows the current health, configuration, and telemetry status of your Axiom installation.
-- **Usage**: `axiom status`
-- **Output**: Edition (Community/Pro), Telemetry Level, Installation ID, and active schemas.
+### `axiom check-ai`
+Checks if the current process was called by an AI agent (e.g., Cursor, Claude Code) or a human shell.
+- **Usage**: `axiom check-ai`
+
+### `axiom intent status`
+Shows the current health, configuration, intent status, and telemetry status of your Axiom installation.
+- **Usage**: `axiom intent status`
+- **Output**: Session ID, Intelligence Mode, Parent Process, and Last Intent.
+
+### `axiom intent enable <mode>`
+Enables intent intelligence to filter output based on user/agent intent.
+- **Modes**: `fuzzy` (keywords) or `neural` (AI embeddings).
+- **Usage**: `axiom intent enable neural`
+
+### `axiom intent disable`
+Disables intent intelligence. Axiom will maintain formatting but show all files without relevance filtering.
+- **Usage**: `axiom intent disable`
 
 ### `axiom proxy <cmd>`
 Executes the raw command without filtering. Useful for debugging or bypassing Axiom entirely for a specific execution.
 - **Usage**: `axiom proxy npm install`
 
-### `axiom discover`
-*(Beta)* Analyzes local AI agent history (like Claude Code) to find missed opportunities where Axiom could have saved tokens.
-- **Usage**: `axiom discover`
+### `axiom discovery`
+Lists currently learned structural templates and their frequency of use in the session.
+- **Usage**: `axiom discovery`
 
 ## Configuration Commands
 
-### `axiom config telemetry <level>`
-Sets your preferred telemetry level.
-- **Levels**: `full`, `discovery`, `anonymous`, `off` (Pro only).
-- **Example**: `axiom config telemetry discovery`
+### `axiom config init`
+Initializes a local `.axiom.yaml` configuration file with default values.
+- **Usage**: `axiom config init`
 
-### `axiom config license <key>`
-Applies a Pro license key to unlock premium features like Offline telemetry mode.
-- **Example**: `axiom config license abc-123-xyz`
+## Global Flags
+
+### `-m, --markdown`
+Enables automatic transformation of space-aligned table outputs into real Markdown tables.
+- **Usage**: `axiom -m kubectl get pods`

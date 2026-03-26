@@ -15,26 +15,40 @@ Muestra análisis sobre tus ahorros de tokens y costos.
 - **Banderas (Flags)**:
   - `--history`: Muestra una lista detallada de las ejecuciones de comandos recientes y el ahorro exacto de tokens para cada una.
 
-### `axiom status`
-Muestra la salud actual, la configuración y el estado de la telemetría de tu instalación de Axiom.
-- **Uso**: `axiom status`
-- **Salida**: Edición (Community/Pro), Nivel de Telemetría, ID de Instalación y esquemas activos.
+### `axiom check-ai`
+Comprueba si el proceso actual fue invocado por un agente de IA (ej. Cursor, Claude Code) o una terminal humana.
+- **Uso**: `axiom check-ai`
+
+### `axiom intent status`
+Muestra la salud actual, la configuración, la intención y el estado de la telemetría de tu instalación de Axiom.
+- **Uso**: `axiom intent status`
+- **Salida**: Session ID, Intelligence Mode, Parent Process y Last Intent.
+
+### `axiom intent enable <modo>`
+Activa la inteligencia de intención para filtrar la salida basándose en la intención del usuario/agente.
+- **Modos**: `fuzzy` (palabras clave) o `neural` (embeddings de IA).
+- **Uso**: `axiom intent enable neural`
+
+### `axiom intent disable`
+Desactiva la inteligencia de intención. Axiom mantendrá el formato pero mostrará todos los archivos sin filtrado por relevancia.
+- **Uso**: `axiom intent disable`
 
 ### `axiom proxy <cmd>`
 Ejecuta el comando en bruto sin filtrado. Útil para depuración o para saltarse Axiom por completo en una ejecución específica.
 - **Uso**: `axiom proxy npm install`
 
-### `axiom discover`
-*(Beta)* Analiza el historial de agentes de IA locales (como Claude Code) para encontrar oportunidades perdidas donde Axiom podría haber ahorrado tokens.
-- **Uso**: `axiom discover`
+### `axiom discovery`
+Muestra las plantillas estructurales aprendidas actualmente y su frecuencia de uso en la sesión.
+- **Uso**: `axiom discovery`
 
 ## Comandos de Configuración
 
-### `axiom config telemetry <nivel>`
-Establece tu nivel de telemetría preferido.
-- **Niveles**: `full`, `discovery`, `anonymous`, `off` (solo Pro).
-- **Ejemplo**: `axiom config telemetry discovery`
+### `axiom config init`
+Inicializa un archivo `.axiom.yaml` de configuración local con valores por defecto.
+- **Uso**: `axiom config init`
 
-### `axiom config license <clave>`
-Aplica una clave de licencia Pro para desbloquear funciones premium como el modo de telemetría Offline.
-- **Ejemplo**: `axiom config license abc-123-xyz`
+## Flags Globales
+
+### `-m, --markdown`
+Habilita la transformación automática de salidas alineadas por espacios en tablas Markdown reales.
+- **Uso**: `axiom -m kubectl get pods`

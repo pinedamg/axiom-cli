@@ -67,7 +67,7 @@ Basado en la auditoría técnica del proyecto, se han identificado los siguiente
 ### 1. Optimización del Pipeline de Inteligencia (Performance)
 *   **Problema**: El motor `NeuralIntelligence` (BERT) calcula embeddings en cada línea, inviable en CPU.
 *   **Acción**: 
-    - [ ] Implementar **Caching de Intent Embeddings**: Calcular una sola vez por sesión.
+    - [x] Implementar **Caching de Intent Embeddings**: Calcular una sola vez por sesión.
     - [ ] **Estrategia Híbrida Agresiva**: Neural como "árbitro" final.
     - [ ] Explorar modelos más ligeros (FastText/SLMs).
 
@@ -142,6 +142,6 @@ This section defines the expansion of default schemas and intelligent modes for 
 - [x] **netstat / lsof / ss**: Filter system-reserved ports.
 
 ### 🚀 Advanced Intelligent Modes (Behavioral Flags)
-- **`--markdown`**: Automatically transform table outputs into real Markdown tables.
+- [x] **`--markdown`**: Automatically transform table outputs into real Markdown tables.
 - **`--diff-only`**: Show only what changed since the last execution.
 - **`--explain`**: Prepend a natural language summary of what Axiom compressed.
