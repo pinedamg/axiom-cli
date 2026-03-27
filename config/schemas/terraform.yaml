@@ -3,33 +3,25 @@ command_pattern: "^(terraform|tf)"
 rules:
   - name: RefreshingState
     pattern: ".*: Refreshing state... \\[id=.*\\]"
-    action: collapse
+    action: synthesize
     priority: 5
+  - name: ReadingResource
+    pattern: ".*: (Reading...|Read complete after.*)$"
+    action: synthesize
+    priority: 1
+  - name: ResourceIdentifier
+    pattern: "^\\s*[#] [a-zA-Z0-9_-]+.*(will be created|will be updated in-place|will be destroyed)$"
+    action: synthesize
+    priority: 15
+  - name: ResourceAttribute
+    pattern: "^\\s*([~+]|[\\+-]/|-) [a-zA-Z0-9_-]+\\s+.*"
+    action: synthesize
+    priority: 2
   - name: PlanSummary
     pattern: "^Plan: [0-9]+ to add, [0-9]+ to change, [0-9]+ to destroy\\."
     action: keep
-    priority: 10
-  - name: ReadingResource
-    pattern: ".*: (Reading...|Read complete after.*)$"
-    action: collapse
-    priority: 1
-  - name: ResourceAttribute
-    pattern: "^\\s*([~+]|[\\+-]/|-) [a-zA-Z0-9_-]+\\s+.*"
-    action: collapse
-    priority: 2
+    priority: 20
   - name: NoChanges
     pattern: "No changes. Your infrastructure matches the configuration."
     action: keep
-    priority: 10
-  - name: ResourceIdentifier
-    pattern: "^\\s*[#] [a-zA-Z0-9_-]+.*(will be created|will be updated in-place|will be destroyed)$"
-    action: collapse
-    priority: 5
-  - name: TerraformAction
-    pattern: "^Terraform will perform the following actions:$"
-    action: keep
-    priority: 8
-  - name: PlanOutput
-    pattern: "^Plan: [0-9]+ to add, [0-9]+ to change, [0-9]+ to destroy.$"
-    action: keep
-    priority: 10
+    priority: 20

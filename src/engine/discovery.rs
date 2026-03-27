@@ -57,7 +57,7 @@ impl DiscoveryEngine {
             if let Some(meta) = h.parse_line(line) {
                 let prefix = if meta.perms == "LOG_COMMIT" { 
                     "GIT" 
-                } else if meta.perms == "Running" || meta.perms == "Stopped" || meta.perms == "Created" {
+                } else if ["Running", "Stopped", "Created", "LAYER", "BUILD", "COMPOSE"].contains(&meta.perms.as_str()) {
                     "DOCKER"
                 } else if meta.perms == "MATCH" {
                     "SEARCH"
@@ -69,6 +69,12 @@ impl DiscoveryEngine {
                     "NPM"
                 } else if ["TEST_RESULT", "COMPILING"].contains(&meta.perms.as_str()) {
                     "GO"
+                } else if ["RESOURCE", "METADATA"].contains(&meta.perms.as_str()) {
+                    "K8S"
+                } else if ["PLAN", "ATTRIBUTE", "STATE"].contains(&meta.perms.as_str()) {
+                    "TF"
+                } else if ["RESOURCE", "ROW"].contains(&meta.perms.as_str()) && (h.matches("gcloud") || h.matches("aws") || h.matches("az")) {
+                    "CLOUD"
                 } else if meta.is_dir && h.matches("ps") {
                     "KERNEL"
                 } else if !meta.is_dir && h.matches("ps") {
@@ -85,9 +91,9 @@ impl DiscoveryEngine {
                     } else {
                         format!("{}:{}:{}", prefix, meta.perms, meta.size)
                     }
-                } else if prefix == "CARGO" || prefix == "NPM" {
+                } else if prefix == "CARGO" || prefix == "NPM" || (prefix == "DOCKER" && (meta.perms == "LAYER" || meta.perms == "BUILD")) {
                     format!("{}:{}", prefix, meta.perms)
-                } else if prefix == "GO" {
+                } else if prefix == "GO" || prefix == "K8S" || prefix == "TF" || prefix == "CLOUD" {
                     format!("{}:{}:{}", prefix, meta.perms, meta.size)
                 } else if prefix == "DOCKER" || prefix == "SEARCH" || prefix == "IO" {
                     format!("{}:{}:{}", prefix, meta.perms, meta.size)

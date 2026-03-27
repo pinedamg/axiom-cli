@@ -7,9 +7,12 @@ pub mod ls;
 pub mod ps;
 pub mod rg;
 pub mod cargo;
+pub mod go;
 pub mod io;
 pub mod npm;
-pub mod go;
+pub mod kubectl;
+pub mod terraform;
+pub mod cloud;
 
 pub type DiscoveryBuffer = HashMap<String, Vec<LineMetadata>>;
 
@@ -33,5 +36,8 @@ pub fn get_all_handlers() -> Vec<Box<dyn CommandHandler>> {
         Box::new(io::IoHandler),
         Box::new(npm::NpmHandler),
         Box::new(go::GoHandler),
+        Box::new(kubectl::KubectlHandler),
+        Box::new(terraform::TerraformHandler),
+        Box::new(cloud::CloudHandler),
     ]
 }

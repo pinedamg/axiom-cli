@@ -1,26 +1,18 @@
 name: cloud-kubectl
 command_pattern: "^(kubectl|k)"
 rules:
-  - name: PodRunning
-    pattern: ".*\\s+Running\\s+[0-9]+\\s+[0-9a-z]+$"
-    action: collapse
-    priority: 5
+  - name: ResourceLine
+    pattern: "^[a-z0-9-]+\\s+[0-9/]+\\s+(Running|Completed|Terminating|Pending|CrashLoopBackOff|Error)\\s+.*"
+    action: synthesize
+    priority: 15
   - name: EventsInfo
     pattern: "^(Type|Reason|Age|From|Message).*"
     action: keep
     priority: 10
-  - name: ResourceRefreshing
-    pattern: ".*Refreshing state.*"
-    action: collapse
-    priority: 1
   - name: DescribeLabels
-    pattern: "^Labels:.*"
-    action: collapse
-    priority: 3
-  - name: DescribeAnnotations
-    pattern: "^Annotations:.*"
-    action: collapse
-    priority: 3
+    pattern: "^(Labels|Annotations|Selector):.*"
+    action: synthesize
+    priority: 5
   - name: ManagedFields
     pattern: ".*managedFields:.*"
     action: hidden
