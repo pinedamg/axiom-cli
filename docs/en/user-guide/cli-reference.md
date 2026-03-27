@@ -8,6 +8,8 @@ The Axiom CLI provides several commands to manage your installation, view analyt
 The primary usage. Acts as a proxy for the provided command.
 - **Usage**: `axiom npm install`, `axiom docker logs my-container`
 - **Behavior**: Intercepts the command's output, applies privacy filters, semantic compression, and outputs the optimized stream.
+- **Flags**:
+  - `--markdown` / `-m`: Enable Markdown table transformation for structured outputs.
 
 ### `axiom gain`
 Displays analytics on your token and cost savings.
@@ -24,11 +26,27 @@ Shows the current health, configuration, and telemetry status of your Axiom inst
 Executes the raw command without filtering. Useful for debugging or bypassing Axiom entirely for a specific execution.
 - **Usage**: `axiom proxy npm install`
 
-### `axiom discover`
-*(Beta)* Analyzes local AI agent history (like Claude Code) to find missed opportunities where Axiom could have saved tokens.
-- **Usage**: `axiom discover`
+### `axiom discovery`
+List currently learned structural templates.
+- **Usage**: `axiom discovery`
+
+### `axiom check-ai`
+Check if the current process was called by an AI agent or a human shell.
+- **Usage**: `axiom check-ai`
+
+### `axiom intent <action>`
+Manage Intent Discovery and Intelligence Levels.
+- **Usage**: `axiom intent enable [mode]`, `axiom intent disable`, `axiom intent status`
+- **Actions**:
+  - `enable [mode]`: Enable intent intelligence (fuzzy or neural). Default is fuzzy.
+  - `disable`: Disable intent intelligence (maintain formatting but show all files).
+  - `status`: Show current intent discovery status and relevant files.
 
 ## Configuration Commands
+
+### `axiom config init`
+Initialize a local `.axiom.yaml` configuration file with default values.
+- **Usage**: `axiom config init`
 
 ### `axiom config telemetry <level>`
 Sets your preferred telemetry level.

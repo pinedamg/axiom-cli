@@ -94,7 +94,7 @@ Basado en la auditoría técnica del proyecto, se han identificado los siguiente
 **Goal**: Maximize the Return on Investment (ROI) of every token and automate system evolution.
 
 ### 5.1 Token ROI & Prediction Engine
-- [ ] **Axiom Gain**: Advanced analytics dashboard showing cumulative savings in USD/Tokens.
+- [x] **Axiom Gain**: Advanced analytics dashboard showing cumulative savings in USD/Tokens.
 - [ ] **Predictive Warning**: Alert agents when a command (e.g., `cat` on a huge file) will exceed a "Token Budget".
 - [ ] **Economic Arbitration**: Suggest cheaper alternatives (e.g., `grep` vs `cat | grep`) before execution.
 
@@ -142,6 +142,6 @@ This section defines the expansion of default schemas and intelligent modes for 
 - [x] **netstat / lsof / ss**: Filter system-reserved ports.
 
 ### 🚀 Advanced Intelligent Modes (Behavioral Flags)
-- **`--markdown`**: Automatically transform table outputs into real Markdown tables.
+- [x] **`--markdown`**: Automatically transform table outputs into real Markdown tables.
 - **`--diff-only`**: Show only what changed since the last execution.
 - **`--explain`**: Prepend a natural language summary of what Axiom compressed.

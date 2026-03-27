@@ -92,6 +92,6 @@ Esta sección define la expansión de esquemas predeterminados y modos inteligen
 - [x] **netstat / lsof / ss**: Filtrar puertos reservados del sistema.
 
 ### 🚀 Modos Inteligentes Avanzados (Flags de Comportamiento)
-- **`--markdown`**: Transformar automáticamente las tablas de salida en tablas Markdown reales.
+- [x] **`--markdown`**: Transformar automáticamente las tablas de salida en tablas Markdown reales.
 - **`--diff-only`**: Mostrar solo lo que ha cambiado desde la última ejecución.
 - **`--explain`**: Anteponer un resumen en lenguaje natural de lo que Axiom comprimió.
