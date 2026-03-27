@@ -59,6 +59,12 @@ impl DiscoveryEngine {
                     "GIT" 
                 } else if meta.perms == "Running" || meta.perms == "Stopped" || meta.perms == "Created" {
                     "DOCKER"
+                } else if meta.perms == "MATCH" {
+                    "SEARCH"
+                } else if ["Checking", "Compiling", "Downloading", "Downloaded", "Finished", "Processing"].contains(&meta.perms.as_str()) {
+                    "CARGO"
+                } else if meta.perms == "PROGRESS" || meta.perms == "NETWORK_NOISE" {
+                    "IO"
                 } else if meta.is_dir && h.matches("ps") {
                     "KERNEL"
                 } else if !meta.is_dir && h.matches("ps") {
@@ -68,8 +74,14 @@ impl DiscoveryEngine {
                 } else { 
                     "FILE" 
                 };
-                
-                let key = if prefix == "GIT" || prefix == "DOCKER" {
+
+                let key = if prefix == "GIT" {
+                    if meta.perms == "LOG_COMMIT" {
+                        format!("{}:{}:ALL", prefix, meta.perms)
+                    } else {
+                        format!("{}:{}:{}", prefix, meta.perms, meta.size)
+                    }
+                } else if prefix == "DOCKER" || prefix == "SEARCH" || prefix == "CARGO" || prefix == "IO" {
                     format!("{}:{}:{}", prefix, meta.perms, meta.size)
                 } else if prefix == "PROC" || prefix == "KERNEL" {
                     format!("{}:{}", prefix, meta.name)
@@ -117,61 +129,39 @@ impl DiscoveryEngine {
         (s.to_string(), variables)
     }
 
-    pub fn flush_variable_summary(&mut self) -> Vec<String> {
+    pub fn flush_variable_summary(&mut self, handlers: &[Box<dyn CommandHandler>]) -> Vec<String> {
         let mut summaries = Vec::new();
         let mut keys: Vec<_> = self.synthesis_buffer.keys().cloned().collect();
         keys.sort();
 
-        let mut log_count = 0;
-        let mut log_hashes = Vec::new();
-
         for key in keys {
             if let Some(items) = self.synthesis_buffer.remove(&key) {
-                let parts: Vec<&str> = key.split(':').collect();
-                let label = parts[0];
+                let mut formatted = false;
+                for handler in handlers {
+                    if let Some(summary) = handler.format_summary(&key, &items) {
+                        summaries.push(summary);
+                        formatted = true;
+                        break;
+                    }
+                }
 
-                match label {
-                    "DOCKER" => {
-                        let status = parts[1];
-                        let image = parts[2];
-                        let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                        summaries.push(format!("Docker {}: {} containers from image [{}] | {}", status, items.len(), image, names.join(", ")));
-                    },
-                    "GIT" => {
-                        let state = parts[1];
-                        if state == "LOG_COMMIT" {
-                            log_count += items.len();
-                            log_hashes.extend(items.iter().map(|m| m.size.clone()));
-                        } else {
-                            let folder = parts[2];
+                if !formatted {
+                    let parts: Vec<&str> = key.split(':').collect();
+                    let label = parts[0];
+                    match label {
+                        "DIR" | "FILE" => {
                             let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                            summaries.push(format!("Git {}: {} files in [{}] | {}", state, items.len(), folder, names.join(", ")));
-                        }
-                    },
-                    "PROC" => {
-                        let cmd = parts[1];
-                        let users: std::collections::HashSet<_> = items.iter().map(|m| &m.perms).collect();
-                        let mut user_list: Vec<_> = users.into_iter().cloned().collect();
-                        user_list.sort();
-                        summaries.push(format!("Active processes: {} (count: {}) | Owners: {}", cmd, items.len(), user_list.join(", ")));
-                    },
-                    "KERNEL" => summaries.push(format!("Kernel Workers: {} (count: {})", parts[1], items.len())),
-                    "DIR" | "FILE" => {
-                        let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                        let perms = parts.get(1).unwrap_or(&"---");
-                        summaries.push(format!("{} [{}] | {}", label, perms, names.join(", ")));
-                    },
-                    "EXT" => {
-                        let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                        summaries.push(format!("Grouped {} files by extension [{}] | {}", items.len(), parts[1], names.join(", ")));
-                    },
-                    _ => summaries.push(format!("Summary for {}: {} items", label, items.len()))
-                };
+                            let perms = parts.get(1).unwrap_or(&"---");
+                            summaries.push(format!("{} [{}] | {}", label, perms, names.join(", ")));
+                        },
+                        "EXT" => {
+                            let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
+                            summaries.push(format!("Grouped {} files by extension [{}] | {}", items.len(), parts[1], names.join(", ")));
+                        },
+                        _ => summaries.push(format!("Summary for {}: {} items", label, items.len()))
+                    }
+                }
             }
-        }
-
-        if log_count > 0 {
-            summaries.push(format!("Git History: {} recent commits | Hashes: {}...", log_count, log_hashes.join(", ")));
         }
 
         for (template, var_sets) in self.variable_buffer.drain() {

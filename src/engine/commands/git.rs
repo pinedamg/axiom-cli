@@ -93,7 +93,19 @@ impl CommandHandler for GitHandler {
         }
     }
 
-    fn format_summary(&self, _key: &str, _items: &[LineMetadata]) -> Option<String> {
-        None // Git summaries are handled as part of the insight or defaults
+    fn format_summary(&self, key: &str, items: &[LineMetadata]) -> Option<String> {
+        let parts: Vec<&str> = key.split(':').collect();
+        if parts[0] != "GIT" { return None; }
+        
+        let state = parts.get(1).unwrap_or(&"UNKNOWN");
+        
+        if *state == "LOG_COMMIT" {
+            let hashes: Vec<String> = items.iter().map(|m| m.size.clone()).collect();
+            return Some(format!("Git History: {} recent commits | Hashes: {}...", items.len(), hashes.join(", ")));
+        } else {
+            let folder = parts.get(2).unwrap_or(&"root");
+            let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
+            return Some(format!("Git {}: {} files in [{}] | {}", state, items.len(), folder, names.join(", ")));
+        }
     }
 }

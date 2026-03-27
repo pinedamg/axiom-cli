@@ -70,7 +70,7 @@ impl AxiomEngine {
 
     pub fn flush_summaries(&mut self) -> Vec<String> {
         let insight = self.generate_semantic_insight();
-        let mut summaries = self.discovery.flush_variable_summary();
+        let mut summaries = self.discovery.flush_variable_summary(&self.handlers);
         
         if let Some(text) = insight {
             summaries.insert(0, format!("Semantic Insight: {}", text));
@@ -106,11 +106,11 @@ impl AxiomEngine {
 
         let redacted = self.redactor.redact(&working_line);
 
-        if self.is_semantically_relevant(&redacted, context) {
+        let final_line = self.apply_compression(&redacted, command);
+
+        if final_line.is_some() && self.is_semantically_relevant(&redacted, context) {
             return Some(redacted);
         }
-
-        let final_line = self.apply_compression(&redacted, command);
 
         self.apply_plugins(final_line)
     }

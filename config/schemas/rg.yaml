@@ -3,7 +3,7 @@ command_pattern: "^(rg|grep)"
 rules:
   - name: SearchMatch
     pattern: "^[^:]+:[0-9]+:.*"
-    action: collapse
+    action: synthesize
     priority: 1
   - name: FileStats
     pattern: "^[0-9]+ matches? in [0-9]+ files?.*"

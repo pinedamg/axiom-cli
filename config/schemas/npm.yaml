@@ -7,13 +7,13 @@ rules:
     priority: 10
   - name: DeprecationWarnings
     pattern: ".*deprecated.*"
-    action: collapse
+    action: synthesize
     priority: 5
   - name: PackageAdd
     pattern: "^\\+ [a-zA-Z0-9-]+"
-    action: collapse
+    action: synthesize
     priority: 1
   - name: YarnStep
     pattern: "^\\[[0-9]/[0-9]\\].*"
-    action: collapse
+    action: synthesize
     priority: 1
