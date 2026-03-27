@@ -65,6 +65,10 @@ impl DiscoveryEngine {
                     "CARGO"
                 } else if meta.perms == "PROGRESS" || meta.perms == "NETWORK_NOISE" {
                     "IO"
+                } else if ["WARN", "ADD", "AUDIT"].contains(&meta.perms.as_str()) {
+                    "NPM"
+                } else if ["TEST_RESULT", "COMPILING"].contains(&meta.perms.as_str()) {
+                    "GO"
                 } else if meta.is_dir && h.matches("ps") {
                     "KERNEL"
                 } else if !meta.is_dir && h.matches("ps") {
@@ -81,7 +85,11 @@ impl DiscoveryEngine {
                     } else {
                         format!("{}:{}:{}", prefix, meta.perms, meta.size)
                     }
-                } else if prefix == "DOCKER" || prefix == "SEARCH" || prefix == "CARGO" || prefix == "IO" {
+                } else if prefix == "CARGO" || prefix == "NPM" {
+                    format!("{}:{}", prefix, meta.perms)
+                } else if prefix == "GO" {
+                    format!("{}:{}:{}", prefix, meta.perms, meta.size)
+                } else if prefix == "DOCKER" || prefix == "SEARCH" || prefix == "IO" {
                     format!("{}:{}:{}", prefix, meta.perms, meta.size)
                 } else if prefix == "PROC" || prefix == "KERNEL" {
                     format!("{}:{}", prefix, meta.name)
