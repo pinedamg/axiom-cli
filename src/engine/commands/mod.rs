@@ -8,6 +8,8 @@ pub mod ps;
 pub mod rg;
 pub mod cargo;
 pub mod io;
+pub mod npm;
+pub mod go;
 
 pub type DiscoveryBuffer = HashMap<String, Vec<LineMetadata>>;
 
@@ -29,5 +31,7 @@ pub fn get_all_handlers() -> Vec<Box<dyn CommandHandler>> {
         Box::new(rg::RgHandler),
         Box::new(cargo::CargoHandler),
         Box::new(io::IoHandler),
+        Box::new(npm::NpmHandler),
+        Box::new(go::GoHandler),
     ]
 }
