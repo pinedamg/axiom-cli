@@ -1,19 +1,7 @@
 name: linux-journal
 command_pattern: "^journalctl"
 rules:
-  - name: SSHSuccess
-    pattern: ".*ssh.*session opened for user.*"
-    action: collapse
-    priority: 5
-  - name: SystemdStats
-    pattern: ".*systemd.*(Starting|Started|Reached target|Finished).*|.*systemd-logind.*"
-    action: collapse
-    priority: 5
-  - name: KernelNoise
-    pattern: "^[a-zA-Z]{3} [0-9]{2} [0-9:]{8}.*kernel:.*"
-    action: collapse
+  - name: LogLine
+    pattern: ".*"
+    action: synthesize
     priority: 1
-  - name: CronJob
-    pattern: ".*CRON\\[[0-9]+\\].*"
-    action: collapse
-    priority: 5

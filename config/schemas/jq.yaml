@@ -1,11 +1,7 @@
 name: data-jq
-command_pattern: "^jq"
+command_pattern: "^(jq|yq)"
 rules:
-  - name: LargeArrayItem
-    pattern: "^\\s+\\{.*"
-    action: collapse
+  - name: StructuralLine
+    pattern: ".*"
+    action: synthesize
     priority: 1
-  - name: JsonBrackets
-    pattern: "^[\\[\\]\\{\\}]\\s*$"
-    action: keep
-    priority: 10
