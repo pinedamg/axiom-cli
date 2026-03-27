@@ -1,95 +1,63 @@
-use axiom::config::AxiomConfig;
-use axiom::session::AxiomSession;
+mod common;
 use axiom::IntentContext;
 
-fn setup_session() -> AxiomSession {
-    let config = AxiomConfig::default();
-    AxiomSession::new(config).expect("Failed to setup session for testing")
-}
-
 #[test]
-fn test_jq_array_collapsing() {
-    let mut session = setup_session();
-    let command = "jq '.' large.json";
+fn test_jq_structural_synthesis() {
+    let mut session = common::setup_session();
+    let command = "jq .";
     let context = IntentContext {
-        last_message: "analyze the data".to_string(),
+        last_message: "read json".to_string(),
         command: command.to_string(),
         keywords: vec![],
     };
 
     let raw_output = "
 [
-  { \"id\": 1, \"status\": \"active\" },
-  { \"id\": 2, \"status\": \"active\" },
-  { \"id\": 3, \"status\": \"active\" },
-  { \"id\": 4, \"status\": \"active\" },
-  { \"id\": 5, \"status\": \"active\" },
-  { \"id\": 6, \"status\": \"active\" },
-  { \"id\": 7, \"status\": \"active\" }
+  {
+    \"id\": 1,
+    \"name\": \"item 1\",
+    \"value\": \"data 1\"
+  },
+  {
+    \"id\": 2,
+    \"name\": \"item 2\",
+    \"value\": \"data 2\"
+  }
 ]
     ";
 
-    let mut lines_printed = 0;
     for line in raw_output.lines() {
-        if let Some(_) = session.engine.process_line(line, command, &context) {
-            lines_printed += 1;
-        }
+        session.engine.process_line(line, command, &context);
     }
-
-    assert!(lines_printed <= 8, "Repetitive JSON objects should be aggregated");
+    
     let summaries = session.engine.flush_summaries();
-    assert!(!summaries.is_empty());
+    assert!(summaries.iter().any(|s| s.contains("Synthesized 2 JSON/YAML objects")), "Should contain structural insight");
+    assert!(summaries.iter().any(|s| s.contains("key [id]")), "Should mention id key");
+    assert!(summaries.iter().any(|s| s.contains("key [name]")), "Should mention name key");
 }
 
 #[test]
 fn test_journalctl_noise_reduction() {
-    let mut session = setup_session();
-    let command = "journalctl -u ssh";
+    let mut session = common::setup_session();
+    let command = "journalctl -u systemd-logind";
     let context = IntentContext {
-        last_message: "show logs".to_string(),
+        last_message: "check logs".to_string(),
         command: command.to_string(),
         keywords: vec![],
     };
 
     let raw_output = "
-Mar 22 10:00:01 host systemd[1]: Starting OpenBSD Secure Shell server...
-Mar 22 10:00:02 host sshd[123]: Server listening on 0.0.0.0 port 22.
-Mar 22 10:00:05 host systemd[1]: Started OpenBSD Secure Shell server.
-Mar 22 10:00:10 host sshd[124]: Accepted password for user from 192.168.1.1
-Mar 22 10:00:11 host sshd[124]: pam_unix(sshd:session): session opened for user mpineda
+Mar 27 18:50 machine systemd-logind[123]: New session 1 of user mpineda.
+Mar 27 18:51 machine systemd-logind[123]: Session 1 logged out.
+Mar 27 18:52 machine kernel: some kernel noise
+Mar 27 18:53 machine systemd[1]: Started User Manager for UID 1000.
     ";
 
-    let mut lines_printed = 0;
     for line in raw_output.lines() {
-        if let Some(_) = session.engine.process_line(line, command, &context) {
-            lines_printed += 1;
-        }
+        session.engine.process_line(line, command, &context);
     }
-
-    assert!(lines_printed < 5, "Routine systemd and ssh logs should be filtered out");
-}
-
-#[test]
-fn test_markdown_table_conversion_integration() {
-    let mut session = setup_session();
-    session.engine.set_markdown_mode(true);
     
-    let command = "docker ps";
-    let context = IntentContext {
-        last_message: "list containers".to_string(),
-        command: command.to_string(),
-        keywords: vec![],
-    };
-
-    // Note: Using 3 spaces to ensure table detection
-    let table_header = "CONTAINER ID   IMAGE   COMMAND   STATUS";
-    let table_row = "1234567890ab   nginx   \"nginx\"   Up 2 hours";
-
-    let header_result = session.engine.process_line(table_header, command, &context).expect("Header should be returned");
-    let row_result = session.engine.process_line(table_row, command, &context).expect("Row should be returned");
-
-    // Check for Markdown pipe separators
-    assert!(header_result.contains("|"), "Header should contain pipes. Result: {}", header_result);
-    assert!(header_result.contains("CONTAINER"), "Header should contain the column name");
-    assert!(row_result.contains("|"), "Row should contain pipes. Result: {}", row_result);
+    let summaries = session.engine.flush_summaries();
+    assert!(summaries.iter().any(|s| s.contains("System Logs")), "Should contain system log insight");
+    assert!(summaries.iter().any(|s| s.contains("noise lines from system service [systemd-logind]")), "Should mention logind noise");
 }

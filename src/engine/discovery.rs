@@ -75,6 +75,10 @@ impl DiscoveryEngine {
                     "TF"
                 } else if ["RESOURCE", "ROW"].contains(&meta.perms.as_str()) && (h.matches("gcloud") || h.matches("aws") || h.matches("az")) {
                     "CLOUD"
+                } else if ["STRUCT", "KEY"].contains(&meta.perms.as_str()) {
+                    "DATA"
+                } else if ["NOISE", "LOG"].contains(&meta.perms.as_str()) {
+                    "SYS"
                 } else if meta.is_dir && h.matches("ps") {
                     "KERNEL"
                 } else if !meta.is_dir && h.matches("ps") {
@@ -93,7 +97,7 @@ impl DiscoveryEngine {
                     }
                 } else if prefix == "CARGO" || prefix == "NPM" || (prefix == "DOCKER" && (meta.perms == "LAYER" || meta.perms == "BUILD")) {
                     format!("{}:{}", prefix, meta.perms)
-                } else if prefix == "GO" || prefix == "K8S" || prefix == "TF" || prefix == "CLOUD" {
+                } else if prefix == "GO" || prefix == "K8S" || prefix == "TF" || prefix == "CLOUD" || prefix == "DATA" || prefix == "SYS" {
                     format!("{}:{}:{}", prefix, meta.perms, meta.size)
                 } else if prefix == "DOCKER" || prefix == "SEARCH" || prefix == "IO" {
                     format!("{}:{}:{}", prefix, meta.perms, meta.size)

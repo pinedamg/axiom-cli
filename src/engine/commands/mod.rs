@@ -13,6 +13,8 @@ pub mod npm;
 pub mod kubectl;
 pub mod terraform;
 pub mod cloud;
+pub mod jq;
+pub mod journalctl;
 
 pub type DiscoveryBuffer = HashMap<String, Vec<LineMetadata>>;
 
@@ -39,5 +41,7 @@ pub fn get_all_handlers() -> Vec<Box<dyn CommandHandler>> {
         Box::new(kubectl::KubectlHandler),
         Box::new(terraform::TerraformHandler),
         Box::new(cloud::CloudHandler),
+        Box::new(jq::JqHandler),
+        Box::new(journalctl::JournalHandler),
     ]
 }
