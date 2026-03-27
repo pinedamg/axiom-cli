@@ -91,3 +91,34 @@ fn test_cat_guardian_mode() {
     assert!(guardian_triggered, "Guardian mode should trigger after 100 lines");
     assert!(lines_printed <= 101, "Should not print more than 101 lines including warning");
 }
+
+#[test]
+fn test_curl_io_handling() {
+    let mut session = common::setup_session();
+    let command = "curl -v https://google.com";
+    let context = IntentContext {
+        last_message: "fetch google".to_string(),
+        command: command.to_string(),
+        keywords: vec![],
+    };
+
+    let raw_output = "
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying 2001:4860...
+* Connected to www.google.com
+* TLS handshake, Client hello (1):
+* TLS handshake, Server hello (2):
+* TLS handshake, Certificate (11):
+{ [2512 bytes data]
+    ";
+
+    for line in raw_output.lines() {
+        session.engine.process_line(line, command, &context);
+    }
+    
+    let summaries = session.engine.flush_summaries();
+    assert!(summaries.iter().any(|s| s.contains("Network I/O")), "Should contain network summary");
+    assert!(summaries.iter().any(|s| s.contains("progress")), "Should mention progress updates");
+    assert!(summaries.iter().any(|s| s.contains("TLS")), "Should mention TLS handshakes");
+}

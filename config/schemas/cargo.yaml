@@ -3,11 +3,11 @@ command_pattern: "^cargo"
 rules:
   - name: DependencyCompiling
     pattern: "^\\s*(Downloading|Compiling|Downloaded|Finished|Checking)\\s+[a-zA-Z0-9_-]+\\s+v[0-9.]+"
-    action: collapse
+    action: synthesize
     priority: 5
   - name: LocalCompiling
     pattern: "^\\s*Compiling\\s+[a-zA-Z0-9_-]+\\s+v[0-9.]+\\s+\\(.*\\)"
-    action: collapse
+    action: synthesize
     priority: 5
   - name: BuildFinished
     pattern: "^\\s*Finished\\s+.*"
@@ -27,5 +27,5 @@ rules:
     priority: 10
   - name: DownloadingCrates
     pattern: "^\\s*Downloading crates.*"
-    action: collapse
+    action: synthesize
     priority: 5

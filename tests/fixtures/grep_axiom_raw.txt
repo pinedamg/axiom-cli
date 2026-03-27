@@ -1,0 +1,13 @@
+20:**Axiom stops this locally.**
+22:### ❌ The "Panic" Moment (Without Axiom)
+31:### ✅ The "Zen" Moment (With Axiom)
+41:## 🚀 Why Axiom?
+44:Standard command outputs are 90% repetitive noise. Axiom transforms raw bytes into **semantic intent**, reducing your token bill by **60-90%** while making the AI smarter and faster.
+50:Axiom isn't just for AI. Use it to clean up massive `docker logs`, `ps`, or `ls` outputs. Focus on the errors that matter, not the successful boilerplate.
+56:Axiom acts as a local high-performance filter between your tools and your context window.
+85:### 2. Choose your "Axiom Style"
+91:| **Autonomous** | Use `AGENTS.md` / `GEMINI.md` | Forcing AI Agents to use Axiom by default. |
+97:Axiom includes specialized instruction files for AI Agents. By placing **`AGENTS.md`** or **`GEMINI.md`** in your project root, you tell the AI: 
+98:> *"I have Axiom installed. Use it for all noisy commands to save my context and protect my secrets."*
+121:Axiom is an open-source movement to make terminal-to-LLM streaming secure and efficient. Join us!
+123:Axiom Core is licensed under the **Apache License 2.0**.

@@ -5,6 +5,9 @@ pub mod git;
 pub mod docker;
 pub mod ls;
 pub mod ps;
+pub mod rg;
+pub mod cargo;
+pub mod io;
 
 pub type DiscoveryBuffer = HashMap<String, Vec<LineMetadata>>;
 
@@ -23,5 +26,8 @@ pub fn get_all_handlers() -> Vec<Box<dyn CommandHandler>> {
         Box::new(docker::DockerHandler),
         Box::new(ls::LsHandler),
         Box::new(ps::PsHandler),
+        Box::new(rg::RgHandler),
+        Box::new(cargo::CargoHandler),
+        Box::new(io::IoHandler),
     ]
 }
