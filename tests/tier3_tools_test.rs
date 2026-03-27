@@ -2,84 +2,88 @@ mod common;
 use axiom::IntentContext;
 
 #[test]
-fn test_kubectl_advanced_cleaning() {
+fn test_docker_pull_synthesis() {
     let mut session = common::setup_session();
-    let command = "kubectl describe pod my-pod";
+    let command = "docker pull alpine";
     let context = IntentContext {
-        last_message: "check pod errors".to_string(),
+        last_message: "pull image".to_string(),
         command: command.to_string(),
         keywords: vec![],
     };
 
     let raw_output = "
-Name:         my-pod
-Namespace:    default
-Priority:     0
-Labels:       app=web, env=prod, version=1.0.0
-Annotations:  checksum/config=abc123def456
-managedFields:
-  - manager: kube-controller-manager
-    operation: Update
-Events:
-  Type    Reason     Age   From               Message
-  ----    ------     ----  ----               -------
-  Normal  Scheduled  10m   default-scheduler  Successfully assigned my-pod to node-1
+e17133b79956: Pulling fs layer
+717b09883515: Waiting
+e17133b79956: Downloading [=========>                                         ]  1.5MB/5.8MB
+717b09883515: Extracting [==================================================>]  15.2kB/15.2kB
     ";
 
-    let mut lines_printed = 0;
-    let mut managed_fields_shown = false;
-
     for line in raw_output.lines() {
-        if let Some(processed) = session.engine.process_line(line, command, &context) {
-            lines_printed += 1;
-            if processed.contains("managedFields") {
-                managed_fields_shown = true;
-            }
-        }
+        session.engine.process_line(line, command, &context);
     }
-
-    assert!(!managed_fields_shown, "Managed fields must be hidden (noise/security)");
+    
+    let summaries = session.engine.flush_summaries();
+    assert!(summaries.iter().any(|s| s.contains("Processing 4 image layers")), "Should contain transfer insight");
+    assert!(summaries.iter().any(|s| s.contains("Hidden 4 layer progress updates")), "Should contain layer summary");
 }
 
 #[test]
-fn test_terraform_advanced_plan() {
+fn test_kubectl_get_pods_synthesis() {
     let mut session = common::setup_session();
-    let command = "terraform plan";
+    let command = "kubectl get pods";
     let context = IntentContext {
-        last_message: "review infrastructure changes".to_string(),
+        last_message: "check pods".to_string(),
         command: command.to_string(),
         keywords: vec![],
     };
 
     let raw_output = "
-  # aws_instance.web will be updated in-place
-  ~ resource \"aws_instance\" \"web\" {
-      ~ instance_type = \"t2.micro\" -> \"t3.medium\"
-      + tags          = { \"Environment\" = \"Prod\" }
-    }
-
-Plan: 0 to add, 1 to change, 0 to destroy.
+NAME                     READY   STATUS             RESTARTS   AGE
+auth-service-xyz         1/1     Running            0          24h
+db-instance-123          1/1     Running            0          5d
+api-gateway-abc          0/1     CrashLoopBackOff   15         2h
+redis-master             1/1     Running            0          10d
     ";
 
-    let mut plan_summary_count = 0;
-    let mut instance_id_count = 0;
-    let mut lines_processed = 0;
-
     for line in raw_output.lines() {
-        if let Some(processed) = session.engine.process_line(line, command, &context) {
-            lines_processed += 1;
-            if processed.contains("Plan:") {
-                plan_summary_count += 1;
-            }
-            if processed.contains("aws_instance.web") {
-                instance_id_count += 1;
-            }
-        }
+        session.engine.process_line(line, command, &context);
     }
-
-    assert_eq!(plan_summary_count, 1, "Plan summary must be kept");
-    // Depending on the 'action: collapse' behavior, it might be hidden or replaced with a summary line.
-    // If Axiom's engine is configured to hide collapsed lines by default in the test setup:
-    // assert!(instance_id_count == 0 || instance_id_count == 1);
+    
+    let summaries = session.engine.flush_summaries();
+    assert!(summaries.iter().any(|s| s.contains("Detected 1 unhealthy resources")), "Should contain health warning");
+    assert!(summaries.iter().any(|s| s.contains("Running [3]")), "Should group running pods");
+    assert!(summaries.iter().any(|s| s.contains("CrashLoopBackOff [1]")), "Should group failing pod");
 }
 
+#[test]
+fn test_terraform_plan_synthesis() {
+    let mut session = common::setup_session();
+    let command = "terraform plan";
+    let context = IntentContext {
+        last_message: "plan infrastructure".to_string(),
+        command: command.to_string(),
+        keywords: vec![],
+    };
+
+    let raw_output = "
+  # aws_instance.web will be created
+  + resource \"aws_instance\" \"web\" {
+      + ami                          = \"ami-0c55b159cbfafe1f0\"
+      + instance_type                = \"t2.micro\"
+    }
+
+  # aws_db_instance.db will be destroyed
+  - resource \"aws_db_instance\" \"db\" {
+      - name = \"mydb\"
+    }
+    ";
+
+    for line in raw_output.lines() {
+        session.engine.process_line(line, command, &context);
+    }
+    
+    let summaries = session.engine.flush_summaries();
+    assert!(summaries.iter().any(|s| s.contains("1 to add") && s.contains("1 to destroy")), "Should contain plan insight");
+    assert!(summaries.iter().any(|s| s.contains("CREATE: 1 resources")), "Should summarize creates");
+    assert!(summaries.iter().any(|s| s.contains("DESTROY: 1 resources")), "Should summarize destroys");
+}

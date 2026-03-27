@@ -1,18 +1,18 @@
 name: cloud-sdk
 command_pattern: "^(gcloud|aws|az)"
 rules:
-  - name: ListTable
-    pattern: "^[a-zA-Z0-9_-]+\\s+[a-zA-Z0-9_-]+\\s+.*"
-    action: collapse
+  - name: ListTableRow
+    pattern: "^[a-zA-Z0-9_-]+\\s+(RUNNING|READY|PROVISIONING|STOPPED|DELETING|ACTIVE|INACTIVE|PENDING)\\s+.*"
+    action: synthesize
+    priority: 15
+  - name: GenericTableRow
+    pattern: "^[a-zA-Z0-9_-]+\\s+[a-zA-Z0-9_-]+\\s+[a-zA-Z0-9_-]+.*"
+    action: synthesize
     priority: 1
   - name: StatusHeader
     pattern: "^(NAME|STATUS|STATE|LOCATION|REGION|ZONE).*"
     action: keep
     priority: 10
-  - name: OperationRunning
-    pattern: ".*Running.*"
-    action: collapse
-    priority: 5
   - name: ProgressDots
     pattern: "^[\\. ]+$"
     action: hidden

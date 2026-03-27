@@ -1,5 +1,5 @@
 name: docker-suite
-command_pattern: "^docker\\s+(ps|container\\s+ls).*"
+command_pattern: "^(docker|docker-compose).*"
 rules:
   - name: Header
     pattern: "^CONTAINER ID.*"
@@ -9,3 +9,15 @@ rules:
     pattern: "^[a-f0-9]{12}\\s+.*"
     action: synthesize
     priority: 15
+  - name: LayerProgress
+    pattern: "^[a-f0-9]{12}: (Pulling|Waiting|Download|Extracting|Verifying).*"
+    action: synthesize
+    priority: 10
+  - name: BuildStep
+    pattern: "^Step [0-9]+/[0-9]+ : .*"
+    action: synthesize
+    priority: 10
+  - name: ComposeService
+    pattern: "^[a-zA-Z0-9_-]+\\s+\\| .*"
+    action: synthesize
+    priority: 5
