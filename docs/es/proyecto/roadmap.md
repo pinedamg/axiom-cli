@@ -68,13 +68,13 @@ Esta sección define la expansión de esquemas predeterminados y modos inteligen
 *Objetivo: Eliminar el ruido estructural de los comandos diarios.*
 - [x] **ls / tree**: Colapsar archivos ocultos, metadatos y directorios basura.
 - [x] **cat / tail / head**: "Modo Guardián" para archivos > 50 líneas (auto-resumen).
-- [ ] **grep / rg (ripgrep)**: Agregar coincidencias por archivo y proporcionar resúmenes de densidad.
+- [x] **grep / rg (ripgrep)**: Agregar coincidencias por archivo y proporcionar resúmenes de densidad.
 - [x] **curl / wget**: Ocultar barras de progreso y cabeceras HTTP redundantes.
 
 ### 🟡 Nivel 2: Ecosistemas de Construcción y Desarrollo (Contexto)
 *Objetivo: Filtrar boilerplate de éxito y enfocarse en advertencias/errores.*
 - [x] **npm / pnpm / yarn**: Reducción básica de ruido del instalador.
-- [ ] **cargo (Rust)**: Colapsar la descarga/compilación de dependencias. Mostrar forzosamente advertencias de crates locales.
+- [x] **cargo (Rust)**: Colapsar la descarga/compilación de dependencias. Mostrar forzosamente advertencias de crates locales.
 - [ ] **go build / test**: Resumir resultados de pruebas.
 - [ ] **pip / poetry / conda**: Limpiar registros de configuración de virtualenv e instalación de paquetes.
 
