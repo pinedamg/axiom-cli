@@ -7,7 +7,7 @@ pub mod transformer;
 pub mod commands;
 
 use crate::privacy::PrivacyRedactor;
-use crate::schema::{ToolSchema, Action};
+use crate::schema::ToolSchema;
 use crate::IntentContext;
 use crate::engine::discovery::DiscoveryEngine;
 use crate::engine::plugins::WasmPluginManager;
@@ -106,24 +106,21 @@ impl AxiomEngine {
 
         let redacted = self.redactor.redact(&working_line);
 
-        // 1. Check if this is a known structural line from a handler
-        let handler = self.handlers.iter().find(|h| h.matches(command)).map(|h| h.as_ref());
-        let is_structural = handler.map_or(false, |h| h.parse_line(&redacted).is_some());
-
-        if is_structural {
-            // Structural lines are always processed for synthesis first
-            let final_line = self.apply_compression(&redacted, command);
-            return self.apply_plugins(final_line);
-        }
-
-        // 2. For non-structural lines, check semantic relevance first
+        // 1. Semantic Check: If the IA says this is important, we show it immediately
         if self.is_semantically_relevant(&redacted, context) {
             return Some(redacted);
         }
 
-        // 3. Finally, fallback to generic noise discovery
-        let final_line = self.apply_compression(&redacted, command);
-        self.apply_plugins(final_line)
+        // 2. Structural Check: Try to synthesize or learn it
+        let handler = self.handlers.iter().find(|h| h.matches(command)).map(|h| h.as_ref());
+        if self.discovery.process_and_check_noise(&redacted, handler, command) {
+            // If it returns true, it means it's a known pattern and was synthesized/collapsed
+            return None;
+        }
+
+        // 3. Fallback: If it's not a known pattern and not relevant, 
+        // we still keep it so the user sees the output (Learning phase)
+        self.apply_plugins(Some(redacted))
     }
 
     fn apply_structural_transform(&self, line: &str) -> String {
@@ -149,33 +146,6 @@ impl AxiomEngine {
 
     fn is_semantically_relevant(&mut self, line: &str, context: &IntentContext) -> bool {
         context.is_relevant(line) || self.intelligence.is_relevant(&context.last_message, line, 0.7)
-    }
-
-    fn apply_compression(&mut self, line: &str, command: &str) -> Option<String> {
-        let handler = self.handlers.iter().find(|h| h.matches(command)).map(|h| h.as_ref());
-        if let Some(schema) = self.schemas.iter().find(|s| s.matches(command)) {
-            if let Some(action) = schema.apply_rules(line) {
-                return match action {
-                    Action::Keep => Some(line.to_string()),
-                    Action::Collapse => {
-                        self.discovery.process_and_check_noise(line, handler, command);
-                        None
-                    },
-                    Action::Redact => Some("[REDACTED_BY_SCHEMA]".to_string()),
-                    Action::Hidden => None,
-                    Action::Synthesize => {
-                        self.discovery.process_and_check_noise(line, handler, command);
-                        None
-                    },
-                };
-            }
-        }
-
-        if self.discovery.process_and_check_noise(line, handler, command) {
-            None
-        } else {
-            Some(line.to_string())
-        }
     }
 
     fn apply_plugins(&mut self, line: Option<String>) -> Option<String> {
