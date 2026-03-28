@@ -35,11 +35,18 @@ impl DiscoveryEngine {
         }
     }
 
-    fn parse_standard_ls(&self, line: &str, handler: Option<&dyn CommandHandler>) -> Vec<LineMetadata> {
+    fn parse_standard_ls(&self, line: &str, handler: Option<&dyn CommandHandler>, command: &str) -> Vec<LineMetadata> {
+        if !command.starts_with("ls") { return vec![]; }
+        
         let trimmed = line.trim();
         if trimmed.is_empty() || trimmed.starts_with('(') || trimmed.len() > 100 { return vec![]; }
         if line.starts_with('d') || line.starts_with('-') || line.starts_with('l') || line.starts_with("total") { return vec![]; }
         
+        // Anti-collision: skip lines that look like logs or structured data
+        if trimmed.starts_with('[') || trimmed.contains(": ") || trimmed.contains(" = ") {
+            return vec![];
+        }
+
         // Anti-collision with the current handler
         if handler.map_or(false, |h| h.parse_line(line).is_some()) { 
             return vec![]; 
@@ -51,10 +58,12 @@ impl DiscoveryEngine {
         }).collect()
     }
 
-    pub fn synthesize_line(&mut self, line: &str, handler: Option<&dyn CommandHandler>) -> bool {
+    pub fn synthesize_line(&mut self, line: &str, handler: Option<&dyn CommandHandler>, command: &str) -> bool {
         // 1. Try command-specific handler first (SOLID: Extension)
         if let Some(h) = handler {
             if let Some(meta) = h.parse_line(line) {
+                let is_outlier = h.is_outlier(line, &meta);
+                
                 let prefix = if meta.perms == "LOG_COMMIT" { 
                     "GIT" 
                 } else if ["Running", "Stopped", "Created", "LAYER", "BUILD", "COMPOSE"].contains(&meta.perms.as_str()) {
@@ -108,11 +117,14 @@ impl DiscoveryEngine {
                 };
 
                 self.synthesis_buffer.entry(key).or_default().push(meta);
-                return true;
+                
+                // If it's an outlier, we return false so the line is printed, 
+                // but it's already in the buffer for the final insight.
+                return !is_outlier;
             }
         }
 
-        let files = self.parse_standard_ls(line, handler);
+        let files = self.parse_standard_ls(line, handler, command);
         if !files.is_empty() {
             for meta in files {
                 let key = format!("EXT:{}", meta.perms.to_uppercase());
@@ -123,8 +135,8 @@ impl DiscoveryEngine {
         false
     }
 
-    pub fn process_and_check_noise(&mut self, line: &str, handler: Option<&dyn CommandHandler>) -> bool {
-        if self.synthesize_line(line, handler) { return true; }
+    pub fn process_and_check_noise(&mut self, line: &str, handler: Option<&dyn CommandHandler>, command: &str) -> bool {
+        if self.synthesize_line(line, handler, command) { return true; }
         let (template, vars) = self.extract_parts(line);
         let count = self.templates.entry(template.clone()).or_insert(0);
         *count += 1;
@@ -138,12 +150,25 @@ impl DiscoveryEngine {
 
     pub fn extract_parts(&self, line: &str) -> (String, Vec<String>) {
         let mut variables = Vec::new();
+        
+        let re_uuid = Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").unwrap();
+        let s = re_uuid.replace_all(line, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<UUID>" });
+        
+        let re_hex = Regex::new(r"0x[0-9a-fA-F]+").unwrap();
+        let s = re_hex.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<HEX>" });
+
+        let re_path = Regex::new(r"/[a-zA-Z0-9\._\-/]+").unwrap();
+        let s = re_path.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<PATH>" });
+
         let re_months = Regex::new(r"(?i)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)").unwrap();
-        let s = re_months.replace_all(line, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<MONTH>" });
+        let s = re_months.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<MONTH>" });
+        
         let re_time = Regex::new(r"\d{1,2}:\d{2}").unwrap();
         let s = re_time.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<TIME>" });
+        
         let re_num = Regex::new(r"\d+").unwrap();
         let s = re_num.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<NUM>" });
+        
         (s.to_string(), variables)
     }
 
@@ -184,7 +209,7 @@ impl DiscoveryEngine {
 
         for (template, var_sets) in self.variable_buffer.drain() {
             if var_sets.len() > 1 {
-                summaries.push(format!("Collapsed {} lines of pattern: {}", var_sets.len(), template));
+                summaries.push(format!("Line matched {} more times: {}", var_sets.len(), template));
             }
         }
         summaries

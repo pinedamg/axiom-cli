@@ -17,6 +17,14 @@
 `axiom docker logs -f backend`
 `axiom git status`
 
+## 🛡️ Escape Hatch (Raw Mode)
+If you suspect Axiom is hiding critical information or you need 100% metadata precision (timestamps, full paths, raw terminal formatting), you can bypass all synthesis by adding the `--raw` flag:
+
+`axiom --raw ls -la`
+`axiom --raw kubectl get pods`
+
+**Use this sparingly** to avoid context window saturation.
+
 *Axiom: Protecting your context, securing my data.*
 
 ## Discovery Intent Levels (Intelligence Mode)

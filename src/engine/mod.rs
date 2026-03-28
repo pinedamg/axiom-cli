@@ -106,12 +106,23 @@ impl AxiomEngine {
 
         let redacted = self.redactor.redact(&working_line);
 
-        let final_line = self.apply_compression(&redacted, command);
+        // 1. Check if this is a known structural line from a handler
+        let handler = self.handlers.iter().find(|h| h.matches(command)).map(|h| h.as_ref());
+        let is_structural = handler.map_or(false, |h| h.parse_line(&redacted).is_some());
 
-        if final_line.is_some() && self.is_semantically_relevant(&redacted, context) {
+        if is_structural {
+            // Structural lines are always processed for synthesis first
+            let final_line = self.apply_compression(&redacted, command);
+            return self.apply_plugins(final_line);
+        }
+
+        // 2. For non-structural lines, check semantic relevance first
+        if self.is_semantically_relevant(&redacted, context) {
             return Some(redacted);
         }
 
+        // 3. Finally, fallback to generic noise discovery
+        let final_line = self.apply_compression(&redacted, command);
         self.apply_plugins(final_line)
     }
 
@@ -129,7 +140,7 @@ impl AxiomEngine {
             if self.line_counter == 101 {
                 return Some(Some("(Guardian Mode: File too long. Summary follows...)".to_string()));
             }
-            if self.discovery.process_and_check_noise(line, handler) {
+            if self.discovery.process_and_check_noise(line, handler, command) {
                 return Some(None);
             }
         }
@@ -147,20 +158,20 @@ impl AxiomEngine {
                 return match action {
                     Action::Keep => Some(line.to_string()),
                     Action::Collapse => {
-                        self.discovery.process_and_check_noise(line, handler);
+                        self.discovery.process_and_check_noise(line, handler, command);
                         None
                     },
                     Action::Redact => Some("[REDACTED_BY_SCHEMA]".to_string()),
                     Action::Hidden => None,
                     Action::Synthesize => {
-                        self.discovery.process_and_check_noise(line, handler);
+                        self.discovery.process_and_check_noise(line, handler, command);
                         None
                     },
                 };
             }
         }
 
-        if self.discovery.process_and_check_noise(line, handler) {
+        if self.discovery.process_and_check_noise(line, handler, command) {
             None
         } else {
             Some(line.to_string())

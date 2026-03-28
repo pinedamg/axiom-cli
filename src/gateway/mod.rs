@@ -11,6 +11,7 @@ pub async fn execute_command(
     args: &[String],
     context: &IntentContext,
     session: &mut AxiomSession,
+    raw_mode: bool,
 ) -> anyhow::Result<()> {
     let mut child = Command::new(program)
         .args(args)
@@ -33,21 +34,39 @@ pub async fn execute_command(
         tokio::select! {
             line = stdout_lines.next_line() => {
                 match line? {
-                    Some(l) => process_line_output(&l, &command_str, context, session, &mut total_original, &mut total_compressed, false),
+                    Some(l) => {
+                        if raw_mode {
+                            println!("{}", l);
+                            total_original += l.len();
+                            total_compressed += l.len();
+                        } else {
+                            process_line_output(&l, &command_str, context, session, &mut total_original, &mut total_compressed, false);
+                        }
+                    },
                     None => break,
                 }
             }
             line = stderr_lines.next_line() => {
                 match line? {
-                    Some(l) => process_line_output(&l, &command_str, context, session, &mut total_original, &mut total_compressed, true),
+                    Some(l) => {
+                        if raw_mode {
+                            eprintln!("{}", l);
+                            total_original += l.len();
+                            total_compressed += l.len();
+                        } else {
+                            process_line_output(&l, &command_str, context, session, &mut total_original, &mut total_compressed, true);
+                        }
+                    },
                     None => {}, 
                 }
             }
         }
     }
 
-    // Flush final summaries and insights once the command execution is finished
-    flush_and_print_summaries(session, false);
+    if !raw_mode {
+        // Flush final summaries and insights once the command execution is finished
+        flush_and_print_summaries(session, false);
+    }
 
     session.finalize(&command_str, total_original, total_compressed)?;
     child.wait().await?;

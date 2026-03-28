@@ -108,10 +108,14 @@ impl CommandHandler for DockerHandler {
         match *type_label {
             "Running" | "Stopped" | "Created" => {
                 let image = parts.get(2).unwrap_or(&"unknown-image");
-                let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                Some(format!("Docker {}: {} containers from [{}] | {}", type_label, count, image, names.join(", ")))
+                let names: Vec<String> = items.iter().take(5).map(|m| m.name.clone()).collect();
+                let suffix = if count > 5 { format!(" and {} more...", count - 5) } else { "".to_string() };
+                Some(format!("Docker {}: {} containers from [{}] | {}{}", type_label, count, image, names.join(", "), suffix))
             },
-            "LAYER" => Some(format!("• Hidden {} layer progress updates.", count)),
+            "LAYER" => {
+                let examples: Vec<String> = items.iter().take(3).map(|m| m.name.clone()).collect();
+                Some(format!("• Hidden {} layer progress updates (e.g. {})", count, examples.join(", ")))
+            },
             "BUILD" => Some(format!("• Collapsed {} build steps.", count)),
             "COMPOSE" => {
                 let service = parts.get(2).unwrap_or(&"service");

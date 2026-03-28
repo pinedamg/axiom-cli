@@ -61,5 +61,10 @@ Axiom filters output based on its Intent Discovery engine. You MUST dynamically 
 *   **Level 2 - FUZZY (Standard/Keyword):** Use `axiom intent enable fuzzy`. This is the **default**. It filters based on keywords (`error`, `fail`, `version`) and Git context. Ideal for standard development and routine commands (`npm`, `cargo`).
 *   **Level 3 - NEURAL (Semantic/Deep):** Use `axiom intent enable neural`. Activate this mode proactively for complex debugging, obscure bug root-cause analysis, or when standard keyword filtering isn't providing enough semantic context to solve the problem.
 
+### 🛡️ Emergency Escape (Raw Mode)
+If you suspect Axiom is hiding data you need, or you require maximum precision (timestamps, full paths), use the `--raw` flag:
+`axiom --raw <command>`
+This bypasses all Axiom intelligence while still logging character savings for audit.
+
 ---
 *“In Axiom we trust, but we verify through Tiers.”*

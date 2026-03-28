@@ -21,6 +21,10 @@ struct Cli {
     /// Enable Markdown table transformation
     #[arg(short, long, global = true)]
     markdown: bool,
+
+    /// Show raw output, bypassing Axiom synthesis
+    #[arg(short, long, global = true)]
+    raw: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -188,7 +192,7 @@ async fn main() -> anyhow::Result<()> {
     // 5. Execute
     let program = &cli.proxy_args[0];
     let cmd_args = &cli.proxy_args[1..];
-    execute_command(program, cmd_args, &context, &mut session).await?;
+    execute_command(program, cmd_args, &context, &mut session, cli.raw).await?;
 
     Ok(())
 }

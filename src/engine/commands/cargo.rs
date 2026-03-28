@@ -66,11 +66,9 @@ impl CommandHandler for CargoHandler {
         let status = parts.get(1).unwrap_or(&"Unknown");
         let count = items.len();
         
-        if count > 5 {
-            Some(format!("• Cargo {}: {} crates processed (including {})", status, count, items[0].name))
-        } else {
-            let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-            Some(format!("• Cargo {}: {}", status, names.join(", ")))
-        }
+        let names: Vec<String> = items.iter().take(5).map(|m| m.name.clone()).collect();
+        let suffix = if count > 5 { format!(" and {} more...", count - 5) } else { "".to_string() };
+        
+        Some(format!("• Cargo {}: {} crates ({}{})", status, count, names.join(", "), suffix))
     }
 }
