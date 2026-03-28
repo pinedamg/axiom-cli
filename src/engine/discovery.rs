@@ -64,7 +64,7 @@ impl DiscoveryEngine {
             if let Some(meta) = h.parse_line(line) {
                 let is_outlier = h.is_outlier(line, &meta);
                 
-                let prefix = if meta.perms == "LOG_COMMIT" { 
+                let prefix = if ["LOG_COMMIT", "MODIFIED", "UNTRACKED", "DELETED", "NEW", "RENAMED", "STAGED"].contains(&meta.perms.as_str()) { 
                     "GIT" 
                 } else if ["Running", "Stopped", "Created", "LAYER", "BUILD", "COMPOSE"].contains(&meta.perms.as_str()) {
                     "DOCKER"
