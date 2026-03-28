@@ -25,6 +25,11 @@ pub trait CommandHandler: Send + Sync {
     fn format_summary(&self, _key: &str, _items: &[LineMetadata]) -> Option<String> {
         None 
     }
+    
+    /// Detects if a line contains critical information that should NOT be synthesized
+    fn is_outlier(&self, _line: &str, _meta: &LineMetadata) -> bool {
+        false
+    }
 }
 
 pub fn get_all_handlers() -> Vec<Box<dyn CommandHandler>> {

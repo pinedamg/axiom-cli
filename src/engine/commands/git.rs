@@ -108,4 +108,9 @@ impl CommandHandler for GitHandler {
             return Some(format!("Git {}: {} files in [{}] | {}", state, items.len(), folder, names.join(", ")));
         }
     }
+
+    fn is_outlier(&self, line: &str, _meta: &LineMetadata) -> bool {
+        // Detect merge conflicts
+        line.contains("both modified:") || line.contains("<<<<<<<") || line.contains("=======")
+    }
 }

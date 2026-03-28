@@ -71,11 +71,28 @@ impl CommandHandler for LsHandler {
         let label = parts[0];
         
         if label == "DIR" || label == "FILE" {
-            let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
+            let count = items.len();
             let perms = parts.get(1).unwrap_or(&"---");
-            return Some(format!("{} [{}] | {}", label, perms, names.join(", ")));
+            let names: Vec<String> = items.iter().take(5).map(|m| m.name.clone()).collect();
+            let suffix = if count > 5 { format!(" and {} more...", count - 5) } else { "".to_string() };
+            
+            return Some(format!("{} [{}] ({}) | {}{}", label, perms, count, names.join(", "), suffix));
         }
         
         None
+    }
+
+    fn is_outlier(&self, line: &str, meta: &LineMetadata) -> bool {
+        // Outlier if permissions are dangerous (777)
+        if meta.perms.contains("rwxrwxrwx") || line.contains("rwxrwxrwx") {
+            return true;
+        }
+        
+        // Outlier if file is very large (e.g. > 1GB)
+        if let Ok(size) = meta.size.parse::<u64>() {
+            if size > 1_000_000_000 { return true; }
+        }
+        
+        false
     }
 }

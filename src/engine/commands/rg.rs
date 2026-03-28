@@ -68,13 +68,17 @@ impl CommandHandler for RgHandler {
         if parts[0] != "SEARCH" { return None; }
 
         let location = parts.get(2).unwrap_or(&"unknown");
-        let line_count = items.len();
+        let count = items.len();
         
         if *location == "current" || *location == "local" {
-            Some(format!("• {} matches in current context", line_count))
+            let lines: Vec<String> = items.iter().take(3).map(|m| m.name.clone()).collect();
+            let suffix = if count > 3 { format!(" and {} more...", count - 3) } else { "".to_string() };
+            Some(format!("• {} matches in current context (lines: {}{})", count, lines.join(", "), suffix))
         } else {
             // Group by file
-            Some(format!("• {}: {} matches", location, line_count))
+            let lines: Vec<String> = items.iter().take(3).map(|m| m.name.clone()).collect();
+            let suffix = if count > 3 { format!(" and {} more...", count - 3) } else { "".to_string() };
+            Some(format!("• {}: {} matches (lines: {}{})", location, count, lines.join(", "), suffix))
         }
     }
 }

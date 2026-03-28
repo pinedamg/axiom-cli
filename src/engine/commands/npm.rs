@@ -76,14 +76,15 @@ impl CommandHandler for NpmHandler {
         let count = items.len();
         
         match *type_label {
-            "WARN" => Some(format!("• Hidden {} deprecation warnings from NPM ecosystem.", count)),
+            "WARN" => {
+                let examples: Vec<String> = items.iter().take(2).map(|m| m.name.clone()).collect();
+                let suffix = if count > 2 { format!(" and {} more...", count - 2) } else { "".to_string() };
+                Some(format!("• Hidden {} deprecation warnings (e.g. {}{})", count, examples.join(", "), suffix))
+            },
             "ADD" => {
-                if count > 5 {
-                    Some(format!("• Added {} packages (including {})", count, items[0].name))
-                } else {
-                    let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                    Some(format!("• Added packages: {}", names.join(", ")))
-                }
+                let names: Vec<String> = items.iter().take(5).map(|m| m.name.clone()).collect();
+                let suffix = if count > 5 { format!(" and {} more...", count - 5) } else { "".to_string() };
+                Some(format!("• Added {} packages ({}{})", count, names.join(", "), suffix))
             },
             "AUDIT" => Some(format!("• Security Audit: {} vulnerabilities found and collapsed.", count)),
             _ => None

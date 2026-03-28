@@ -75,12 +75,34 @@ impl CommandHandler for KubectlHandler {
         match *type_label {
             "RESOURCE" => {
                 let status = parts.get(2).unwrap_or(&"Stable");
-                let names: Vec<String> = items.iter().take(3).map(|m| m.name.clone()).collect();
-                let suffix = if count > 3 { format!(" and {} more...", count - 3) } else { "".to_string() };
+                let names: Vec<String> = items.iter().take(5).map(|m| m.name.clone()).collect();
+                let suffix = if count > 5 { format!(" and {} more...", count - 5) } else { "".to_string() };
                 Some(format!("• {} [{}]: {}{}", status, count, names.join(", "), suffix))
             },
-            "METADATA" => Some(format!("• Collapsed {} metadata fields (Labels/Annotations).", count)),
+            "METADATA" => {
+                let fields: Vec<String> = items.iter().take(3).map(|m| m.size.clone()).collect();
+                let suffix = if count > 3 { format!(" and {} more...", count - 3) } else { "".to_string() };
+                Some(format!("• Collapsed {} metadata fields ({}{})", count, fields.join(", "), suffix))
+            },
             _ => None
         }
+    }
+
+    fn is_outlier(&self, line: &str, meta: &LineMetadata) -> bool {
+        if meta.perms == "RESOURCE" {
+            // Outlier if state is not Running/Completed or if restarts > 0
+            if meta.size != "Running" && meta.size != "Completed" {
+                return true;
+            }
+            
+            // Check for restarts in the line (usually column 4 in kubectl get pods)
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 4 {
+                if let Ok(restarts) = parts[3].parse::<u32>() {
+                    if restarts > 0 { return true; }
+                }
+            }
+        }
+        false
     }
 }
