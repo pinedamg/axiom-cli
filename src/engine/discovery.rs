@@ -138,7 +138,16 @@ impl DiscoveryEngine {
     pub fn process_and_check_noise(&mut self, line: &str, handler: Option<&dyn CommandHandler>, command: &str) -> bool {
         if self.synthesize_line(line, handler, command) { return true; }
         let (template, vars) = self.extract_parts(line);
+        
         let count = self.templates.entry(template.clone()).or_insert(0);
+        
+        // If we already have high confidence in this pattern (e.g. loaded from DB with high frequency),
+        // collapse it immediately. Otherwise, wait for the threshold.
+        if *count > self.threshold {
+            self.variable_buffer.entry(template).or_default().push(vars);
+            return true;
+        }
+
         *count += 1;
         if *count > self.threshold {
             self.variable_buffer.entry(template).or_default().push(vars);
