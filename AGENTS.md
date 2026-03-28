@@ -11,6 +11,7 @@
 ## Execution Rules:
 - **ALWAYS** prefix with `axiom` for: `npm`, `cargo`, `docker`, `git diff`, `kubectl`, and any log-heavy command.
 - **NEVER** bypass Axiom unless explicitly asked for a raw debugging stream.
+- **SELF-CORRECTION**: If a summary provided by Axiom seems too sparse, lacks specific metadata you need (timestamps, line numbers), or if you suspect critical information was collapsed, you are authorized and encouraged to re-run the command adding the `--raw` flag.
 
 ## Example Usage:
 `axiom npm install`
