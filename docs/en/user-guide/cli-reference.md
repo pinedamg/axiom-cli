@@ -8,6 +8,16 @@ The Axiom CLI provides several commands to manage your installation, view analyt
 The primary usage. Acts as a proxy for the provided command.
 - **Usage**: `axiom npm install`, `axiom docker logs my-container`
 - **Behavior**: Intercepts the command's output, applies privacy filters, semantic compression, and outputs the optimized stream.
+- **Flags**:
+  - `--raw`: Bypasses all Axiom processing and synthesis. Outputs the exact stream from the child process.
+  - `--markdown`: Enables automatic transformation of terminal tables into Markdown format.
+
+### `axiom intent`
+Manages the intelligence and relevance filtering levels.
+- **Subcommands**:
+  - `enable <mode>`: Enables intent-based filtering. Modes: `fuzzy` (default), `neural`.
+  - `disable`: Sets intelligence to Level 1 (OFF). Only structure and privacy are processed.
+  - `status`: Shows current intelligence mode and discovered intent.
 
 ### `axiom gain`
 Displays analytics on your token and cost savings.

@@ -38,3 +38,12 @@ To see a detailed history of your token savings per command:
 ```bash
 axiom gain --history
 ```
+
+## Adjusting Intelligence
+
+Depending on your task, you can change how aggressively Axiom filters output:
+
+*   **Deep Debugging**: `axiom intent enable neural` (Uses local AI embeddings).
+*   **Standard Mode**: `axiom intent enable fuzzy` (Default, keyword-based).
+*   **Just Summaries**: `axiom intent disable` (No AI relevance filtering).
+*   **Total Bypass**: `axiom --raw <command>` (Raw output).

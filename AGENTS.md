@@ -17,19 +17,19 @@
 `axiom docker logs -f backend`
 `axiom git status`
 
-## 🛡️ Escape Hatch (Raw Mode)
-If you suspect Axiom is hiding critical information or you need 100% metadata precision (timestamps, full paths, raw terminal formatting), you can bypass all synthesis by adding the `--raw` flag:
+## Intelligence Depth Levels
+Axiom provides four levels of filtering depth. You should dynamically adjust your level based on task complexity:
 
-`axiom --raw ls -la`
-`axiom --raw kubectl get pods`
+| Level | Command / Flag | Processing | Best for... |
+| :--- | :--- | :--- | :--- |
+| **0 - RAW** | `axiom --raw <cmd>` | None (Bypass) | Precision debugging, forensics, timestamps. |
+| **1 - OFF** | `axiom intent disable` | Structure + Privacy | Routine tasks with no AI-relevance filtering. |
+| **2 - FUZZY** | `axiom intent enable fuzzy` | Keywords + Git | **Default**. Standard development & noise reduction. |
+| **3 - NEURAL** | `axiom intent enable neural` | Semantic SLM | Complex debugging where meaning > keywords. |
+
+## 🛡️ Escape Hatch (Raw Mode)
+If you suspect Axiom is hiding critical information or you need 100% metadata precision (timestamps, full paths, raw terminal formatting), use the **Level 0 (RAW)** by adding the `--raw` flag.
 
 **Use this sparingly** to avoid context window saturation.
 
 *Axiom: Protecting your context, securing my data.*
-
-## Discovery Intent Levels (Intelligence Mode)
-Axiom operates using three distinct intelligence levels to filter output based on user/agent intent. You can manipulate these modes to adjust the context depth you receive:
-
-1. **OFF (`axiom intent disable`)**: Disables relevance filtering. Axiom only performs basic noise reduction, secret redaction, and formatting. Use this when you need an unfiltered, raw view of the execution logs.
-2. **FUZZY (`axiom intent enable fuzzy`)**: The **default** mode. Axiom filters output based on predefined keywords (like `error`, `fail`) and recent Git context. Best for standard workflows.
-3. **NEURAL (`axiom intent enable neural`)**: Uses local semantic embeddings to deeply analyze the session intent. Use this proactively for complex architectural debugging or obscure bugs where keyword filtering is insufficient.
