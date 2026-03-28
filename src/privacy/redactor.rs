@@ -4,29 +4,39 @@ use crate::privacy::entropy::calculate_entropy;
 pub struct PrivacyRedactor {
     entropy_threshold: f64,
     pii_patterns: Vec<Regex>,
+    secret_patterns: Vec<Regex>,
     word_regex: Regex,
 }
 
 impl PrivacyRedactor {
     pub fn new(entropy_threshold: f64, pii_patterns: Vec<String>) -> Self {
-        let compiled_patterns = pii_patterns
+        let compiled_pii = pii_patterns
             .into_iter()
             .filter_map(|p| Regex::new(&p).ok())
             .collect();
 
+        // High-confidence exact patterns for standard credentials
+        let secret_patterns = vec![
+            Regex::new(r"AKIA[0-9A-Z]{16}").unwrap(), // AWS Access Key
+            Regex::new(r"gh[pousr]_[A-Za-z0-9_]{36,255}").unwrap(), // GitHub Tokens
+            Regex::new(r"eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+").unwrap(), // JWT
+        ];
+
         Self {
             entropy_threshold,
-            pii_patterns: compiled_patterns,
-            word_regex: Regex::new(r"\S+").unwrap(),
+            pii_patterns: compiled_pii,
+            secret_patterns,
+            // Isolate alphanumeric sequences (potentially with dashes/underscores) to separate from '='
+            word_regex: Regex::new(r"[a-zA-Z0-9_-]+").unwrap(),
         }
     }
 }
 
 impl Default for PrivacyRedactor {
     fn default() -> Self {
-        Self::new(4.5, vec![
-            r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}".to_string(),
-            r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b".to_string(),
+        Self::new(3.5, vec![ // Lowered threshold from 4.5 to 3.5 to catch 16-20 char secrets
+            r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}".to_string(), // Email
+            r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b".to_string(), // IP Address
         ])
     }
 }
@@ -35,20 +45,26 @@ impl PrivacyRedactor {
     pub fn redact(&self, input: &str) -> String {
         let mut output = input.to_string();
 
-        // 1. Regex Redaction (PII)
+        // 1. Exact Pattern Redaction (High Confidence Secrets)
+        for pattern in &self.secret_patterns {
+            output = pattern.replace_all(&output, "[REDACTED_SECRET]").to_string();
+        }
+
+        // 2. Regex Redaction (PII)
         for pattern in &self.pii_patterns {
             output = pattern.replace_all(&output, "[REDACTED_PII]").to_string();
         }
 
-        // 2. Entropy Redaction (Secrets) - Optimized single-pass
-        // We use Cow::Owned to avoid lifetime issues with the captures reference
+        // 3. Entropy Redaction (Generic Secrets fallback)
         self.word_regex.replace_all(&output, |caps: &regex::Captures| {
             let word = &caps[0];
-            if word.len() > 10 && calculate_entropy(word) > self.entropy_threshold {
-                std::borrow::Cow::Owned("[REDACTED_SECRET]".to_string())
-            } else {
-                std::borrow::Cow::Owned(word.to_string())
+            // Only check entropy for words longer than 15 chars that aren't already redacted
+            if word.len() > 15 && !word.starts_with("REDACTED") {
+                if calculate_entropy(word) > self.entropy_threshold {
+                    return std::borrow::Cow::Owned("[REDACTED_SECRET]".to_string());
+                }
             }
+            std::borrow::Cow::Owned(word.to_string())
         }).to_string()
     }
 }
