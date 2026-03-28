@@ -12,35 +12,50 @@ impl CommandHandler for RgHandler {
         let trimmed = line.trim();
         if trimmed.is_empty() { return None; }
 
-        // Standard grep/rg output: file:line:content
+        // Standard grep/rg output usually has a colon.
+        // Formats:
+        // 1. file:line:content (with -n)
+        // 2. file:content (without -n)
+        // 3. line:content (single file with -n)
         let parts: Vec<&str> = trimmed.splitn(3, ':').collect();
-        if parts.len() < 3 { 
-            // Handle single-file grep output: line:content
-            if parts.len() == 2 && parts[0].chars().all(|c| c.is_ascii_digit()) {
+        
+        if parts.len() == 3 {
+            let file = parts[0];
+            let line_num = parts[1];
+            if line_num.chars().all(|c| c.is_ascii_digit()) && !file.contains(' ') {
                 return Some(LineMetadata {
                     perms: "MATCH".to_string(),
-                    size: "current".to_string(),
-                    name: "local".to_string(),
+                    size: file.to_string(),
+                    name: line_num.to_string(),
                     is_dir: false,
                 });
             }
-            return None; 
         }
 
-        let file = parts[0];
-        let line_num = parts[1];
-        
-        // Validate it's likely a grep output
-        if !line_num.chars().all(|c| c.is_ascii_digit()) || file.contains(' ') {
-            return None;
+        if parts.len() >= 2 {
+            let first = parts[0];
+            // If it's a number, it's format #3 (local file)
+            if first.chars().all(|c| c.is_ascii_digit()) {
+                return Some(LineMetadata {
+                    perms: "MATCH".to_string(),
+                    size: "local".to_string(),
+                    name: first.to_string(),
+                    is_dir: false,
+                });
+            }
+            
+            // If it's a valid looking filename (no spaces, has extensions or paths), it's format #2
+            if !first.contains(' ') && (first.contains('.') || first.contains('/')) {
+                return Some(LineMetadata {
+                    perms: "MATCH".to_string(),
+                    size: first.to_string(),
+                    name: "0".to_string(), // Unknown line
+                    is_dir: false,
+                });
+            }
         }
 
-        Some(LineMetadata {
-            perms: "MATCH".to_string(),
-            size: file.to_string(),
-            name: line_num.to_string(),
-            is_dir: false,
-        })
+        None
     }
 
     fn generate_insight(&self, _command: &str, buffer: &DiscoveryBuffer) -> Option<String> {

@@ -73,6 +73,24 @@ pub async fn execute_command(
     Ok(())
 }
 
+use std::io::Write;
+
+fn safe_print(msg: &str, is_stderr: bool) {
+    let result = if is_stderr {
+        let mut stderr = std::io::stderr().lock();
+        writeln!(stderr, "{}", msg)
+    } else {
+        let mut stdout = std::io::stdout().lock();
+        writeln!(stdout, "{}", msg)
+    };
+
+    if let Err(e) = result {
+        if e.kind() == std::io::ErrorKind::BrokenPipe {
+            std::process::exit(0);
+        }
+    }
+}
+
 fn process_line_output(
     line: &str,
     command: &str,
@@ -85,7 +103,7 @@ fn process_line_output(
     *total_original += line.len();
     if let Some(processed) = session.engine.process_line(line, command, context) {
         *total_compressed += processed.len();
-        if is_stderr { eprintln!("{}", processed); } else { println!("{}", processed); }
+        safe_print(&processed, is_stderr);
     }
 }
 
@@ -95,10 +113,10 @@ fn flush_and_print_summaries(session: &mut AxiomSession, is_stderr: bool) {
 
     // Compact Header for token efficiency
     let header = "\x1b[1;33m[AXIOM]\x1b[0m";
-    if is_stderr { eprintln!("{}", header); } else { println!("{}", header); }
+    safe_print(header, is_stderr);
 
     for summary in summaries {
         let msg = format!("\x1b[33m• {}\x1b[0m", summary);
-        if is_stderr { eprintln!("{}", msg); } else { println!("{}", msg); }
+        safe_print(&msg, is_stderr);
     }
 }

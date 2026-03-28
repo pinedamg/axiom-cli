@@ -1,5 +1,5 @@
 name: linux-io
-command_pattern: "^(cat|tail|head|curl|wget)"
+command_pattern: "^(curl|wget)"
 rules:
   - name: NetworkActivity
     pattern: ".*"
