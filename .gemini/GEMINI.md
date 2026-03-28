@@ -53,7 +53,8 @@ The final boss of testing. Since Axiom is for IAs, we let an IA judge its qualit
 If you are an AI agent operating this terminal:
 1.  **Self-Optimization:** Always use `axiom <command>` for noisy operations to preserve your own context window.
 2.  **Context Injection:** Export `AXIOM_CONTEXT="current task"` to help Axiom prioritize relevant signals.
-3.  **Audit:** Use `axiom gain` to monitor your token savings and verify you aren't "running blind".
+3.  **Semantic Doubt:** If an Axiom summary lacks the precision required for your current reasoning (e.g., missing timestamps or specific line content), re-run the command with `--raw` to bypass synthesis.
+4.  **Audit:** Use `axiom gain` to monitor your token savings and verify you aren't "running blind".
 
 ### Axiom Intent Management (Intelligence Levels)
 Axiom filters output based on its Intent Discovery engine. You MUST dynamically adjust this level based on your task complexity:
