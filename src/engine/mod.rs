@@ -7,7 +7,7 @@ pub mod transformer;
 pub mod commands;
 
 use crate::privacy::PrivacyRedactor;
-use crate::schema::ToolSchema;
+use crate::schema::{ToolSchema, Action};
 use crate::IntentContext;
 use crate::engine::discovery::DiscoveryEngine;
 use crate::engine::plugins::WasmPluginManager;
@@ -105,21 +105,56 @@ impl AxiomEngine {
         }
 
         let redacted = self.redactor.redact(&working_line);
+        let mut processed_by_discovery = false;
 
-        // 1. Semantic Check: If the IA says this is important, we show it immediately
+        // 1. Schema Check: Does the YAML have an explicit instruction for this line?
+        let handler_idx = self.handlers.iter().position(|h| h.matches(command));
+
+        if let Some(schema) = self.schemas.iter().find(|s| s.matches(command)) {
+            if let Some(action) = schema.apply_rules(&redacted) {
+                match action {
+                    Action::Keep => return Some(redacted),
+                    Action::Redact => return Some("[REDACTED_BY_SCHEMA]".to_string()),
+                    Action::Hidden => return None,
+                    Action::Collapse | Action::Synthesize => {
+                        let handler = handler_idx.map(|idx| self.handlers[idx].as_ref());
+                        processed_by_discovery = true;
+                        if self.discovery.process_and_check_noise(&redacted, handler, command) {
+                            return None;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Structural Check: If no schema rule, does a handler know this?
+        let is_known_by_handler = if let Some(idx) = handler_idx {
+            self.handlers[idx].parse_line(&redacted).is_some()
+        } else {
+            false
+        };
+
+        if is_known_by_handler && !processed_by_discovery {
+            let handler = self.handlers[handler_idx.unwrap()].as_ref();
+            processed_by_discovery = true;
+            if self.discovery.process_and_check_noise(&redacted, Some(handler), command) {
+                return None;
+            }
+        }
+
+        // 3. Semantic Check: If the IA says this is important
         if self.is_semantically_relevant(&redacted, context) {
             return Some(redacted);
         }
 
-        // 2. Structural Check: Try to synthesize or learn it
-        let handler = self.handlers.iter().find(|h| h.matches(command)).map(|h| h.as_ref());
-        if self.discovery.process_and_check_noise(&redacted, handler, command) {
-            // If it returns true, it means it's a known pattern and was synthesized/collapsed
-            return None;
+        // 4. Fallback: Generic pattern discovery
+        if !processed_by_discovery {
+            let handler = handler_idx.map(|idx| self.handlers[idx].as_ref());
+            if self.discovery.process_and_check_noise(&redacted, handler, command) {
+                return None;
+            }
         }
 
-        // 3. Fallback: If it's not a known pattern and not relevant, 
-        // we still keep it so the user sees the output (Learning phase)
         self.apply_plugins(Some(redacted))
     }
 
