@@ -44,6 +44,12 @@ impl PrivacyRedactor {
         // We use Cow::Owned to avoid lifetime issues with the captures reference
         self.word_regex.replace_all(&output, |caps: &regex::Captures| {
             let word = &caps[0];
+
+            // ⚡ Bolt: Evitamos falsos positivos en SHAs de Git y IDs de Docker saltando 40 y 64 chars hex.
+            if (word.len() == 40 || word.len() == 64) && word.chars().all(|c| c.is_ascii_hexdigit()) {
+                return std::borrow::Cow::Owned(word.to_string());
+            }
+
             if word.len() > 10 && calculate_entropy(word) > self.entropy_threshold {
                 std::borrow::Cow::Owned("[REDACTED_SECRET]".to_string())
             } else {

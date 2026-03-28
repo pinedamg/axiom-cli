@@ -1,5 +1,6 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use regex::Regex;
+use std::sync::OnceLock;
 use crate::engine::commands::CommandHandler;
 
 #[derive(Debug, Clone)]
@@ -11,18 +12,18 @@ pub struct LineMetadata {
 }
 
 pub struct DiscoveryEngine {
-    pub templates: HashMap<String, usize>,
-    pub synthesis_buffer: HashMap<String, Vec<LineMetadata>>,
-    pub variable_buffer: HashMap<String, Vec<Vec<String>>>,
+    pub templates: BTreeMap<String, usize>,
+    pub synthesis_buffer: BTreeMap<String, Vec<LineMetadata>>,
+    pub variable_buffer: BTreeMap<String, Vec<Vec<String>>>,
     pub threshold: usize,
 }
 
 impl Default for DiscoveryEngine {
     fn default() -> Self {
         Self {
-            templates: HashMap::new(),
-            synthesis_buffer: HashMap::new(),
-            variable_buffer: HashMap::new(),
+            templates: BTreeMap::new(),
+            synthesis_buffer: BTreeMap::new(),
+            variable_buffer: BTreeMap::new(),
             threshold: 5,
         }
     }
@@ -107,74 +108,92 @@ impl DiscoveryEngine {
     }
 
     pub fn extract_parts(&self, line: &str) -> (String, Vec<String>) {
+        static RE_MONTHS: OnceLock<Regex> = OnceLock::new();
+        static RE_TIME: OnceLock<Regex> = OnceLock::new();
+        static RE_NUM: OnceLock<Regex> = OnceLock::new();
+
+        // ⚡ Bolt: Cacheamos las Regex estáticamente para evitar compilar en el "hot path" de procesamiento de líneas.
+        let re_months = RE_MONTHS.get_or_init(|| Regex::new(r"(?i)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)").unwrap());
+        let re_time = RE_TIME.get_or_init(|| Regex::new(r"\d{1,2}:\d{2}").unwrap());
+        let re_num = RE_NUM.get_or_init(|| Regex::new(r"\d+").unwrap());
+
+        static RE_UUID: OnceLock<Regex> = OnceLock::new();
+        static RE_HEX: OnceLock<Regex> = OnceLock::new();
+        let re_uuid = RE_UUID.get_or_init(|| Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").unwrap());
+        let re_hex = RE_HEX.get_or_init(|| Regex::new(r"0x[0-9a-fA-F]+").unwrap());
+
+        static RE_PATH: OnceLock<Regex> = OnceLock::new();
+        let re_path = RE_PATH.get_or_init(|| Regex::new(r"/[a-zA-Z0-9_.-]+(?:/[a-zA-Z0-9_.-]+)+").unwrap());
+
         let mut variables = Vec::new();
-        let re_months = Regex::new(r"(?i)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)").unwrap();
-        let s = re_months.replace_all(line, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<MONTH>" });
-        let re_time = Regex::new(r"\d{1,2}:\d{2}").unwrap();
+        let s = re_path.replace_all(line, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<PATH>" });
+        let s = re_uuid.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<UUID>" });
+        let s = re_hex.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<HEX>" });
+        let s = re_months.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<MONTH>" });
         let s = re_time.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<TIME>" });
-        let re_num = Regex::new(r"\d+").unwrap();
         let s = re_num.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<NUM>" });
         (s.to_string(), variables)
     }
 
     pub fn flush_variable_summary(&mut self) -> Vec<String> {
-        let mut summaries = Vec::new();
-        let mut keys: Vec<_> = self.synthesis_buffer.keys().cloned().collect();
-        keys.sort();
+        // ⚡ Bolt: Pre-asignamos la capacidad de "summaries" basados en los buffers para evitar reasignaciones en el heap.
+        let mut summaries = Vec::with_capacity(self.synthesis_buffer.len() + self.variable_buffer.len());
+
+        // ⚡ Bolt: Iteramos drenando el BTreeMap directamente con std::mem::take en vez de clonar keys y ordenarlas.
+        // BTreeMap nos asegura que la iteración ya está ordenada por la llave.
+        let sorted_buffer = std::mem::take(&mut self.synthesis_buffer);
 
         let mut log_count = 0;
         let mut log_hashes = Vec::new();
 
-        for key in keys {
-            if let Some(items) = self.synthesis_buffer.remove(&key) {
-                let parts: Vec<&str> = key.split(':').collect();
-                let label = parts[0];
+        for (key, items) in sorted_buffer {
+            let parts: Vec<&str> = key.split(':').collect();
+            let label = parts[0];
 
-                match label {
-                    "DOCKER" => {
-                        let status = parts[1];
-                        let image = parts[2];
+            match label {
+                "DOCKER" => {
+                    let status = parts[1];
+                    let image = parts[2];
+                    let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
+                    summaries.push(format!("Docker {}: {} containers from image [{}] | {}", status, items.len(), image, names.join(", ")));
+                },
+                "GIT" => {
+                    let state = parts[1];
+                    if state == "LOG_COMMIT" {
+                        log_count += items.len();
+                        log_hashes.extend(items.iter().map(|m| m.size.clone()));
+                    } else {
+                        let folder = parts[2];
                         let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                        summaries.push(format!("Docker {}: {} containers from image [{}] | {}", status, items.len(), image, names.join(", ")));
-                    },
-                    "GIT" => {
-                        let state = parts[1];
-                        if state == "LOG_COMMIT" {
-                            log_count += items.len();
-                            log_hashes.extend(items.iter().map(|m| m.size.clone()));
-                        } else {
-                            let folder = parts[2];
-                            let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                            summaries.push(format!("Git {}: {} files in [{}] | {}", state, items.len(), folder, names.join(", ")));
-                        }
-                    },
-                    "PROC" => {
-                        let cmd = parts[1];
-                        let users: std::collections::HashSet<_> = items.iter().map(|m| &m.perms).collect();
-                        let mut user_list: Vec<_> = users.into_iter().cloned().collect();
-                        user_list.sort();
-                        summaries.push(format!("Active processes: {} (count: {}) | Owners: {}", cmd, items.len(), user_list.join(", ")));
-                    },
-                    "KERNEL" => summaries.push(format!("Kernel Workers: {} (count: {})", parts[1], items.len())),
-                    "DIR" | "FILE" => {
-                        let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                        let perms = parts.get(1).unwrap_or(&"---");
-                        summaries.push(format!("{} [{}] | {}", label, perms, names.join(", ")));
-                    },
-                    "EXT" => {
-                        let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                        summaries.push(format!("Grouped {} files by extension [{}] | {}", items.len(), parts[1], names.join(", ")));
-                    },
-                    _ => summaries.push(format!("Summary for {}: {} items", label, items.len()))
-                };
-            }
+                        summaries.push(format!("Git {}: {} files in [{}] | {}", state, items.len(), folder, names.join(", ")));
+                    }
+                },
+                "PROC" => {
+                    let cmd = parts[1];
+                    let users: std::collections::HashSet<_> = items.iter().map(|m| &m.perms).collect();
+                    let mut user_list: Vec<_> = users.into_iter().cloned().collect();
+                    user_list.sort();
+                    summaries.push(format!("Active processes: {} (count: {}) | Owners: {}", cmd, items.len(), user_list.join(", ")));
+                },
+                "KERNEL" => summaries.push(format!("Kernel Workers: {} (count: {})", parts[1], items.len())),
+                "DIR" | "FILE" => {
+                    let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
+                    let perms = parts.get(1).unwrap_or(&"---");
+                    summaries.push(format!("{} [{}] | {}", label, perms, names.join(", ")));
+                },
+                "EXT" => {
+                    let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
+                    summaries.push(format!("Grouped {} files by extension [{}] | {}", items.len(), parts[1], names.join(", ")));
+                },
+                _ => summaries.push(format!("Summary for {}: {} items", label, items.len()))
+            };
         }
 
         if log_count > 0 {
             summaries.push(format!("Git History: {} recent commits | Hashes: {}...", log_count, log_hashes.join(", ")));
         }
 
-        for (template, var_sets) in self.variable_buffer.drain() {
+        for (template, var_sets) in std::mem::take(&mut self.variable_buffer) {
             if var_sets.len() > 1 {
                 summaries.push(format!("Collapsed {} lines of pattern: {}", var_sets.len(), template));
             }

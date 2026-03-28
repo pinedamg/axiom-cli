@@ -1,12 +1,12 @@
 use crate::engine::discovery::LineMetadata;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 pub mod git;
 pub mod docker;
 pub mod ls;
 pub mod ps;
 
-pub type DiscoveryBuffer = HashMap<String, Vec<LineMetadata>>;
+pub type DiscoveryBuffer = BTreeMap<String, Vec<LineMetadata>>;
 
 pub trait CommandHandler: Send + Sync {
     fn matches(&self, command: &str) -> bool;
