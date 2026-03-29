@@ -15,6 +15,8 @@ pub struct DiscoveryEngine {
     pub synthesis_buffer: HashMap<String, Vec<LineMetadata>>,
     pub variable_buffer: HashMap<String, Vec<Vec<String>>>,
     pub threshold: usize,
+    pub last_line: Option<String>,
+    pub repeat_count: usize,
 }
 
 impl Default for DiscoveryEngine {
@@ -24,6 +26,8 @@ impl Default for DiscoveryEngine {
             synthesis_buffer: HashMap::new(),
             variable_buffer: HashMap::new(),
             threshold: 5,
+            last_line: None,
+            repeat_count: 0,
         }
     }
 }

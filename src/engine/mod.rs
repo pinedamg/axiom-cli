@@ -9,6 +9,8 @@ pub mod installer;
 pub mod updater;
 pub mod doctor;
 
+use std::io::{self, Write};
+use std::fs::OpenOptions;
 use crate::privacy::PrivacyRedactor;
 use crate::schema::{ToolSchema, Action};
 use crate::IntentContext;
@@ -101,10 +103,26 @@ impl AxiomEngine {
         self.line_counter += 1;
         self.last_command = command.to_string();
 
+        // 0. The Tee System (Raw Backup)
+        let _ = Self::backup_raw_line(line);
+
+        // 0.5 Aggressive Vertical Deduplication
+        let mut dedup_prefix = None;
+        if self.discovery.last_line.as_deref() == Some(line) {
+            self.discovery.repeat_count += 1;
+            return None; // Swallowed
+        } else {
+            if self.discovery.repeat_count > 0 {
+                dedup_prefix = Some(format!("... (previous line repeated {} more times)", self.discovery.repeat_count));
+            }
+            self.discovery.last_line = Some(line.to_string());
+            self.discovery.repeat_count = 0;
+        }
+
         let working_line = self.apply_structural_transform(line);
 
         if let Some(guard_result) = self.apply_resource_guard(&working_line, command, context) {
-            return guard_result;
+            return self.wrap_with_prefix(dedup_prefix, guard_result);
         }
 
         let redacted = self.redactor.redact(&working_line);
@@ -116,14 +134,14 @@ impl AxiomEngine {
         if let Some(schema) = self.schemas.iter().find(|s| s.matches(command)) {
             if let Some(action) = schema.apply_rules(&redacted) {
                 match action {
-                    Action::Keep => return Some(redacted),
-                    Action::Redact => return Some("[REDACTED_BY_SCHEMA]".to_string()),
-                    Action::Hidden => return None,
+                    Action::Keep => return self.wrap_with_prefix(dedup_prefix, Some(redacted)),
+                    Action::Redact => return self.wrap_with_prefix(dedup_prefix, Some("[REDACTED_BY_SCHEMA]".to_string())),
+                    Action::Hidden => return self.wrap_with_prefix(dedup_prefix, None),
                     Action::Collapse | Action::Synthesize => {
                         let handler = handler_idx.map(|idx| self.handlers[idx].as_ref());
                         processed_by_discovery = true;
                         if self.discovery.process_and_check_noise(&redacted, handler, command) {
-                            return None;
+                            return self.wrap_with_prefix(dedup_prefix, None);
                         }
                     }
                 }
@@ -141,24 +159,33 @@ impl AxiomEngine {
             let handler = self.handlers[handler_idx.unwrap()].as_ref();
             processed_by_discovery = true;
             if self.discovery.process_and_check_noise(&redacted, Some(handler), command) {
-                return None;
+                return self.wrap_with_prefix(dedup_prefix, None);
             }
         }
 
         // 3. Semantic Check: If the IA says this is important
         if self.is_semantically_relevant(&redacted, context) {
-            return Some(redacted);
+            return self.wrap_with_prefix(dedup_prefix, Some(redacted));
         }
 
         // 4. Fallback: Generic pattern discovery
         if !processed_by_discovery {
             let handler = handler_idx.map(|idx| self.handlers[idx].as_ref());
             if self.discovery.process_and_check_noise(&redacted, handler, command) {
-                return None;
+                return self.wrap_with_prefix(dedup_prefix, None);
             }
         }
 
-        self.apply_plugins(Some(redacted))
+        let final_output = self.apply_plugins(Some(redacted));
+        self.wrap_with_prefix(dedup_prefix, final_output)
+    }
+
+    fn wrap_with_prefix(&self, prefix: Option<String>, output: Option<String>) -> Option<String> {
+        match (prefix, output) {
+            (Some(p), Some(o)) => Some(format!("{}\n{}", p, o)),
+            (Some(p), None) => Some(p),
+            (None, o) => o,
+        }
     }
 
     fn apply_structural_transform(&self, line: &str) -> String {
@@ -194,5 +221,20 @@ impl AxiomEngine {
             }
             (l, _) => l,
         }
+    }
+
+    fn backup_raw_line(line: &str) -> io::Result<()> {
+        let path = std::path::Path::new("/tmp/axiom/last_run.log");
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)?;
+
+        writeln!(file, "{}", line)?;
+        Ok(())
     }
 }

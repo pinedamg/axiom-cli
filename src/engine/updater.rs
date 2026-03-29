@@ -1,9 +1,7 @@
 use serde::Deserialize;
 use std::env;
 use std::fs;
-use std::io::{self, Read};
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::io::Read;
 
 #[derive(Deserialize, Debug)]
 struct Release {
