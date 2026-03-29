@@ -1,0 +1,29 @@
+# Axiom Sandbox Lab: Safe Installation Testing
+FROM ubuntu:22.04
+
+# Install basic tools for testing
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    zsh \
+    bash \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a test user to avoid running as root
+RUN useradd -m -s /bin/zsh axiom-tester && \
+    echo "axiom-tester ALL=(ALL) NOPASSWD:ALL" >> /etc/whitelist
+
+USER axiom-tester
+WORKDIR /home/axiom-tester
+
+# Initialize empty shell configs
+RUN touch .zshrc .bashrc
+
+# Copy the project files (we will mount them or copy them for testing)
+# For now, we simulate the environment
+ENV AXIOM_HOME=/home/axiom-tester/.axiom
+RUN mkdir -p $AXIOM_HOME
+
+# Entrypoint: Just keep it alive for testing
+CMD ["/bin/zsh"]
