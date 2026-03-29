@@ -18,6 +18,7 @@ This combined Roadmap defines the implementation path for **AXIOM**, prioritizin
 - [x] Auto-discovery of chat logs (Cursor, Claude, Gemini CLI) to extract context silently.
 - [x] **Process Detective**: Auto-prefixing only when a command is launched by an AI agent.
 - [x] **Git Context**: Automatically prioritizing currently modified files.
+- [x] **System Doctor & Self Update**: Health checks and auto-updates from GitHub.
 - [ ] **Next**: "Local Shims" (Project-level binary overrides in `.axiom/bin`).
 
 #### 2.2 Semantic Transformer
@@ -142,6 +143,6 @@ This section defines the expansion of default schemas and intelligent modes for 
 - [x] **netstat / lsof / ss**: Filter system-reserved ports.
 
 ### 🚀 Advanced Intelligent Modes (Behavioral Flags)
-- **`--markdown`**: Automatically transform table outputs into real Markdown tables.
-- **`--diff-only`**: Show only what changed since the last execution.
-- **`--explain`**: Prepend a natural language summary of what Axiom compressed.
+- [x] **`--markdown`**: Automatically transform table outputs into real Markdown tables.
+- [ ] **`--diff-only`**: Show only what changed since the last execution.
+- [ ] **`--explain`**: Prepend a natural language summary of what Axiom compressed.

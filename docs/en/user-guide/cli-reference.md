@@ -12,6 +12,31 @@ The primary usage. Acts as a proxy for the provided command.
   - `--raw`: Bypasses all Axiom processing and synthesis. Outputs the exact stream from the child process.
   - `--markdown`: Enables automatic transformation of terminal tables into Markdown format.
 
+### `axiom install`
+Installs Axiom shell integration and AI context.
+- **Usage**: `axiom install`
+- **Flags**:
+  - `-p, --path`: Project path to sync AI context (default: current dir).
+  - `--context-only`: Only install AI context, skip shell aliases.
+
+### `axiom doctor`
+Runs system health check and diagnostics.
+- **Usage**: `axiom doctor`
+- **Flags**:
+  - `-p, --path`: Project path to check AI context (default: current dir).
+
+### `axiom selfupdate`
+Updates Axiom to the latest version from GitHub.
+- **Usage**: `axiom selfupdate`
+
+### `axiom checkai`
+Checks if the current process was called by an AI agent. Returns exit code 0 if AI, 1 if human.
+- **Usage**: `axiom checkai`
+
+### `axiom discovery`
+Lists currently learned structural templates based on the Discovery engine.
+- **Usage**: `axiom discovery`
+
 ### `axiom intent`
 Manages the intelligence and relevance filtering levels.
 - **Subcommands**:
@@ -39,6 +64,10 @@ Executes the raw command without filtering. Useful for debugging or bypassing Ax
 - **Usage**: `axiom discover`
 
 ## Configuration Commands
+
+### `axiom config init`
+Initializes a local `.axiom.yaml` configuration file with default values.
+- **Usage**: `axiom config init`
 
 ### `axiom config telemetry <level>`
 Sets your preferred telemetry level.

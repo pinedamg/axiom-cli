@@ -48,11 +48,41 @@ Axiom follows a **Layered Clean Architecture** adapted for Rust's performance ne
 1.  **Command Execution**: `axiom npm install` starts.
 2.  **Process Detective**: Identifies `npm` and the current project context.
 3.  **Stream Capture**: Raw bytes are read from the sub-process.
-4.  **Privacy Shield**: Lines are scanned and redacted if necessary.
-5.  **Semantic Match**: The Engine checks if a line matches a "Noise Rule" (e.g., download progress).
-6.  **Transformation**: The line is either passed, dropped, or added to a collapse buffer.
-7.  **Final Output**: High-signal output is printed to the terminal for the AI agent to consume.
-8.  **Analytics**: Savings are calculated and stored in the local SQLite DB.
+4.  **The Tee System**: A raw backup of the line is made (useful for debugging and raw modes).
+5.  **Aggressive Vertical Deduplication**: Drops consecutively repeated lines to rapidly save tokens.
+6.  **Structural Transform**: Modifies structures like tables into markdown-friendly formats.
+7.  **Resource Guard**: Triggers mechanisms such as "Guardian Mode" when output becomes excessively long.
+8.  **Privacy Shield**: Lines are scanned using Entropy and Regex scanners, and redacted if necessary.
+9.  **Schema Check**: Checks if a loaded YAML explicit schema provides an action for the line.
+10. **Structural Check**: Fallback to checking if an internal Handler understands the structural noise.
+11. **Semantic Match**: The Neural or Fuzzy intelligence tests if the line is relevant based on AI intent.
+12. **Plugin Processing**: Transforms output based on external WASM plugins.
+13. **Final Output**: High-signal output is printed to the terminal for the AI agent to consume.
+14. **Analytics**: Savings are calculated and stored in the local SQLite DB.
+
+```mermaid
+graph TD
+    A[Raw Terminal Command] -->|Interception| B{AXIOM PROXY}
+
+    subgraph "LOCAL EXECUTION (Sub-10ms)"
+    B --> C[0. Tee System & Deduplication]
+    C --> D[0.5 Structural Transform & Guard]
+    D --> E[🛡️ PRIVACY SHIELD]
+    E -->|Entropy & PII Redaction| F[1. Schema Check]
+    F -->|YAML Rules| G[2. Structural Check]
+    G -->|Handlers| H[3. Semantic Check]
+    H -->|Fuzzy / Neural| I[4. Plugins & Final Output]
+    end
+
+    I --> J[⚡ HIGH-SIGNAL STREAM]
+
+    J --> K[🤖 AI AGENT]
+    J --> L[👤 DEVELOPER]
+
+    style E fill:#ff9999,stroke:#333,stroke-width:2px,color:#000
+    style F fill:#99ccff,stroke:#333,stroke-width:2px,color:#000
+    style I fill:#99ff99,stroke:#333,stroke-width:4px,color:#000
+```
 
 ## 4. Security Standards
 

@@ -18,6 +18,7 @@ Este Roadmap combinado define la ruta de implementación de **AXIOM**, priorizan
 - [x] Auto-descubrimiento de logs de chat (Cursor, Claude, Gemini CLI) para extraer contexto silenciosamente.
 - [x] **Detective de Procesos**: Prefijado automático solo cuando un comando es lanzado por un agente de IA.
 - [x] **Contexto de Git**: Priorización automática de los archivos modificados actualmente.
+- [x] **System Doctor y Self Update**: Verificaciones de salud y actualizaciones automáticas desde GitHub.
 - [ ] **Siguiente**: "Local Shims" (Sobrescritura de binarios a nivel de proyecto en `.axiom/bin`).
 
 #### 2.2 Transformador Semántico
@@ -92,6 +93,6 @@ Esta sección define la expansión de esquemas predeterminados y modos inteligen
 - [x] **netstat / lsof / ss**: Filtrar puertos reservados del sistema.
 
 ### 🚀 Modos Inteligentes Avanzados (Flags de Comportamiento)
-- **`--markdown`**: Transformar automáticamente las tablas de salida en tablas Markdown reales.
-- **`--diff-only`**: Mostrar solo lo que ha cambiado desde la última ejecución.
-- **`--explain`**: Anteponer un resumen en lenguaje natural de lo que Axiom comprimió.
+- [x] **`--markdown`**: Transformar automáticamente las tablas de salida en tablas Markdown reales.
+- [ ] **`--diff-only`**: Mostrar solo lo que ha cambiado desde la última ejecución.
+- [ ] **`--explain`**: Anteponer un resumen en lenguaje natural de lo que Axiom comprimió.
