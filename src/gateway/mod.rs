@@ -5,6 +5,8 @@ use tokio::process::Command;
 use crate::IntentContext;
 use crate::session::AxiomSession;
 
+use std::env;
+
 /// Executes a command under Axiom's supervision.
 pub async fn execute_command(
     program: &str,
@@ -13,8 +15,23 @@ pub async fn execute_command(
     session: &mut AxiomSession,
     raw_mode: bool,
 ) -> anyhow::Result<()> {
+    // Industrial logic: create a sanitized PATH for the child process
+    // that excludes Axiom's shim directory to prevent infinite recursion.
+    let home = env::var("HOME").unwrap_or_default();
+    let shim_dir = format!("{}/.axiom/bin", home);
+    
+    let current_path = env::var_os("PATH").unwrap_or_default();
+    let filtered_path = env::join_paths(
+        env::split_paths(&current_path)
+            .filter(|p| {
+                let p_str = p.to_string_lossy();
+                !p_str.contains(".axiom/bin") && p_str != shim_dir
+            })
+    )?;
+
     let mut child = Command::new(program)
         .args(args)
+        .env("PATH", filtered_path) // Inject sanitized PATH
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
