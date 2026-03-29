@@ -1,0 +1,90 @@
+name: Axiom Industrial Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers on any tag starting with 'v' (e.g., v0.1.0)
+
+permissions:
+  contents: write # Needed to create the GitHub Release
+
+jobs:
+  build:
+    name: Build - ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x86_64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary_name: axiom
+            asset_name: axiom-x86_64-unknown-linux-gnu
+          # Linux aarch64 (ARMv8)
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            binary_name: axiom
+            asset_name: axiom-aarch64-unknown-linux-gnu
+            use_cross: true
+          # macOS Intel
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            binary_name: axiom
+            asset_name: axiom-x86_64-apple-darwin
+          # macOS Apple Silicon (M1/M2/M3)
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            binary_name: axiom
+            asset_name: axiom-aarch64-apple-darwin
+          # Windows x86_64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary_name: axiom.exe
+            asset_name: axiom-x86_64-pc-windows-msvc.exe
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Cross (if needed)
+        if: matrix.use_cross
+        run: cargo install cross --git https://github.com/cross-rs/cross.git
+
+      - name: Build Axiom (Release)
+        run: |
+          if [ "${{ matrix.use_cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+        shell: bash
+
+      - name: Post-Build Cleanup (Strip Binary)
+        if: matrix.os != 'windows-latest'
+        run: |
+          # Reduce binary size by removing debug symbols
+          strip target/${{ matrix.target }}/release/${{ matrix.binary_name }}
+        shell: bash
+        continue-on-error: true
+
+      - name: Prepare Asset
+        run: |
+          mkdir -p assets
+          cp target/${{ matrix.target }}/release/${{ matrix.binary_name }} assets/${{ matrix.asset_name }}
+        shell: bash
+
+      - name: Upload Binary to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: assets/${{ matrix.asset_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

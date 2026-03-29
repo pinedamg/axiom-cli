@@ -5,6 +5,9 @@ pub mod intelligence;
 pub mod telemetry;
 pub mod transformer;
 pub mod commands;
+pub mod installer;
+pub mod updater;
+pub mod doctor;
 
 use crate::privacy::PrivacyRedactor;
 use crate::schema::{ToolSchema, Action};

@@ -1,12 +1,19 @@
 use clap::{Parser, Subcommand};
 use std::env;
 use std::process::exit;
+use std::path::Path;
+use std::io::{self, Write};
 use axiom::config::{AxiomConfig, IntelligenceMode};
 use axiom::session::AxiomSession;
 use axiom::IntentContext;
 use axiom::gateway::execute_command;
 use axiom::gateway::detective::ProcessDetective;
 use axiom::engine::intent_discovery::IntentDiscoverer;
+use axiom::engine::installer::AxiomInstaller;
+
+use axiom::engine::updater::AxiomUpdater;
+
+use axiom::engine::doctor::AxiomDoctor;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "AXIOM: The Semantic Token Streamer", long_about = None)]
@@ -29,8 +36,23 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// Install Axiom shell integration
-    Install,
+    /// Install Axiom shell integration and AI context
+    Install {
+        /// Project path to sync AI context (default: current dir)
+        #[arg(short, long, default_value = ".")]
+        path: String,
+        /// Only install AI context, skip shell aliases
+        #[arg(long)]
+        context_only: bool,
+    },
+    /// Run system health check and diagnostics
+    Doctor {
+        /// Project path to check AI context (default: current dir)
+        #[arg(short, long, default_value = ".")]
+        path: String,
+    },
+    /// Update Axiom to the latest version from GitHub
+    SelfUpdate,
     /// Show token savings analytics
     Gain {
         /// Show detailed savings history
@@ -98,8 +120,45 @@ async fn main() -> anyhow::Result<()> {
     // 2. Handle Subcommands
     if let Some(cmd) = cli.command {
         match cmd {
-            Commands::Install => {
-                install_integration()?;
+            Commands::Install { path, context_only } => {
+                let project_path = Path::new(&path);
+                if context_only {
+                    let context_files = ["GEMINI.md", "AGENTS.md", ".cursorrules"];
+                    for file_name in context_files {
+                        let path = project_path.join(file_name);
+                        if path.exists() {
+                            AxiomInstaller::inject_ai_context(&path, true)?;
+                            println!("Synced AI Context in {}", file_name);
+                        }
+                    }
+                } else {
+                    AxiomInstaller::run_full_install(Some(project_path))?;
+                }
+                return Ok(());
+            }
+            Commands::Doctor { path } => {
+                AxiomDoctor::run_diagnostic(Some(Path::new(&path)))?;
+                return Ok(());
+            }
+            Commands::SelfUpdate => {
+                println!("Checking for updates...");
+                match AxiomUpdater::check_latest() {
+                    Ok(Some((tag, url))) => {
+                        println!("A new version is available: \x1b[32m{}\x1b[0m", tag);
+                        // Using a simple interactive confirmation
+                        print!("Do you want to update Axiom? [Y/n] ");
+                        io::stdout().flush().unwrap();
+                        let mut input = String::new();
+                        io::stdin().read_line(&mut input)?;
+                        if input.trim().to_lowercase().starts_with('n') {
+                            println!("Update cancelled.");
+                        } else {
+                            AxiomUpdater::run_self_update(&url)?;
+                        }
+                    }
+                    Ok(None) => println!("Axiom is already up to date."),
+                    Err(e) => println!("Error checking for updates: {}", e),
+                }
                 return Ok(());
             }
             Commands::Gain { history: _ } => {
@@ -194,15 +253,6 @@ async fn main() -> anyhow::Result<()> {
     let cmd_args = &cli.proxy_args[1..];
     execute_command(program, cmd_args, &context, &mut session, cli.raw).await?;
 
-    Ok(())
-}
-
-fn install_integration() -> anyhow::Result<()> {
-    println!("\x1b[1mAXIOM Shell Integration\x1b[0m");
-    println!("------------------------");
-    println!("To enable Axiom automatically, add this to your shell config:\n");
-    println!("alias git='axiom git'");
-    println!("alias ls='axiom ls'");
     Ok(())
 }
 
