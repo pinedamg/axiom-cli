@@ -188,11 +188,13 @@ impl AxiomEngine {
         }
     }
 
-    fn apply_structural_transform(&self, line: &str) -> String {
+    // ⚡ BOLT MEMORY OPTIMIZATION: Returns `Cow<str>` to avoid unnecessary heap allocations
+    // when the line doesn't need to be structurally transformed (the common path).
+    fn apply_structural_transform<'a>(&self, line: &'a str) -> std::borrow::Cow<'a, str> {
         if self.markdown_mode && ContentTransformer::looks_like_table(line) {
-            ContentTransformer::to_markdown(line)
+            std::borrow::Cow::Owned(ContentTransformer::to_markdown(line))
         } else {
-            line.to_string()
+            std::borrow::Cow::Borrowed(line)
         }
     }
 
