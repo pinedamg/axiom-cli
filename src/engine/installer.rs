@@ -33,204 +33,230 @@ const AGENT_RULES: &str = r#"
 "#;
 
 impl AxiomInstaller {
-    /// Helper to ask a Yes/No question
-    fn ask(prompt: &str, default: bool) -> bool {
+    /// Helper to ask a Yes/No question, considering the auto_yes flag
+    fn ask(prompt: &str, default: bool, auto_yes: bool) -> bool {
+        if auto_yes { return true; }
+        
         let options = if default { "[Y/n]" } else { "[y/N]" };
         print!("{} {} ", prompt, options);
-        io::stdout().flush().unwrap();
+        let _ = io::stdout().flush();
 
         let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
+        if io::stdin().read_line(&mut input).is_err() { return default; }
         let input = input.trim().to_lowercase();
 
-        if input.is_empty() {
-            return default;
-        }
-
+        if input.is_empty() { return default; }
         input.starts_with('y')
     }
 
-    /// Detects potential shell config files
     pub fn get_shell_configs() -> Vec<PathBuf> {
         let mut configs = Vec::new();
         let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
         let home_path = Path::new(&home);
 
         if let Ok(shell) = std::env::var("SHELL") {
-            if shell.contains("zsh") {
-                configs.push(home_path.join(".zshrc"));
-            } else if shell.contains("bash") {
-                configs.push(home_path.join(".bashrc"));
-            }
+            if shell.contains("zsh") { configs.push(home_path.join(".zshrc")); }
+            else if shell.contains("bash") { configs.push(home_path.join(".bashrc")); }
         }
 
         let common = [".zshrc", ".bashrc", ".config/fish/config.fish"];
         for file in common {
             let p = home_path.join(file);
-            if p.exists() && !configs.contains(&p) {
-                configs.push(p);
-            }
+            if p.exists() && !configs.contains(&p) { configs.push(p); }
         }
         configs
     }
 
-    /// Creates "Shims" in ~/.axiom/bin to intercept commands globally
+    /// Injects or updates a block of text in a file delimited by markers
+    fn inject_block(path: &Path, start_marker: &str, end_marker: &str, content: &str) -> anyhow::Result<()> {
+        if path.is_dir() { return Ok(()); }
+        let file_content = if path.exists() { fs::read_to_string(path)? } else { String::new() };
+
+        let mut new_block = String::from(start_marker);
+        new_block.push('\n');
+        new_block.push_str(content);
+        if !content.ends_with('\n') { new_block.push('\n'); }
+        new_block.push_str(end_marker);
+
+        let updated_content = if file_content.contains(start_marker) {
+            let start_idx = file_content.find(start_marker).unwrap();
+            let end_idx = file_content.find(end_marker).map(|i| i + end_marker.len()).unwrap_or(file_content.len());
+            let mut result = file_content[..start_idx].to_string();
+            result.push_str(&new_block);
+            result.push_str(&file_content[end_idx..]);
+            result
+        } else {
+            let mut result = file_content;
+            if !result.is_empty() && !result.ends_with('\n') { result.push('\n'); }
+            result.push_str(&new_block);
+            result.push('\n');
+            result
+        };
+
+        fs::write(path, updated_content)?;
+        Ok(())
+    }
+
+    /// Removes a delimited block from a file
+    fn remove_block(path: &Path, start_marker: &str, end_marker: &str) -> anyhow::Result<()> {
+        if !path.exists() || path.is_dir() { return Ok(()); }
+        let content = fs::read_to_string(path)?;
+
+        if content.contains(start_marker) {
+            let start_idx = content.find(start_marker).unwrap();
+            let end_idx = content.find(end_marker).map(|i| i + end_marker.len()).unwrap_or(content.len());
+            
+            let mut updated = content[..start_idx].to_string();
+            let mut suffix = content[end_idx..].to_string();
+            
+            // Clean up extra newlines left behind
+            if updated.ends_with('\n') && suffix.starts_with('\n') {
+                suffix = suffix[1..].to_string();
+            }
+            
+            updated.push_str(&suffix);
+            fs::write(path, updated)?;
+        }
+        Ok(())
+    }
+
+    pub fn install_shell_integration(path: &Path, include_path: bool) -> anyhow::Result<()> {
+        let mut content = String::new();
+        if include_path {
+            let home = std::env::var("HOME")?;
+            content.push_str(&format!("export PATH=\"{}/.axiom/bin:$PATH\"\n", home));
+        }
+        for alias in DEFAULT_ALIASES {
+            content.push_str(alias);
+            content.push('\n');
+        }
+        Self::inject_block(path, SHELL_BLOCK_START, SHELL_BLOCK_END, &content)
+    }
+
     pub fn install_shims() -> anyhow::Result<PathBuf> {
         let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
         let shim_dir = Path::new(&home).join(".axiom/bin");
         fs::create_dir_all(&shim_dir)?;
 
         let axiom_path = std::env::current_exe()?;
+        let axiom_path_str = axiom_path.to_string_lossy();
 
         for cmd in SHIM_COMMANDS {
             let shim_path = shim_dir.join(cmd);
-            let content = format!("#!/bin/sh\nexec {} {} \"$@\"\n", axiom_path.display(), cmd);
+            // Use absolute path to axiom to avoid recursive $PATH lookups
+            let content = format!("#!/bin/sh\nexec \"{}\" {} \"$@\"\n", axiom_path_str, cmd);
             fs::write(&shim_path, content)?;
             
             let mut perms = fs::metadata(&shim_path)?.permissions();
             perms.set_mode(0o755);
             fs::set_permissions(&shim_path, perms)?;
         }
-
         Ok(shim_dir)
     }
 
-    /// Injects aliases into the shell config file safely
-    pub fn install_shell_integration(path: &Path) -> anyhow::Result<()> {
-        if path.is_dir() { return Ok(()); }
-        let content = if path.exists() { fs::read_to_string(path)? } else { String::new() };
-
-        let mut new_block = String::from(SHELL_BLOCK_START);
-        new_block.push('\n');
-        for alias in DEFAULT_ALIASES {
-            new_block.push_str(alias);
-            new_block.push('\n');
-        }
-        new_block.push_str(SHELL_BLOCK_END);
-
-        let updated_content = if content.contains(SHELL_BLOCK_START) {
-            let start_idx = content.find(SHELL_BLOCK_START).unwrap();
-            let end_idx = content.find(SHELL_BLOCK_END).map(|i| i + SHELL_BLOCK_END.len()).unwrap_or(content.len());
-            let mut result = content[..start_idx].to_string();
-            result.push_str(&new_block);
-            result.push_str(&content[end_idx..]);
-            result
-        } else {
-            let mut result = content;
-            if !result.is_empty() && !result.ends_with('\n') { result.push('\n'); }
-            result.push_str(&new_block);
-            result.push('\n');
-            result
-        };
-
-        fs::write(path, updated_content)?;
-        Ok(())
+    pub fn inject_ai_context(path: &Path, _prefix: bool) -> anyhow::Result<()> {
+        Self::inject_block(path, CONTEXT_BLOCK_START, CONTEXT_BLOCK_END, AGENT_RULES)
     }
 
-    /// Injects AI Agent instructions into a markdown file
-    pub fn inject_ai_context(path: &Path, prefix: bool) -> anyhow::Result<()> {
-        if path.is_dir() { return Ok(()); }
-        let content = if path.exists() { fs::read_to_string(path)? } else { String::new() };
-
-        let mut new_block = String::from(CONTEXT_BLOCK_START);
-        new_block.push('\n');
-        new_block.push_str(AGENT_RULES);
-        new_block.push_str(CONTEXT_BLOCK_END);
-
-        let updated_content = if content.contains(CONTEXT_BLOCK_START) {
-            let start_idx = content.find(CONTEXT_BLOCK_START).unwrap();
-            let end_idx = content.find(CONTEXT_BLOCK_END).map(|i| i + CONTEXT_BLOCK_END.len()).unwrap_or(content.len());
-            let mut result = content[..start_idx].to_string();
-            result.push_str(&new_block);
-            result.push_str(&content[end_idx..]);
-            result
-        } else if prefix {
-            let mut result = new_block;
-            result.push_str("\n\n");
-            result.push_str(&content);
-            result
-        } else {
-            let mut result = content;
-            if !result.is_empty() && !result.ends_with('\n') { result.push('\n'); }
-            result.push('\n');
-            result.push_str(&new_block);
-            result
-        };
-
-        fs::write(path, updated_content)?;
-        Ok(())
-    }
-
-    /// Performs an interactive industrial installation
-    pub fn run_full_install(project_path: Option<&Path>) -> anyhow::Result<()> {
-        println!("\x1b[1m🚀 Axiom Interactive Installation\x1b[0m");
+    pub fn run_full_install(project_path: Option<&Path>, auto_yes: bool) -> anyhow::Result<()> {
+        println!("\x1b[1m🚀 Axiom Industrial Installation\x1b[0m");
         println!("---------------------------------------\n");
 
-        // 1. Shell Integration
         let configs = Self::get_shell_configs();
+        let mut path_injected = false;
+
+        // 1. PATH Integration (New)
         if !configs.is_empty() {
-            println!("\x1b[1m[Shell Integration]\x1b[0m");
+            println!("\x1b[1m[PATH Configuration]\x1b[0m");
+            println!("Recommended: Add ~/.axiom/bin to your PATH for seamless integration.");
+            if Self::ask("Automatically configure PATH in your shell?", true, auto_yes) {
+                path_injected = true;
+            }
+        }
+
+        // 2. Shell Integration
+        if !configs.is_empty() {
+            println!("\x1b[1m[Shell Aliases]\x1b[0m");
             for path in configs {
-                let prompt = format!("Found {}. Add Axiom aliases?", path.display());
-                if Self::ask(&prompt, true) {
-                    print!("Configuring {} ... ", path.display());
-                    let _ = Self::install_shell_integration(&path);
+                let prompt = format!("Configure aliases in {}?", path.display());
+                if Self::ask(&prompt, true, auto_yes) {
+                    print!("Processing {} ... ", path.display());
+                    let _ = Self::install_shell_integration(&path, path_injected);
                     println!("✅");
                 }
             }
             println!();
         }
 
-        // 2. Global Shims
+        // 3. Shims
         println!("\x1b[1m[IDE & Agent Shims]\x1b[0m");
-        println!("Shims allow Axiom to work inside Cursor, Claude Code, and VS Code automatically.");
-        if Self::ask("Install Global Shims in ~/.axiom/bin?", true) {
+        if Self::ask("Install Global Shims in ~/.axiom/bin?", true, auto_yes) {
             print!("Installing Shims ... ");
-            let shim_dir = Self::install_shims()?;
+            let _ = Self::install_shims()?;
             println!("✅");
-            println!("   \x1b[33mNote:\x1b[0m Remember to add \x1b[36m{}:$PATH\x1b[0m to your shell config.", shim_dir.display());
-            println!();
         }
 
-        // 3. AI Context Sync
+        // 4. AI Context Sync
         if let Some(root) = project_path {
-            println!("\x1b[1m[AI Context Sync]\x1b[0m");
-            let context_files = [
-                "GEMINI.md", 
-                "AGENTS.md", 
-                "CLAUDE.md", 
-                ".cursorrules", 
-                ".windsurfrules",
-                ".github/copilot-instructions.md",
-                ".cursor/rules/axiom.md"
-            ];
-            
+            println!("\n\x1b[1m[AI Context Sync]\x1b[0m");
+            let context_files = ["GEMINI.md", "AGENTS.md", "CLAUDE.md", ".cursorrules", ".windsurfrules"];
             for file_name in context_files {
                 let path = root.join(file_name);
                 if path.exists() || file_name == "CLAUDE.md" || file_name == "AGENTS.md" {
-                    let prompt = format!("Sync Axiom instructions in {}?", file_name);
-                    if Self::ask(&prompt, true) {
-                        // Create parent dir if needed
-                        if let Some(parent) = path.parent() {
-                            if !parent.exists() { let _ = fs::create_dir_all(parent); }
-                        }
+                    if Self::ask(&format!("Sync Axiom in {}?", file_name), true, auto_yes) {
                         print!("Syncing {} ... ", file_name);
                         let _ = Self::inject_ai_context(&path, true);
                         println!("✅");
                     }
                 }
             }
-            println!();
         }
 
-        // 4. Persistence Setup
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-        let axiom_dir = Path::new(&home).join(".axiom");
-        if !axiom_dir.exists() {
-            fs::create_dir_all(&axiom_dir)?;
+        println!("\n\x1b[1m\x1b[32mInstallation Complete!\x1b[0m");
+        Ok(())
+    }
+
+    /// Surgically removes all Axiom traces
+    pub fn run_uninstall(project_path: Option<&Path>, auto_yes: bool) -> anyhow::Result<()> {
+        println!("\x1b[1m🗑️ Axiom Industrial Uninstall\x1b[0m");
+        println!("---------------------------------------\n");
+
+        if !Self::ask("This will remove all Axiom aliases, shims and context rules. Proceed?", false, auto_yes) {
+            println!("Uninstall cancelled.");
+            return Ok(());
         }
 
-        println!("\x1b[1m\x1b[32mInstallation Complete!\x1b[0m");
+        // 1. Remove from Shell
+        let configs = Self::get_shell_configs();
+        for path in configs {
+            print!("Cleaning {} ... ", path.display());
+            let _ = Self::remove_block(&path, SHELL_BLOCK_START, SHELL_BLOCK_END);
+            println!("✅");
+        }
+
+        // 2. Remove Shims
+        let home = std::env::var("HOME").unwrap_or_default();
+        let shim_dir = Path::new(&home).join(".axiom/bin");
+        if shim_dir.exists() {
+            print!("Removing Shims directory ... ");
+            let _ = fs::remove_dir_all(shim_dir);
+            println!("✅");
+        }
+
+        // 3. Remove AI Context
+        if let Some(root) = project_path {
+            let context_files = ["GEMINI.md", "AGENTS.md", "CLAUDE.md", ".cursorrules", ".windsurfrules"];
+            for file_name in context_files {
+                let path = root.join(file_name);
+                if path.exists() {
+                    print!("Removing Axiom rules from {} ... ", file_name);
+                    let _ = Self::remove_block(&path, CONTEXT_BLOCK_START, CONTEXT_BLOCK_END);
+                    println!("✅");
+                }
+            }
+        }
+
+        println!("\n\x1b[1m\x1b[32mUninstall Complete. Axiom traces removed.\x1b[0m");
         Ok(())
     }
 }

@@ -32,6 +32,10 @@ struct Cli {
     /// Show raw output, bypassing Axiom synthesis
     #[arg(short, long, global = true)]
     raw: bool,
+
+    /// Automatically answer yes to all prompts
+    #[arg(short, long, global = true)]
+    yes: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -44,6 +48,12 @@ enum Commands {
         /// Only install AI context, skip shell aliases
         #[arg(long)]
         context_only: bool,
+    },
+    /// Remove all Axiom traces from the system
+    Uninstall {
+        /// Project path to remove AI context (default: current dir)
+        #[arg(short, long, default_value = ".")]
+        path: String,
     },
     /// Run system health check and diagnostics
     Doctor {
@@ -123,7 +133,7 @@ async fn main() -> anyhow::Result<()> {
             Commands::Install { path, context_only } => {
                 let project_path = Path::new(&path);
                 if context_only {
-                    let context_files = ["GEMINI.md", "AGENTS.md", ".cursorrules"];
+                    let context_files = ["GEMINI.md", "AGENTS.md", "CLAUDE.md", ".cursorrules", ".windsurfrules"];
                     for file_name in context_files {
                         let path = project_path.join(file_name);
                         if path.exists() {
@@ -132,8 +142,13 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
                 } else {
-                    AxiomInstaller::run_full_install(Some(project_path))?;
+                    AxiomInstaller::run_full_install(Some(project_path), cli.yes)?;
                 }
+                return Ok(());
+            }
+            Commands::Uninstall { path } => {
+                let project_path = Path::new(&path);
+                AxiomInstaller::run_uninstall(Some(project_path), cli.yes)?;
                 return Ok(());
             }
             Commands::Doctor { path } => {
