@@ -38,14 +38,17 @@ candle-core = "0.8"
 candle-nn = "0.8"
 candle-transformers = "0.8"
 tokenizers = "0.21"
-hf-hub = "0.4"
+
+# AI Model Hub (Force rustls to avoid OpenSSL dependency)
+hf-hub = { version = "0.4", default-features = false, features = ["ureq", "rustls"] }
 
 # Process Monitoring
 sysinfo = "0.30"
 
-# Telemetry & Time (Missing from other session)
+# Telemetry & Time
 chrono = "0.4"
-ureq = { version = "2.9", default-features = false, features = ["json", "rustls-tls-webpki-roots"] }
+# Http Client (Match hf-hub's TLS implementation)
+ureq = { version = "2.9", default-features = false, features = ["json", "rustls"] }
 
 [dev-dependencies]
 # For testing
