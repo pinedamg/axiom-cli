@@ -47,8 +47,8 @@ sysinfo = "0.30"
 
 # Telemetry & Time
 chrono = "0.4"
-# Http Client (Match hf-hub's TLS implementation)
-ureq = { version = "2.9", default-features = false, features = ["json", "rustls"] }
+# Http Client (Fixed feature names for ureq 2.9)
+ureq = { version = "2.9", default-features = false, features = ["json", "rustls-tls-native-certs"] }
 
 [dev-dependencies]
 # For testing
