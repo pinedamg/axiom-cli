@@ -3,6 +3,7 @@ pub mod intent_discovery;
 pub mod plugins;
 pub mod intelligence;
 pub mod telemetry;
+pub mod handshake;
 pub mod transformer;
 pub mod commands;
 pub mod installer;

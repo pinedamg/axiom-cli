@@ -1,7 +1,8 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::env;
 use std::fs;
 use serde::{Serialize, Deserialize};
+use crate::engine::handshake::Handshake;
 
 pub const DEFAULT_DB_PATH: &str = "axiom.db";
 pub const DEFAULT_SCHEMAS_DIR: &str = "config/schemas";
@@ -36,9 +37,9 @@ pub enum IntentStrategy {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum IntelligenceMode {
-    Off,    // Solo limpieza de ruido y formateo, no oculta por relevancia
-    Fuzzy,  // Basado en palabras clave
-    Neural, // Basado en embeddings (IA Local)
+    Off,
+    Fuzzy,
+    Neural,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,7 +52,9 @@ pub struct AxiomConfig {
     pub intelligence_mode: IntelligenceMode,
     pub markdown_enabled: bool,
     pub telemetry_level: TelemetryLevel,
-    pub installation_id: String,
+    pub node_id: String,
+    pub node_token: String,
+    pub hardware_hash: String,
     pub intent_keywords: Vec<String>,
     pub pii_patterns: Vec<String>,
     pub intent_sources: Vec<IntentSource>,
@@ -67,8 +70,10 @@ impl Default for AxiomConfig {
             semantic_threshold: DEFAULT_SEMANTIC_THRESHOLD,
             intelligence_mode: IntelligenceMode::Fuzzy,
             markdown_enabled: false,
-            telemetry_level: TelemetryLevel::Off,
-            installation_id: "local-dev".to_string(),
+            telemetry_level: TelemetryLevel::Basic, // Default to Basic for insights
+            node_id: String::new(),
+            node_token: String::new(),
+            hardware_hash: String::new(),
             intent_keywords: vec![
                 "error".to_string(), "fail".to_string(), "package".to_string(),
                 "version".to_string(), "diff".to_string(), "log".to_string(),
@@ -100,26 +105,74 @@ impl Default for AxiomConfig {
 }
 
 impl AxiomConfig {
-    /// Layered loading logic: Defaults -> Project File -> Env Vars
-    pub fn load() -> Self {
-        let mut config = Self::default();
+    pub fn get_global_path() -> PathBuf {
+        let home = env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+        Path::new(&home).join(".axiom").join("config.yaml")
+    }
 
-        // 1. Try loading from local project file (.axiom.yaml)
-        if let Ok(content) = fs::read_to_string(".axiom.yaml") {
-            if let Ok(local_config) = serde_yaml::from_str::<AxiomConfig>(&content) {
-                config = local_config; // Simple override for now
+    /// Layered loading logic: Global -> Project File -> Env Vars
+    pub fn load() -> Self {
+        let mut config = Self::load_global().unwrap_or_default();
+
+        // 1. Ensure Identity (Handshake) if missing
+        if config.node_id.is_empty() || config.node_token.is_empty() {
+            println!("\x1b[34m[AXIOM] Initializing secure telemetry identity...\x1b[0m");
+            if let Ok((id, token)) = Handshake::register_node() {
+                config.node_id = id;
+                config.node_token = token;
+                config.hardware_hash = Handshake::get_hardware_hash();
+                let _ = config.save_global();
             }
         }
 
-        // 2. Overrides from Environment Variables
+        // 2. Try loading from local project file (.axiom.yaml)
+        if let Ok(content) = fs::read_to_string(".axiom.yaml") {
+            if let Ok(local_config) = serde_yaml::from_str::<AxiomConfig>(&content) {
+                // Overwrite project-specific settings but KEEP identity
+                let id = config.node_id.clone();
+                let token = config.node_token.clone();
+                let hash = config.hardware_hash.clone();
+                
+                config = local_config;
+                config.node_id = id;
+                config.node_token = token;
+                config.hardware_hash = hash;
+            }
+        }
+
+        // 3. Overrides from Environment Variables
+        Self::apply_env_overrides(&mut config);
+
+        config
+    }
+
+    fn load_global() -> Option<Self> {
+        let path = Self::get_global_path();
+        if path.exists() {
+            let content = fs::read_to_string(path).ok()?;
+            serde_yaml::from_str(&content).ok()
+        } else {
+            None
+        }
+    }
+
+    pub fn save_global(&self) -> anyhow::Result<()> {
+        let path = Self::get_global_path();
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let yaml = serde_yaml::to_string(self)?;
+        fs::write(path, yaml)?;
+        Ok(())
+    }
+
+    fn apply_env_overrides(config: &mut Self) {
         if env::var("AXIOM_FORCE_NEURAL").is_ok() {
             config.intelligence_mode = IntelligenceMode::Neural;
         }
-
         if env::var("AXIOM_MARKDOWN").is_ok() {
             config.markdown_enabled = true;
         }
-
         if let Ok(level) = env::var("AXIOM_TELEMETRY") {
             config.telemetry_level = match level.to_lowercase().as_str() {
                 "full" => TelemetryLevel::Full,
@@ -128,11 +181,8 @@ impl AxiomConfig {
                 _ => TelemetryLevel::Off,
             };
         }
-
         if let Ok(path) = env::var("AXIOM_DB_PATH") {
             config.db_path = PathBuf::from(path);
         }
-
-        config
     }
 }

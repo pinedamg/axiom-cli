@@ -40,9 +40,12 @@ candle-transformers = "0.8"
 tokenizers = "0.21"
 hf-hub = "0.4"
 
-# Telemetry & Time
+# Telemetry & Identity
 chrono = "0.4"
 ureq = { version = "2.9", features = ["json"] }
+sha2 = "0.10"
+hex = "0.4"
+machine-uid = "0.3"
 
 # Process Monitoring
 sysinfo = "0.30"
