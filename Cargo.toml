@@ -39,16 +39,16 @@ candle-nn = "0.8"
 candle-transformers = "0.8"
 tokenizers = "0.21"
 
-# AI Model Hub (Force rustls to avoid OpenSSL dependency)
-hf-hub = { version = "0.4", default-features = false, features = ["ureq", "rustls"] }
+# AI Model Hub (Configured to use ureq with rustls)
+hf-hub = { version = "0.4", default-features = false, features = ["ureq"] }
 
 # Process Monitoring
 sysinfo = "0.30"
 
 # Telemetry & Time
 chrono = "0.4"
-# Http Client (Fixed feature names for ureq 2.9)
-ureq = { version = "2.9", default-features = false, features = ["json", "rustls-tls-native-certs"] }
+# Http Client (Standardized features for ureq 2.9)
+ureq = { version = "2.9", features = ["json", "rustls-tls-native-certs"] }
 
 [dev-dependencies]
 # For testing
