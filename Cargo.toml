@@ -45,7 +45,7 @@ sysinfo = "0.30"
 
 # Telemetry & Time (Missing from other session)
 chrono = "0.4"
-ureq = { version = "2.9", default-features = false, features = ["json", "rustls"] }
+ureq = { version = "2.9", default-features = false, features = ["json", "rustls-tls-webpki-roots"] }
 
 [dev-dependencies]
 # For testing
