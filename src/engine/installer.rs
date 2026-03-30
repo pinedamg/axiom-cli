@@ -153,9 +153,12 @@ impl AxiomInstaller {
             let content = format!("#!/bin/sh\nexec \"{}\" {} \"$@\"\n", axiom_path_str, cmd);
             fs::write(&shim_path, content)?;
             
-            let mut perms = fs::metadata(&shim_path)?.permissions();
-            perms.set_mode(0o755);
-            fs::set_permissions(&shim_path, perms)?;
+            #[cfg(unix)]
+            {
+                let mut perms = fs::metadata(&shim_path)?.permissions();
+                perms.set_mode(0o755);
+                fs::set_permissions(&shim_path, perms)?;
+            }
         }
         Ok(shim_dir)
     }
