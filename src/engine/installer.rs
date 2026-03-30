@@ -1,7 +1,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::os::unix::fs::PermissionsExt;
 use std::io::{self, Write};
+
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 
 pub struct AxiomInstaller;
 
