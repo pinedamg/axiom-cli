@@ -8,9 +8,9 @@ pub mod commands;
 pub mod installer;
 pub mod updater;
 pub mod doctor;
+pub mod storage;
+pub mod reporting;
 
-use std::io::{self, Write};
-use std::fs::OpenOptions;
 use crate::privacy::PrivacyRedactor;
 use crate::schema::{ToolSchema, Action};
 use crate::IntentContext;
@@ -19,11 +19,13 @@ use crate::engine::plugins::WasmPluginManager;
 use crate::engine::intelligence::IntelligenceProvider;
 use crate::engine::transformer::ContentTransformer;
 use crate::engine::commands::{CommandHandler, get_all_handlers};
+use crate::engine::storage::LogManager;
 
 pub struct AxiomEngine {
     pub redactor: PrivacyRedactor,
     pub schemas: Vec<ToolSchema>,
     pub discovery: DiscoveryEngine,
+    pub storage: LogManager,
     pub plugins: Option<WasmPluginManager>,
     pub intelligence: Box<dyn IntelligenceProvider>,
     pub handlers: Vec<Box<dyn CommandHandler>>,
@@ -42,6 +44,7 @@ impl AxiomEngine {
             redactor,
             schemas,
             discovery: DiscoveryEngine::default(),
+            storage: LogManager::default(),
             plugins: None,
             intelligence,
             handlers: get_all_handlers(),
@@ -95,6 +98,7 @@ impl AxiomEngine {
 
     /// Pre-calculates session data (like embeddings) to improve per-line latency
     pub fn prepare_session(&mut self, intent: &str) -> anyhow::Result<()> {
+        let _ = self.storage.reset_log();
         self.intelligence.pre_compute_intent(intent)
     }
 
@@ -104,7 +108,7 @@ impl AxiomEngine {
         self.last_command = command.to_string();
 
         // 0. The Tee System (Raw Backup)
-        let _ = Self::backup_raw_line(line);
+        let _ = self.storage.append_line(line);
 
         // 0.5 Aggressive Vertical Deduplication
         let mut dedup_prefix = None;
@@ -127,6 +131,8 @@ impl AxiomEngine {
 
         let redacted = self.redactor.redact(&working_line);
         let mut processed_by_discovery = false;
+        let mut semantic_swallow = false;
+        let mut semantic_msg = None;
 
         // 1. Schema Check: Does the YAML have an explicit instruction for this line?
         let handler_idx = self.handlers.iter().position(|h| h.matches(command));
@@ -150,7 +156,22 @@ impl AxiomEngine {
 
         // 2. Structural Check: If no schema rule, does a handler know this?
         let is_known_by_handler = if let Some(idx) = handler_idx {
-            self.handlers[idx].parse_line(&redacted).is_some()
+            if let Some(meta) = self.handlers[idx].parse_line(&redacted) {
+                // Get the category (prefix) for semantic deduplication
+                let category = self.get_category(&meta.perms, self.handlers[idx].as_ref());
+                
+                // Semantic Deduplication Check
+                if let Some(msg) = self.handle_semantic_deduplication(&category) {
+                    if msg.is_empty() {
+                        semantic_swallow = true;
+                    } else {
+                        semantic_msg = Some(msg);
+                    }
+                }
+                true
+            } else {
+                false
+            }
         } else {
             false
         };
@@ -158,7 +179,17 @@ impl AxiomEngine {
         if is_known_by_handler && !processed_by_discovery {
             let handler = self.handlers[handler_idx.unwrap()].as_ref();
             processed_by_discovery = true;
-            if self.discovery.process_and_check_noise(&redacted, Some(handler), command) {
+            let is_noise = self.discovery.process_and_check_noise(&redacted, Some(handler), command);
+            
+            // If semantic deduplication says swallow, we do it BUT after discovery process
+            if semantic_swallow {
+                return self.wrap_with_prefix(dedup_prefix, None);
+            }
+            if let Some(msg) = semantic_msg {
+                return self.wrap_with_prefix(dedup_prefix, Some(msg));
+            }
+
+            if is_noise {
                 return self.wrap_with_prefix(dedup_prefix, None);
             }
         }
@@ -198,10 +229,24 @@ impl AxiomEngine {
 
     fn apply_resource_guard(&mut self, line: &str, command: &str, context: &IntentContext) -> Option<Option<String>> {
         let handler = self.handlers.iter().find(|h| h.matches(command)).map(|h| h.as_ref());
+        
+        // 1. Check if it's an outlier (ERROR, critical message, etc.)
+        let is_outlier = if let Some(h) = handler {
+            if let Some(meta) = h.parse_line(line) {
+                h.is_outlier(line, &meta)
+            } else { false }
+        } else { false };
+
+        // 2. Guardian Mode: If line count > threshold, only allow outliers
         if ContentTransformer::should_guard(command, self.line_counter, context) {
             if self.line_counter == 101 {
-                return Some(Some("(Guardian Mode: File too long. Summary follows...)".to_string()));
+                return Some(Some("(Guardian Mode: File too long. Switched to smart filtering...)".to_string()));
             }
+            
+            if is_outlier {
+                return None; // Allow outlier to pass through Guardian Mode
+            }
+
             if self.discovery.process_and_check_noise(line, handler, command) {
                 return Some(None);
             }
@@ -223,18 +268,58 @@ impl AxiomEngine {
         }
     }
 
-    fn backup_raw_line(line: &str) -> io::Result<()> {
-        let path = std::path::Path::new("/tmp/axiom/last_run.log");
-        if let Some(parent) = path.parent() {
-            let _ = std::fs::create_dir_all(parent);
+    fn handle_semantic_deduplication(&mut self, category: &str) -> Option<String> {
+        // Protected categories that should NOT be collapsed by semantic burst
+        if ["SEARCH", "GIT"].contains(&category) {
+            return None;
         }
 
-        let mut file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(path)?;
+        if self.discovery.last_category.as_deref() == Some(category) {
+            self.discovery.category_count += 1;
+            if self.discovery.category_count == 3 {
+                return Some(format!("[AXIOM] Continuous burst of {} detected. Collapsing...", category));
+            } else if self.discovery.category_count > 3 {
+                return Some("".to_string()); // Signal to swallow
+            }
+        } else {
+            self.discovery.last_category = Some(category.to_string());
+            self.discovery.category_count = 0;
+        }
+        None
+    }
 
-        writeln!(file, "{}", line)?;
-        Ok(())
+    /// Helper to get the category name based on perms and handler (DRY from DiscoveryEngine)
+    fn get_category(&self, perms: &str, handler: &dyn CommandHandler) -> String {
+        if ["LOG_COMMIT", "MODIFIED", "UNTRACKED", "DELETED", "NEW", "RENAMED", "STAGED"].contains(&perms) { 
+            "GIT".to_string() 
+        } else if ["Running", "Stopped", "Created", "LAYER", "BUILD", "COMPOSE"].contains(&perms) {
+            "DOCKER".to_string()
+        } else if perms == "MATCH" {
+            "SEARCH".to_string()
+        } else if ["Checking", "Compiling", "Downloading", "Downloaded", "Finished", "Processing"].contains(&perms) {
+            "CARGO".to_string()
+        } else if perms == "PROGRESS" || perms == "NETWORK_NOISE" {
+            "IO".to_string()
+        } else if ["WARN", "ADD", "AUDIT"].contains(&perms) {
+            "NPM".to_string()
+        } else if ["TEST_RESULT", "COMPILING"].contains(&perms) {
+            "GO".to_string()
+        } else if ["RESOURCE", "METADATA"].contains(&perms) {
+            "K8S".to_string()
+        } else if ["PLAN", "ATTRIBUTE", "STATE"].contains(&perms) {
+            "TF".to_string()
+        } else if ["RESOURCE", "ROW"].contains(&perms) && (handler.matches("gcloud") || handler.matches("aws") || handler.matches("az")) {
+            "CLOUD".to_string()
+        } else if ["STRUCT", "KEY"].contains(&perms) {
+            "DATA".to_string()
+        } else if ["NOISE", "LOG"].contains(&perms) {
+            "SYS".to_string()
+        } else if perms.contains("kernel") && handler.matches("ps") {
+            "KERNEL".to_string()
+        } else if handler.matches("ps") {
+            "PROC".to_string()
+        } else {
+            "FILE".to_string()
+        }
     }
 }

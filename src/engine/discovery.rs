@@ -17,6 +17,8 @@ pub struct DiscoveryEngine {
     pub threshold: usize,
     pub last_line: Option<String>,
     pub repeat_count: usize,
+    pub last_category: Option<String>,
+    pub category_count: usize,
 }
 
 impl Default for DiscoveryEngine {
@@ -28,6 +30,8 @@ impl Default for DiscoveryEngine {
             threshold: 5,
             last_line: None,
             repeat_count: 0,
+            last_category: None,
+            category_count: 0,
         }
     }
 }
