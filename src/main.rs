@@ -60,23 +60,38 @@ enum Commands {
         /// Project path to check AI context (default: current dir)
         #[arg(short, long, default_value = ".")]
         path: String,
+        /// Attempt to automatically fix detected issues
+        #[arg(short, long)]
+        fix: bool,
     },
     /// Update Axiom to the latest version from GitHub
     SelfUpdate,
+    /// Show the raw output of the last executed command
+    Last {
+        /// Number of lines to show from the end
+        #[arg(short, long)]
+        tail: Option<usize>,
+        /// Filter lines by a keyword
+        #[arg(short, long)]
+        grep: Option<String>,
+    },
     /// Show token savings analytics
     Gain {
         /// Show detailed savings history
         #[arg(short = 's', long)]
         history: bool,
     },
-    /// List currently learned structural templates
-    Discovery,
+    /// List or manage currently learned structural templates
+    Discovery {
+        #[command(subcommand)]
+        action: Option<DiscoveryAction>,
+    },
     /// Check if current process was called by an AI agent
     CheckAi,
     /// Configuration management
     Config {
         #[command(subcommand)]
-        action: ConfigAction,
+        action: Option<ConfigAction>,
     },
     /// Manage Intent Discovery and Intelligence Levels
     Intent {
@@ -103,6 +118,26 @@ enum IntentAction {
 enum ConfigAction {
     /// Initialize a local .axiom.yaml with default values
     Init,
+    /// Show current configuration
+    Show,
+    /// Set a configuration value (e.g. config set intelligence neural)
+    Set {
+        key: String,
+        value: String,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum DiscoveryAction {
+    /// List all learned templates (default)
+    List,
+    /// Clear all learned patterns
+    Clear,
+    /// Forget a specific template pattern
+    Forget {
+        /// The template pattern to remove
+        pattern: String,
+    },
 }
 
 #[tokio::main]
@@ -151,8 +186,8 @@ async fn main() -> anyhow::Result<()> {
                 AxiomInstaller::run_uninstall(Some(project_path), cli.yes)?;
                 return Ok(());
             }
-            Commands::Doctor { path } => {
-                AxiomDoctor::run_diagnostic(Some(Path::new(&path)))?;
+            Commands::Doctor { path, fix } => {
+                AxiomDoctor::run_diagnostic(Some(Path::new(&path)), fix)?;
                 return Ok(());
             }
             Commands::SelfUpdate => {
@@ -176,12 +211,35 @@ async fn main() -> anyhow::Result<()> {
                 }
                 return Ok(());
             }
+            Commands::Last { tail, grep } => {
+                match session.engine.storage.get_last_logs(tail, grep.as_deref()) {
+                    Ok(lines) => {
+                        for line in lines {
+                            println!("{}", line);
+                        }
+                    }
+                    Err(e) => println!("Error retrieving logs: {}", e),
+                }
+                return Ok(());
+            }
             Commands::Gain { history: _ } => {
                 show_savings(&session)?;
                 return Ok(());
             }
-            Commands::Discovery => {
-                show_discovery(&session)?;
+            Commands::Discovery { action } => {
+                match action.unwrap_or(DiscoveryAction::List) {
+                    DiscoveryAction::List => {
+                        show_discovery(&session)?;
+                    }
+                    DiscoveryAction::Clear => {
+                        session.persistence.clear_templates()?;
+                        println!("✅ All learned patterns cleared.");
+                    }
+                    DiscoveryAction::Forget { pattern } => {
+                        session.persistence.delete_template(&pattern)?;
+                        println!("✅ Forgot pattern: {}", pattern);
+                    }
+                }
                 return Ok(());
             }
             Commands::CheckAi => {
@@ -226,11 +284,40 @@ async fn main() -> anyhow::Result<()> {
             }
             Commands::Config { action } => {
                 match action {
-                    ConfigAction::Init => {
+                    Some(ConfigAction::Init) => {
                         let config = AxiomConfig::default();
                         let yaml = serde_yaml::to_string(&config)?;
                         std::fs::write(".axiom.yaml", yaml)?;
                         println!("Created local configuration file: .axiom.yaml");
+                    }
+                    Some(ConfigAction::Show) => {
+                        let yaml = serde_yaml::to_string(&session.config)?;
+                        println!("\x1b[1mCurrent Axiom Configuration:\x1b[0m\n");
+                        println!("{}", yaml);
+                    }
+                    Some(ConfigAction::Set { key, value }) => {
+                        let mut config = session.config.clone();
+                        match key.as_str() {
+                            "intelligence" => {
+                                config.intelligence_mode = match value.as_str() {
+                                    "fuzzy" => IntelligenceMode::Fuzzy,
+                                    "neural" => IntelligenceMode::Neural,
+                                    "off" => IntelligenceMode::Off,
+                                    _ => anyhow::bail!("Invalid mode. Use: fuzzy, neural, off"),
+                                };
+                            }
+                            "markdown" => {
+                                config.markdown_enabled = value.parse::<bool>()?;
+                            }
+                            _ => anyhow::bail!("Key not supported yet via CLI. Edit .axiom.yaml manually."),
+                        }
+                        let yaml = serde_yaml::to_string(&config)?;
+                        std::fs::write(".axiom.yaml", yaml)?;
+                        println!("✅ Config updated: {} = {}", key, value);
+                    }
+                    None => {
+                        // Interactive Menu
+                        run_interactive_config(&session.config)?;
                     }
                 }
                 return Ok(());
@@ -271,18 +358,122 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+fn run_interactive_config(current: &AxiomConfig) -> anyhow::Result<()> {
+    loop {
+        println!("\n\x1b[1m⚙️ Axiom Interactive Configuration\x1b[0m");
+        println!("--------------------------------\n");
+        
+        println!("1. Intelligence Mode (Current: {:?})", current.intelligence_mode);
+        println!("2. Markdown Table Support (Current: {})", current.markdown_enabled);
+        println!("3. Telemetry Level (Current: {:?})", current.telemetry_level);
+        println!("4. Privacy Patterns (PII)");
+        println!("5. Intent Context Sources");
+        println!("6. Exit");
+        
+        print!("\nSelect an option [1-6]: ");
+        io::stdout().flush()?;
+        let mut choice = String::new();
+        io::stdin().read_line(&mut choice)?;
+        
+        let mut new_config = current.clone();
+        
+        match choice.trim() {
+            "1" => {
+                println!("\nSelect Intelligence Mode:");
+                println!("  a. Fuzzy (Keywords, fast, no downloads)");
+                println!("  b. Neural (Embeddings, accurate, requires local model)");
+                println!("  c. Off (No semantic filtering)");
+                print!("Choice [a/b/c]: ");
+                io::stdout().flush()?;
+                let mut sub = String::new();
+                io::stdin().read_line(&mut sub)?;
+                new_config.intelligence_mode = match sub.trim().to_lowercase().as_str() {
+                    "a" => IntelligenceMode::Fuzzy,
+                    "b" => IntelligenceMode::Neural,
+                    "c" => IntelligenceMode::Off,
+                    _ => continue,
+                };
+            }
+            "2" => {
+                print!("Enable Markdown Tables? [y/n]: ");
+                io::stdout().flush()?;
+                let mut sub = String::new();
+                io::stdin().read_line(&mut sub)?;
+                new_config.markdown_enabled = sub.trim().to_lowercase().starts_with('y');
+            }
+            "3" => {
+                println!("\nSelect Telemetry Level:");
+                println!("  a. Off (Privacy first)");
+                println!("  b. Basic (Only total savings)");
+                println!("  c. Discovery (New command patterns)");
+                print!("Choice [a/b/c]: ");
+                io::stdout().flush()?;
+                let mut sub = String::new();
+                io::stdin().read_line(&mut sub)?;
+                new_config.telemetry_level = match sub.trim().to_lowercase().as_str() {
+                    "a" => axiom::config::TelemetryLevel::Off,
+                    "b" => axiom::config::TelemetryLevel::Basic,
+                    "c" => axiom::config::TelemetryLevel::Discovery,
+                    _ => continue,
+                };
+            }
+            "4" => {
+                println!("\n\x1b[1mPrivacy Patterns (PII Redaction):\x1b[0m");
+                for (i, p) in current.pii_patterns.iter().enumerate() {
+                    println!("  {}. {}", i + 1, p);
+                }
+                println!("\n(To add/remove patterns, please edit .axiom.yaml directly for now.)");
+                print!("Press Enter to return...");
+                io::stdout().flush()?;
+                let _ = io::stdin().read_line(&mut String::new());
+                continue;
+            }
+            "5" => {
+                println!("\n\x1b[1mIntent Sources (Context):\x1b[0m");
+                for s in &current.intent_sources {
+                    println!("  - {}: {:?} ({:?})", s.name, s.path, s.strategy);
+                }
+                print!("\nPress Enter to return...");
+                io::stdout().flush()?;
+                let _ = io::stdin().read_line(&mut String::new());
+                continue;
+            }
+            "6" => break,
+            _ => continue,
+        }
+        
+        let yaml = serde_yaml::to_string(&new_config)?;
+        std::fs::write(".axiom.yaml", yaml)?;
+        println!("\n✅ Configuration saved to .axiom.yaml");
+        return Ok(());
+    }
+    Ok(())
+}
+
+use axiom::engine::reporting::{EfficiencyReport, ReportRenderer};
+
 fn show_savings(session: &AxiomSession) -> anyhow::Result<()> {
-    let (original, compressed) = session.persistence.get_total_savings()?;
-    let saved = original.saturating_sub(compressed);
-    let ratio = if original > 0 { (saved as f64 / original as f64) * 100.0 } else { 0.0 };
-    println!("Total Saved: {} chars ({:.1}%)", saved, ratio);
+    // 1. Get raw data from persistence (unbounded for total dashboard)
+    let raw_data = session.persistence.get_recent_history(10000)?; 
+    
+    // 2. Process via SOLID reporting module
+    let report = EfficiencyReport::new(raw_data);
+    
+    // 3. Render via renderer
+    ReportRenderer::render_dashboard(&report);
+    
     Ok(())
 }
 
 fn show_discovery(session: &AxiomSession) -> anyhow::Result<()> {
-    println!("Learned Structures:");
-    for (template, freq) in session.engine.get_learned_templates() {
-        println!("[{}] {}", freq, template);
+    println!("\x1b[1mLearned Structures (Axiom Discovery):\x1b[0m\n");
+    let templates = session.engine.get_learned_templates();
+    if templates.is_empty() {
+        println!("No structural patterns learned yet.");
+    } else {
+        for (template, freq) in templates {
+            println!("[{}] {}", freq, template);
+        }
     }
     Ok(())
 }

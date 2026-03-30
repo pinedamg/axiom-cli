@@ -68,7 +68,7 @@ impl AxiomInstaller {
     }
 
     /// Injects or updates a block of text in a file delimited by markers
-    fn inject_block(path: &Path, start_marker: &str, end_marker: &str, content: &str) -> anyhow::Result<()> {
+    fn inject_block(path: &Path, start_marker: &str, end_marker: &str, content: &str, as_prefix: bool) -> anyhow::Result<()> {
         if path.is_dir() { return Ok(()); }
         let file_content = if path.exists() { fs::read_to_string(path)? } else { String::new() };
 
@@ -85,11 +85,15 @@ impl AxiomInstaller {
             result.push_str(&new_block);
             result.push_str(&file_content[end_idx..]);
             result
+        } else if as_prefix {
+            let mut result = new_block;
+            result.push_str("\n\n");
+            result.push_str(&file_content);
+            result
         } else {
             let mut result = file_content;
             if !result.is_empty() && !result.ends_with('\n') { result.push('\n'); }
             result.push_str(&new_block);
-            result.push('\n');
             result
         };
 
@@ -130,7 +134,7 @@ impl AxiomInstaller {
             content.push_str(alias);
             content.push('\n');
         }
-        Self::inject_block(path, SHELL_BLOCK_START, SHELL_BLOCK_END, &content)
+        Self::inject_block(path, SHELL_BLOCK_START, SHELL_BLOCK_END, &content, false)
     }
 
     pub fn install_shims() -> anyhow::Result<PathBuf> {
@@ -154,8 +158,8 @@ impl AxiomInstaller {
         Ok(shim_dir)
     }
 
-    pub fn inject_ai_context(path: &Path, _prefix: bool) -> anyhow::Result<()> {
-        Self::inject_block(path, CONTEXT_BLOCK_START, CONTEXT_BLOCK_END, AGENT_RULES)
+    pub fn inject_ai_context(path: &Path, as_prefix: bool) -> anyhow::Result<()> {
+        Self::inject_block(path, CONTEXT_BLOCK_START, CONTEXT_BLOCK_END, AGENT_RULES, as_prefix)
     }
 
     pub fn run_full_install(project_path: Option<&Path>, auto_yes: bool) -> anyhow::Result<()> {

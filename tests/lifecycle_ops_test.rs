@@ -1,5 +1,4 @@
 use axiom::engine::AxiomEngine;
-use axiom::config::AxiomConfig;
 use axiom::IntentContext;
 use axiom::privacy::PrivacyRedactor;
 use axiom::engine::intelligence::FuzzyIntelligence;
@@ -8,7 +7,6 @@ use tempfile::tempdir;
 
 #[tokio::test]
 async fn test_aggressive_deduplication() {
-    let config = AxiomConfig::default();
     let redactor = PrivacyRedactor::default();
     let intelligence = Box::new(FuzzyIntelligence);
     let mut engine = AxiomEngine::new(redactor, vec![], intelligence);
@@ -48,7 +46,6 @@ async fn test_raw_backup_tee_system() {
     // Clear previous log if it exists to have a clean slate
     let _ = fs::remove_file(log_path);
 
-    let config = AxiomConfig::default();
     let mut engine = AxiomEngine::new(PrivacyRedactor::default(), vec![], Box::new(FuzzyIntelligence));
     let context = IntentContext {
         last_message: "Testing".to_string(),
@@ -70,13 +67,14 @@ async fn test_installer_shell_integration() {
     let zshrc = dir.path().join(".zshrc");
     
     // 1. Initial creation
-    axiom::engine::installer::AxiomInstaller::install_shell_integration(&zshrc).unwrap();
+    axiom::engine::installer::AxiomInstaller::install_shell_integration(&zshrc, true).unwrap();
     let content = fs::read_to_string(&zshrc).unwrap();
     assert!(content.contains("axiom initialize"));
     assert!(content.contains("alias git='axiom git'"));
+    assert!(content.contains("export PATH"));
 
     // 2. Idempotency (run again, shouldn't duplicate)
-    axiom::engine::installer::AxiomInstaller::install_shell_integration(&zshrc).unwrap();
+    axiom::engine::installer::AxiomInstaller::install_shell_integration(&zshrc, true).unwrap();
     let content2 = fs::read_to_string(&zshrc).unwrap();
     let count = content2.matches("axiom initialize").count();
     assert_eq!(count, 2); // Start and End delimiters

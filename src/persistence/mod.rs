@@ -88,6 +88,18 @@ impl PersistenceManager {
         }
     }
 
+    /// Deletes a specific template
+    pub fn delete_template(&self, template: &str) -> anyhow::Result<()> {
+        self.conn.execute("DELETE FROM learned_templates WHERE template = ?", params![template])?;
+        Ok(())
+    }
+
+    /// Clears all learned templates
+    pub fn clear_templates(&self) -> anyhow::Result<()> {
+        self.conn.execute("DELETE FROM learned_templates", [])?;
+        Ok(())
+    }
+
     pub fn new() -> anyhow::Result<Self> {
         Self::new_with_path(Path::new("axiom.db"))
     }
@@ -142,6 +154,7 @@ impl PersistenceManager {
         }
     }
 
+    /// Returns the last N saving events
     /// Returns the last N saving events
     pub fn get_recent_history(&self, limit: usize) -> anyhow::Result<Vec<(String, usize, usize)>> {
         let mut stmt = self.conn.prepare(
