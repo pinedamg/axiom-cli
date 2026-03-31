@@ -29,7 +29,7 @@ Axiom provides four levels of filtering depth to balance between token savings a
 
 | Level | Command / Flag | Processing | Best for... |
 | :--- | :--- | :--- | :--- |
-| **RAW** | `axiom --raw <cmd>` | None (Bypass) | Precision debugging, forensics, or timestamps. |
+| **RAW** | `axiom -r <cmd>` | None (Bypass) | Precision debugging, forensics, or timestamps. |
 | **OFF** | `axiom intent disable` | Structure + Privacy | Routine tasks where you want summaries but no AI filtering. |
 | **FUZZY** | `axiom intent enable fuzzy` | Keywords + Git Context | Standard development. Filters noise based on relevance. |
 | **NEURAL** | `axiom intent enable neural` | Semantic Embeddings | Complex debugging where meaning matters more than keywords. |

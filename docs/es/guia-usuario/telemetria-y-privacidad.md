@@ -11,15 +11,14 @@ axiom config telemetry <level>
 
 1. **`Full` (Por defecto)**: Comparte métricas de ahorro anónimas + Nombres de los binarios utilizados + Métricas internas (IDs de coincidencia de reglas).
 2. **`Discovery`**: Comparte métricas de ahorro anónimas + Nombres de binarios (ej. `git`, `npm`). Esto nos ayuda a priorizar qué nuevos esquemas de herramientas debemos construir a continuación.
-3. **`Anonymous`**: Solo envía ahorros de tokens agregados, tu SO y la versión de Axiom. No se envían nombres de comandos.
-4. **`Off`**: **FUNCIÓN PRO**. Apagón total. No se envía ningún dato desde tu máquina.
+3. **`Basic`**: Solo envía ahorros de tokens agregados, tu SO y la versión de Axiom. No se envían nombres de comandos.
+4. **`Off`**: Apagón total. No se envía ningún dato desde tu máquina.
 
 ## Transparencia Ante Todo
 
-Ejecuta `axiom status` en cualquier momento para ver exactamente qué datos se están compartiendo y tu edición actual (Community vs Pro).
+Ejecuta `axiom config show` en cualquier momento para ver exactamente qué datos se están compartiendo.
 
 ## Cómo Te Protegemos
 
 - **Sanitización de Comandos**: Incluso en el modo `Full`, **SOLO** capturamos el nombre del binario (ej. `npm`), nunca los argumentos (ej. `install paquete-secreto`).
 - **ID Anónimo**: Usamos un `installation_id` aleatorio para contar instancias activas sin saber quién eres.
-- **Privacidad Pro**: Apoya a Axiom subiendo a Pro para desbloquear el modo de telemetría `Off`.
