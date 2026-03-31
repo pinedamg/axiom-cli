@@ -20,6 +20,14 @@ impl PrivacyRedactor {
             Regex::new(r"AKIA[0-9A-Z]{16}").unwrap(), // AWS Access Key
             Regex::new(r"gh[pousr]_[A-Za-z0-9_]{36,255}").unwrap(), // GitHub Tokens
             Regex::new(r"eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+").unwrap(), // JWT
+            // Anthropic API Key: starts with sk-ant- followed by alphanumeric and dashes
+            Regex::new(r"sk-ant-[a-zA-Z0-9_-]+").unwrap(),
+            // Groq API Key: starts with gsk_ followed by alphanumeric
+            Regex::new(r"gsk_[a-zA-Z0-9]+").unwrap(),
+            // Google Cloud API Key: starts with AIzaSy followed by alphanumeric and dashes/underscores
+            Regex::new(r"AIzaSy[a-zA-Z0-9_-]+").unwrap(),
+            // Stripe API Key: starts with sk_live_ or rk_live_ followed by alphanumeric
+            Regex::new(r"[sr]k_live_[a-zA-Z0-9]+").unwrap(),
         ];
 
         Self {
@@ -60,7 +68,9 @@ impl PrivacyRedactor {
             let word = &caps[0];
             // Only check entropy for words longer than 15 chars that aren't already redacted
             if word.len() > 15 && !word.starts_with("REDACTED") {
-                if calculate_entropy(word) > self.entropy_threshold {
+                // Skip 40-character and 64-character hex strings to prevent false positives for Git SHAs and Docker IDs
+                let is_hex_hash = (word.len() == 40 || word.len() == 64) && word.chars().all(|c| c.is_ascii_hexdigit());
+                if !is_hex_hash && calculate_entropy(word) > self.entropy_threshold {
                     return std::borrow::Cow::Owned("[REDACTED_SECRET]".to_string());
                 }
             }

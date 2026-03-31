@@ -50,7 +50,7 @@ impl Telemetry {
         // Send to Pulse (Non-blocking timeout)
         let _ = ureq::post(Self::ENDPOINT)
             .timeout(std::time::Duration::from_millis(500))
-            .header("X-Node-Token", &config.node_token)
+            .set("X-Node-Token", &config.node_token)
             .send_json(payload);
     }
 

@@ -10,9 +10,19 @@ impl CommandHandler for LsHandler {
 
     fn parse_line(&self, line: &str) -> Option<LineMetadata> {
         let parts: Vec<&str> = line.split_whitespace().collect();
+        if line.starts_with("total ") {
+            return Some(LineMetadata {
+                perms: "TOTAL".to_string(),
+                size: parts.get(1).unwrap_or(&"0").to_string(),
+                name: "total".to_string(),
+                is_dir: false,
+            });
+        }
+
         if parts.len() < 5 { return None; }
         
         let perms = parts[0].to_string();
+
         if perms.len() < 10 { return None; }
         
         // Match standard drwxr-xr-x or -rw-r--r--
