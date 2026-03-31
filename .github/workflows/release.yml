@@ -68,13 +68,19 @@ jobs:
       - name: Prepare Asset
         run: |
           mkdir -p assets
-          cp target/${{ matrix.target }}/release/${{ matrix.binary_name }} assets/${{ matrix.asset_name }}
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            powershell Compress-Archive -Path target/${{ matrix.target }}/release/${{ matrix.binary_name }} -DestinationPath assets/${{ matrix.asset_name }}.zip
+            echo "ASSET_PATH=assets/${{ matrix.asset_name }}.zip" >> $GITHUB_ENV
+          else
+            tar -czf assets/${{ matrix.asset_name }}.tar.gz -C target/${{ matrix.target }}/release ${{ matrix.binary_name }}
+            echo "ASSET_PATH=assets/${{ matrix.asset_name }}.tar.gz" >> $GITHUB_ENV
+          fi
         shell: bash
 
       - name: Upload Binary to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: assets/${{ matrix.asset_name }}
+          files: ${{ env.ASSET_PATH }}
           draft: false
           prerelease: false
           generate_release_notes: true
