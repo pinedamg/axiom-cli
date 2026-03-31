@@ -116,11 +116,16 @@ impl AxiomConfig {
 
         // 1. Ensure Identity (Handshake) if missing
         if config.node_id.is_empty() || config.node_token.is_empty() {
-            if let Ok((id, token)) = Handshake::register_node() {
-                config.node_id = id;
-                config.node_token = token;
-                config.hardware_hash = Handshake::get_hardware_hash();
-                let _ = config.save_global();
+            match Handshake::register_node() {
+                Ok((id, token)) => {
+                    config.node_id = id;
+                    config.node_token = token;
+                    config.hardware_hash = Handshake::get_hardware_hash();
+                    let _ = config.save_global();
+                }
+                Err(e) => {
+                    eprintln!("\x1b[31m[AXIOM ERROR] Registration failed: {:?}\x1b[0m", e);
+                }
             }
         }
 

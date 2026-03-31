@@ -44,6 +44,7 @@ hf-hub = "0.4"
 chrono = "0.4"
 ureq = { version = "2.9", features = ["json"] }
 sha2 = "0.10"
+hmac = "0.12"
 hex = "0.4"
 machine-uid = "0.3"
 

@@ -18,7 +18,7 @@ pub struct NodeRegisterRes {
 pub struct Handshake;
 
 impl Handshake {
-    const REGISTER_URL: &'static str = "https://pulse-api.mpineda.com.ar/v1/node/register";
+    const REGISTER_URL: &'static str = "https://axiom-pulse-api.mpineda.com.ar/v1/node/register";
 
     /// Generates a unique hardware fingerprint (one-way hash)
     pub fn get_hardware_hash() -> String {

@@ -105,8 +105,11 @@ impl AxiomSession {
             let _ = self.persistence.upsert_template(&template, freq);
         }
         
-        // Log savings
+        // Log savings locally
         let _ = self.persistence.log_saving(command, original, compressed);
+
+        // Report to Cloud Telemetry (Axiom Pulse)
+        crate::engine::telemetry::Telemetry::report_usage(&self.config, command, original, compressed);
         
         Ok(())
     }
