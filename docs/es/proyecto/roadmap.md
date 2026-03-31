@@ -60,6 +60,17 @@ Este Roadmap combinado define la ruta de implementación de **AXIOM**, priorizan
 
 ---
 
+## 📡 Fase 5: Telemetría y Control Plane (Axiom Pulse) - [EN PROGRESO]
+**Objetivo**: Observabilidad segura y métricas de valor para el usuario.
+- [x] **Handshake de Hardware**: Identidad única anclada a la PC (SHA-256).
+- [x] **Proof of Work (PoW)**: Filtro anti-spam para registros de nodos.
+- [x] **Firma Criptográfica (HMAC)**: Reportes de uso firmados con tokens únicos.
+- [x] **Axiom Pulse API**: Ingestión de alto rendimiento con validación en Redis.
+- [ ] **Identidad Multi-máquina**: Vincular múltiples PCs a un mismo perfil de usuario (Roadmap Idea 2).
+- [ ] **Dashboard Pro**: Visualización privada de ahorros acumulados por usuario.
+
+---
+
 ## 🧰 Roadmap de Expansión del Toolset para Desarrolladores
 
 Esta sección define la expansión de esquemas predeterminados y modos inteligentes para desarrolladores de Linux.

@@ -110,6 +110,17 @@ Basado en la auditoría técnica del proyecto, se han identificado los siguiente
 
 ---
 
+## 📡 Phase 6: Telemetry & Control Plane (Axiom Pulse) - [IN PROGRESS]
+**Goal**: Secure observability and user-centric value metrics.
+- [x] **Hardware Handshake**: Unique identity anchored to PC hardware (SHA-256).
+- [x] **Proof of Work (PoW)**: Anti-spam filter for node registrations.
+- [x] **Cryptographic Signing (HMAC)**: Usage reports signed with unique node secrets.
+- [x] **Axiom Pulse API**: High-performance ingestion with Redis validation.
+- [ ] **Multi-machine Linking**: Connect multiple devices to a single user profile (Roadmap Idea 2).
+- [ ] **Private Insights Dashboard**: Personalized view of accumulated token savings.
+
+---
+
 ## 🧰 Developer Toolset Expansion Roadmap
 
 This section defines the expansion of default schemas and intelligent modes for Linux developers.
