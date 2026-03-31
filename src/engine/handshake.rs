@@ -1,6 +1,5 @@
 use sha2::{Sha256, Digest};
 use serde::{Serialize, Deserialize};
-use crate::config::AxiomConfig;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NodeRegisterReq {

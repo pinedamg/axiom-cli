@@ -23,7 +23,7 @@ impl Telemetry {
 
         // 1. Basic Anonymous Data
         let saved = raw.saturating_sub(processed);
-        let ratio = if raw > 0 { (saved as f64 / raw as f64) } else { 0.0 };
+        let ratio = if raw > 0 { saved as f64 / raw as f64 } else { 0.0 };
 
         let binary = if let Some(cmd) = command {
             cmd.split_whitespace().next().unwrap_or("unknown")
@@ -50,7 +50,7 @@ impl Telemetry {
         // Send to Pulse (Non-blocking timeout)
         let _ = ureq::post(Self::ENDPOINT)
             .timeout(std::time::Duration::from_millis(500))
-            .header("X-Node-Token", &config.node_token)
+            .set("X-Node-Token", &config.node_token)
             .send_json(payload);
     }
 

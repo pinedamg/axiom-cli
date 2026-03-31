@@ -116,7 +116,6 @@ impl AxiomConfig {
 
         // 1. Ensure Identity (Handshake) if missing
         if config.node_id.is_empty() || config.node_token.is_empty() {
-            println!("\x1b[34m[AXIOM] Initializing secure telemetry identity...\x1b[0m");
             if let Ok((id, token)) = Handshake::register_node() {
                 config.node_id = id;
                 config.node_token = token;
