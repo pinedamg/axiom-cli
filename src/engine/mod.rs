@@ -124,9 +124,10 @@ impl AxiomEngine {
             self.discovery.repeat_count = 0;
         }
 
-        let working_line = self.apply_structural_transform(line);
+        let working_line_cow = self.apply_structural_transform(line);
+        let working_line = working_line_cow.as_ref();
 
-        if let Some(guard_result) = self.apply_resource_guard(&working_line, command, context) {
+        if let Some(guard_result) = self.apply_resource_guard(working_line, command, context) {
             return self.wrap_with_prefix(dedup_prefix, guard_result);
         }
 
@@ -220,11 +221,11 @@ impl AxiomEngine {
         }
     }
 
-    fn apply_structural_transform(&self, line: &str) -> String {
+    fn apply_structural_transform<'a>(&self, line: &'a str) -> std::borrow::Cow<'a, str> {
         if self.markdown_mode && ContentTransformer::looks_like_table(line) {
-            ContentTransformer::to_markdown(line)
+            std::borrow::Cow::Owned(ContentTransformer::to_markdown(line))
         } else {
-            line.to_string()
+            std::borrow::Cow::Borrowed(line)
         }
     }
 

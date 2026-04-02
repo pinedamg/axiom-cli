@@ -1,5 +1,6 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use regex::Regex;
+use std::sync::OnceLock;
 use crate::engine::commands::CommandHandler;
 
 #[derive(Debug, Clone)]
@@ -11,9 +12,11 @@ pub struct LineMetadata {
 }
 
 pub struct DiscoveryEngine {
-    pub templates: HashMap<String, usize>,
-    pub synthesis_buffer: HashMap<String, Vec<LineMetadata>>,
-    pub variable_buffer: HashMap<String, Vec<Vec<String>>>,
+    // BTreeMap minimizes memory footprint for small string keys and allows
+    // fast ordered traversal when generating summaries
+    pub templates: BTreeMap<String, usize>,
+    pub synthesis_buffer: BTreeMap<String, Vec<LineMetadata>>,
+    pub variable_buffer: BTreeMap<String, Vec<Vec<String>>>,
     pub threshold: usize,
     pub last_line: Option<String>,
     pub repeat_count: usize,
@@ -24,9 +27,9 @@ pub struct DiscoveryEngine {
 impl Default for DiscoveryEngine {
     fn default() -> Self {
         Self {
-            templates: HashMap::new(),
-            synthesis_buffer: HashMap::new(),
-            variable_buffer: HashMap::new(),
+            templates: BTreeMap::new(),
+            synthesis_buffer: BTreeMap::new(),
+            variable_buffer: BTreeMap::new(),
             threshold: 5,
             last_line: None,
             repeat_count: 0,
@@ -43,27 +46,40 @@ impl DiscoveryEngine {
         }
     }
 
-    fn parse_standard_ls(&self, line: &str, handler: Option<&dyn CommandHandler>, command: &str) -> Vec<LineMetadata> {
-        if !command.starts_with("ls") { return vec![]; }
+    fn parse_standard_ls(&self, line: &str, handler: Option<&dyn CommandHandler>, command: &str) -> Option<Vec<LineMetadata>> {
+        if !command.starts_with("ls") { return None; }
         
         let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with('(') || trimmed.len() > 100 { return vec![]; }
-        if line.starts_with('d') || line.starts_with('-') || line.starts_with('l') || line.starts_with("total") { return vec![]; }
+        if trimmed.is_empty() || trimmed.starts_with('(') || trimmed.len() > 100 { return None; }
+
+        // "total" lines should be swallowed entirely to improve compression. We return Some(vec![])
+        // to signal the engine to swallow it, but since it's empty, it adds nothing to the buffer.
+        if line.starts_with("total") {
+            return Some(vec![]);
+        }
+
+        if line.starts_with('d') || line.starts_with('-') || line.starts_with('l') { return None; }
         
         // Anti-collision: skip lines that look like logs or structured data
         if trimmed.starts_with('[') || trimmed.contains(": ") || trimmed.contains(" = ") {
-            return vec![];
+            return None;
         }
 
         // Anti-collision with the current handler
         if handler.map_or(false, |h| h.parse_line(line).is_some()) { 
-            return vec![]; 
+            return None;
         }
 
-        line.split_whitespace().filter(|&s| !s.is_empty()).map(|name| {
+        let metadata: Vec<LineMetadata> = line.split_whitespace().filter(|&s| !s.is_empty()).map(|name| {
             let ext = if name.contains('.') { name.split('.').last().unwrap_or("bin").to_string() } else { "dir".to_string() };
             LineMetadata { perms: ext, size: "0".to_string(), name: name.to_string(), is_dir: !name.contains('.') }
-        }).collect()
+        }).collect();
+
+        if metadata.is_empty() {
+            None
+        } else {
+            Some(metadata)
+        }
     }
 
     pub fn synthesize_line(&mut self, line: &str, handler: Option<&dyn CommandHandler>, command: &str) -> bool {
@@ -132,8 +148,7 @@ impl DiscoveryEngine {
             }
         }
 
-        let files = self.parse_standard_ls(line, handler, command);
-        if !files.is_empty() {
+        if let Some(files) = self.parse_standard_ls(line, handler, command) {
             for meta in files {
                 let key = format!("EXT:{}", meta.perms.to_uppercase());
                 self.synthesis_buffer.entry(key).or_default().push(meta);
@@ -166,24 +181,28 @@ impl DiscoveryEngine {
     }
 
     pub fn extract_parts(&self, line: &str) -> (String, Vec<String>) {
-        let mut variables = Vec::new();
+        // Pre-allocate capacity since we typically extract at least a few variables
+        let mut variables = Vec::with_capacity(4);
         
-        let re_uuid = Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").unwrap();
+        static RE_UUID: OnceLock<Regex> = OnceLock::new();
+        static RE_HEX: OnceLock<Regex> = OnceLock::new();
+        static RE_PATH: OnceLock<Regex> = OnceLock::new();
+        static RE_MONTHS: OnceLock<Regex> = OnceLock::new();
+        static RE_TIME: OnceLock<Regex> = OnceLock::new();
+        static RE_NUM: OnceLock<Regex> = OnceLock::new();
+
+        let re_uuid = RE_UUID.get_or_init(|| Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").unwrap());
+        let re_hex = RE_HEX.get_or_init(|| Regex::new(r"0x[0-9a-fA-F]+").unwrap());
+        let re_path = RE_PATH.get_or_init(|| Regex::new(r"/[a-zA-Z0-9\._\-/]+").unwrap());
+        let re_months = RE_MONTHS.get_or_init(|| Regex::new(r"(?i)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)").unwrap());
+        let re_time = RE_TIME.get_or_init(|| Regex::new(r"\d{1,2}:\d{2}").unwrap());
+        let re_num = RE_NUM.get_or_init(|| Regex::new(r"\d+").unwrap());
+        
         let s = re_uuid.replace_all(line, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<UUID>" });
-        
-        let re_hex = Regex::new(r"0x[0-9a-fA-F]+").unwrap();
         let s = re_hex.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<HEX>" });
-
-        let re_path = Regex::new(r"/[a-zA-Z0-9\._\-/]+").unwrap();
         let s = re_path.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<PATH>" });
-
-        let re_months = Regex::new(r"(?i)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)").unwrap();
         let s = re_months.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<MONTH>" });
-        
-        let re_time = Regex::new(r"\d{1,2}:\d{2}").unwrap();
         let s = re_time.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<TIME>" });
-        
-        let re_num = Regex::new(r"\d+").unwrap();
         let s = re_num.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<NUM>" });
         
         (s.to_string(), variables)
@@ -191,40 +210,39 @@ impl DiscoveryEngine {
 
     pub fn flush_variable_summary(&mut self, handlers: &[Box<dyn CommandHandler>]) -> Vec<String> {
         let mut summaries = Vec::new();
-        let mut keys: Vec<_> = self.synthesis_buffer.keys().cloned().collect();
-        keys.sort();
 
-        for key in keys {
-            if let Some(items) = self.synthesis_buffer.remove(&key) {
-                let mut formatted = false;
-                for handler in handlers {
-                    if let Some(summary) = handler.format_summary(&key, &items) {
-                        summaries.push(summary);
-                        formatted = true;
-                        break;
-                    }
+        // BTreeMap is already natively sorted. We can just take it to avoid allocations.
+        let synthesis_buffer = std::mem::take(&mut self.synthesis_buffer);
+
+        for (key, items) in synthesis_buffer {
+            let mut formatted = false;
+            for handler in handlers {
+                if let Some(summary) = handler.format_summary(&key, &items) {
+                    summaries.push(summary);
+                    formatted = true;
+                    break;
                 }
+            }
 
-                if !formatted {
-                    let parts: Vec<&str> = key.split(':').collect();
-                    let label = parts[0];
-                    match label {
-                        "DIR" | "FILE" => {
-                            let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                            let perms = parts.get(1).unwrap_or(&"---");
-                            summaries.push(format!("{} [{}] | {}", label, perms, names.join(", ")));
-                        },
-                        "EXT" => {
-                            let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                            summaries.push(format!("Grouped {} files by extension [{}] | {}", items.len(), parts[1], names.join(", ")));
-                        },
-                        _ => summaries.push(format!("Summary for {}: {} items", label, items.len()))
-                    }
+            if !formatted {
+                let parts: Vec<&str> = key.split(':').collect();
+                let label = parts[0];
+                match label {
+                    "DIR" | "FILE" => {
+                        let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
+                        let perms = parts.get(1).unwrap_or(&"---");
+                        summaries.push(format!("{} [{}] | {}", label, perms, names.join(", ")));
+                    },
+                    "EXT" => {
+                        let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
+                        summaries.push(format!("Grouped {} files by extension [{}] | {}", items.len(), parts[1], names.join(", ")));
+                    },
+                    _ => summaries.push(format!("Summary for {}: {} items", label, items.len()))
                 }
             }
         }
 
-        for (template, var_sets) in self.variable_buffer.drain() {
+        for (template, var_sets) in std::mem::take(&mut self.variable_buffer) {
             if var_sets.len() > 1 {
                 summaries.push(format!("Line matched {} more times: {}", var_sets.len(), template));
             }
