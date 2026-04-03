@@ -220,11 +220,13 @@ impl AxiomEngine {
         }
     }
 
-    fn apply_structural_transform(&self, line: &str) -> String {
+    // ⚡ Bolt: Return std::borrow::Cow instead of String to avoid allocating for every line in the hot path
+    // when a Markdown structural transformation is not triggered.
+    fn apply_structural_transform<'a>(&self, line: &'a str) -> std::borrow::Cow<'a, str> {
         if self.markdown_mode && ContentTransformer::looks_like_table(line) {
-            ContentTransformer::to_markdown(line)
+            std::borrow::Cow::Owned(ContentTransformer::to_markdown(line))
         } else {
-            line.to_string()
+            std::borrow::Cow::Borrowed(line)
         }
     }
 
