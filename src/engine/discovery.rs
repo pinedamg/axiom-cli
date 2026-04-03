@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use regex::Regex;
 use crate::engine::commands::CommandHandler;
 
@@ -11,9 +11,11 @@ pub struct LineMetadata {
 }
 
 pub struct DiscoveryEngine {
-    pub templates: HashMap<String, usize>,
-    pub synthesis_buffer: HashMap<String, Vec<LineMetadata>>,
-    pub variable_buffer: HashMap<String, Vec<Vec<String>>>,
+    // ⚡ Bolt: Using BTreeMap instead of HashMap to reduce hashing memory overhead for small string keys
+    // and leverage native sorting without extra allocation steps during flush_variable_summary.
+    pub templates: BTreeMap<String, usize>,
+    pub synthesis_buffer: BTreeMap<String, Vec<LineMetadata>>,
+    pub variable_buffer: BTreeMap<String, Vec<Vec<String>>>,
     pub threshold: usize,
     pub last_line: Option<String>,
     pub repeat_count: usize,
@@ -24,9 +26,9 @@ pub struct DiscoveryEngine {
 impl Default for DiscoveryEngine {
     fn default() -> Self {
         Self {
-            templates: HashMap::new(),
-            synthesis_buffer: HashMap::new(),
-            variable_buffer: HashMap::new(),
+            templates: BTreeMap::new(),
+            synthesis_buffer: BTreeMap::new(),
+            variable_buffer: BTreeMap::new(),
             threshold: 5,
             last_line: None,
             repeat_count: 0,
@@ -144,65 +146,67 @@ impl DiscoveryEngine {
     }
 
     pub fn extract_parts(&self, line: &str) -> (String, Vec<String>) {
+        use std::sync::OnceLock;
+        static RE_UUID: OnceLock<Regex> = OnceLock::new();
+        static RE_HEX: OnceLock<Regex> = OnceLock::new();
+        static RE_PATH: OnceLock<Regex> = OnceLock::new();
+        static RE_MONTHS: OnceLock<Regex> = OnceLock::new();
+        static RE_TIME: OnceLock<Regex> = OnceLock::new();
+        static RE_NUM: OnceLock<Regex> = OnceLock::new();
+
+        let re_uuid = RE_UUID.get_or_init(|| Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").unwrap());
+        let re_hex = RE_HEX.get_or_init(|| Regex::new(r"0x[0-9a-fA-F]+").unwrap());
+        let re_path = RE_PATH.get_or_init(|| Regex::new(r"/[a-zA-Z0-9\._\-/]+").unwrap());
+        let re_months = RE_MONTHS.get_or_init(|| Regex::new(r"(?i)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)").unwrap());
+        let re_time = RE_TIME.get_or_init(|| Regex::new(r"\d{1,2}:\d{2}").unwrap());
+        let re_num = RE_NUM.get_or_init(|| Regex::new(r"\d+").unwrap());
+
         let mut variables = Vec::new();
         
-        let re_uuid = Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").unwrap();
         let s = re_uuid.replace_all(line, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<UUID>" });
-        
-        let re_hex = Regex::new(r"0x[0-9a-fA-F]+").unwrap();
         let s = re_hex.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<HEX>" });
-
-        let re_path = Regex::new(r"/[a-zA-Z0-9\._\-/]+").unwrap();
         let s = re_path.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<PATH>" });
-
-        let re_months = Regex::new(r"(?i)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)").unwrap();
         let s = re_months.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<MONTH>" });
-        
-        let re_time = Regex::new(r"\d{1,2}:\d{2}").unwrap();
         let s = re_time.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<TIME>" });
-        
-        let re_num = Regex::new(r"\d+").unwrap();
         let s = re_num.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<NUM>" });
         
         (s.to_string(), variables)
     }
 
     pub fn flush_variable_summary(&mut self, handlers: &[Box<dyn CommandHandler>]) -> Vec<String> {
-        let mut summaries = Vec::new();
-        let mut keys: Vec<_> = self.synthesis_buffer.keys().cloned().collect();
-        keys.sort();
+        // Pre-allocate Vec capacity to avoid re-allocations
+        let mut summaries = Vec::with_capacity(self.synthesis_buffer.len() + self.variable_buffer.len());
 
-        for key in keys {
-            if let Some(items) = self.synthesis_buffer.remove(&key) {
-                let mut formatted = false;
-                for handler in handlers {
-                    if let Some(summary) = handler.format_summary(&key, &items) {
-                        summaries.push(summary);
-                        formatted = true;
-                        break;
-                    }
+        // Use std::mem::take to avoid cloning and sorting keys. BTreeMap yields ordered keys inherently.
+        for (key, items) in std::mem::take(&mut self.synthesis_buffer) {
+            let mut formatted = false;
+            for handler in handlers {
+                if let Some(summary) = handler.format_summary(&key, &items) {
+                    summaries.push(summary);
+                    formatted = true;
+                    break;
                 }
+            }
 
-                if !formatted {
-                    let parts: Vec<&str> = key.split(':').collect();
-                    let label = parts[0];
-                    match label {
-                        "DIR" | "FILE" => {
-                            let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                            let perms = parts.get(1).unwrap_or(&"---");
-                            summaries.push(format!("{} [{}] | {}", label, perms, names.join(", ")));
-                        },
-                        "EXT" => {
-                            let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                            summaries.push(format!("Grouped {} files by extension [{}] | {}", items.len(), parts[1], names.join(", ")));
-                        },
-                        _ => summaries.push(format!("Summary for {}: {} items", label, items.len()))
-                    }
+            if !formatted {
+                let parts: Vec<&str> = key.split(':').collect();
+                let label = parts[0];
+                match label {
+                    "DIR" | "FILE" => {
+                        let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
+                        let perms = parts.get(1).unwrap_or(&"---");
+                        summaries.push(format!("{} [{}] | {}", label, perms, names.join(", ")));
+                    },
+                    "EXT" => {
+                        let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
+                        summaries.push(format!("Grouped {} files by extension [{}] | {}", items.len(), parts[1], names.join(", ")));
+                    },
+                    _ => summaries.push(format!("Summary for {}: {} items", label, items.len()))
                 }
             }
         }
 
-        for (template, var_sets) in self.variable_buffer.drain() {
+        for (template, var_sets) in std::mem::take(&mut self.variable_buffer) {
             if var_sets.len() > 1 {
                 summaries.push(format!("Line matched {} more times: {}", var_sets.len(), template));
             }

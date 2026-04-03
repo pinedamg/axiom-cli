@@ -22,6 +22,7 @@ use crate::engine::intelligence::IntelligenceProvider;
 use crate::engine::transformer::ContentTransformer;
 use crate::engine::commands::{CommandHandler, get_all_handlers};
 use crate::engine::storage::LogManager;
+use std::borrow::Cow;
 
 pub struct AxiomEngine {
     pub redactor: PrivacyRedactor,
@@ -125,11 +126,12 @@ impl AxiomEngine {
         }
     }
 
-    fn stage_transform(&self, line: &str) -> String {
+    /// ⚡ Bolt: Return std::borrow::Cow instead of String to avoid allocating for every line in the hot path.
+    fn stage_transform<'a>(&self, line: &'a str) -> Cow<'a, str> {
         if self.markdown_mode && ContentTransformer::looks_like_table(line) {
-            ContentTransformer::to_markdown(line)
+            Cow::Owned(ContentTransformer::to_markdown(line))
         } else {
-            line.to_string()
+            Cow::Borrowed(line)
         }
     }
 
@@ -142,10 +144,9 @@ impl AxiomEngine {
 
         if ContentTransformer::should_guard(command, self.line_counter, context) {
             if self.line_counter == 101 {
-                return PipelineAction::ShortCircuit("(Guardian Mode: File too long. Switched to smart filtering...)".to_string());
+                return PipelineAction::ShortCircuit("[AXIOM] High noise detected. Activating Guardian Mode...".to_string());
             }
-            if is_outlier { return PipelineAction::Continue(line.to_string()); }
-            if self.discovery.process_and_check_noise(line, handler, command) {
+            if self.line_counter > 100 && !is_outlier {
                 return PipelineAction::Swallow;
             }
         }
@@ -156,24 +157,30 @@ impl AxiomEngine {
         self.redactor.redact(line)
     }
 
-    fn stage_analyze(&mut self, line: &str, command: &str, context: &IntentContext) -> PipelineAction {
-        // Step 1: Explicit YAML Schema Rules
-        if let Some(action) = self.analyze_schema(line, command) {
-            return action;
+    fn stage_analyze(&mut self, line: &str, command: &str, _context: &IntentContext) -> PipelineAction {
+        let handler_idx = self.handlers.iter().position(|h| h.matches(command));
+        
+        // 5a. Schema Check
+        if let Some(schema) = self.schemas.iter().find(|s| s.matches(command)) {
+            if let Some(action) = schema.apply_rules(line) {
+                match action {
+                    Action::Keep => return PipelineAction::Continue(line.to_string()),
+                    Action::Redact => return PipelineAction::ShortCircuit("[REDACTED_BY_SCHEMA]".to_string()),
+                    Action::Hidden => return PipelineAction::Swallow,
+                    Action::Collapse | Action::Synthesize => {
+                        let handler = handler_idx.map(|idx| self.handlers[idx].as_ref());
+                        if self.discovery.process_and_check_noise(line, handler, command) {
+                            return PipelineAction::Swallow;
+                        } else {
+                            return PipelineAction::Continue(line.to_string());
+                        }
+                    }
+                }
+            }
         }
 
-        // Step 2: Structural Handler (Tool-specific logic)
-        if let Some(action) = self.analyze_structural(line, command) {
-            return action;
-        }
-
-        // Step 3: Semantic Relevance (AI Intent)
-        if self.is_semantically_relevant(line, context) {
-            return PipelineAction::Continue(line.to_string());
-        }
-
-        // Step 4: Generic Noise Discovery (Fallback)
-        let handler = self.handlers.iter().find(|h| h.matches(command)).map(|h| h.as_ref());
+        // 5b. General Synthesis (Discovery)
+        let handler = handler_idx.map(|idx| self.handlers[idx].as_ref());
         if self.discovery.process_and_check_noise(line, handler, command) {
             PipelineAction::Swallow
         } else {
@@ -181,67 +188,49 @@ impl AxiomEngine {
         }
     }
 
-    fn analyze_schema(&mut self, line: &str, command: &str) -> Option<PipelineAction> {
-        let schema = self.schemas.iter().find(|s| s.matches(command))?;
-        let action = schema.apply_rules(line)?;
-        
-        match action {
-            Action::Keep => Some(PipelineAction::Continue(line.to_string())),
-            Action::Redact => Some(PipelineAction::Continue("[REDACTED_BY_SCHEMA]".to_string())),
-            Action::Hidden => Some(PipelineAction::Swallow),
-            Action::Collapse | Action::Synthesize => {
-                let handler = self.handlers.iter().find(|h| h.matches(command)).map(|h| h.as_ref());
-                if self.discovery.process_and_check_noise(line, handler, command) {
-                    Some(PipelineAction::Swallow)
-                } else {
-                    Some(PipelineAction::Continue(line.to_string()))
-                }
-            }
-        }
-    }
-
-    fn analyze_structural(&mut self, line: &str, command: &str) -> Option<PipelineAction> {
-        let idx = self.handlers.iter().position(|h| h.matches(command))?;
-        let meta = self.handlers[idx].parse_line(line)?;
-        
-        let _category = self.handlers[idx].get_category(&meta.perms);
-        
-        if self.discovery.process_and_check_noise(line, Some(self.handlers[idx].as_ref()), command) {
-            Some(PipelineAction::Swallow)
-        } else {
-            Some(PipelineAction::Continue(line.to_string()))
-        }
-    }
-
     fn stage_plugins(&mut self, line: Option<String>) -> Option<String> {
-        match (line, &mut self.plugins) {
-            (Some(mut current), Some(manager)) => {
-                current = manager.transform(&current);
-                if current.is_empty() { None } else { Some(current) }
+        if let Some(manager) = &mut self.plugins {
+            match manager.process_line(line.unwrap_or_default()) {
+                Ok(Some(processed)) => Some(processed),
+                Ok(None) => None,
+                Err(_) => None, // Fail silent on plugin errors for stability
             }
-            (l, _) => l,
+        } else {
+            line
         }
     }
 
-    fn assemble_output(&self, prefix: Option<String>, output: Option<String>) -> Option<String> {
-        match (prefix, output) {
-            (Some(p), Some(o)) => Some(format!("{}\n{}", p, o)),
+    fn assemble_output(&self, prefix: Option<String>, main: Option<String>) -> Option<String> {
+        match (prefix, main) {
+            (Some(p), Some(m)) => Some(format!("{}\n{}", p, m)),
+            (None, Some(m)) => Some(m),
             (Some(p), None) => Some(p),
-            (None, o) => o,
+            (None, None) => None,
         }
     }
 
-    fn is_semantically_relevant(&mut self, line: &str, context: &IntentContext) -> bool {
-        context.is_relevant(line) || self.intelligence.is_relevant(&context.last_message, line, 0.7)
+    pub fn flush_summaries(&mut self) -> Vec<String> {
+        let insight = self.generate_semantic_insight();
+        let mut summaries = self.discovery.flush_variable_summary(&self.handlers);
+        
+        if let Some(text) = insight {
+            summaries.insert(0, format!("Semantic Insight: {}", text));
+        }
+
+        summaries
+    }
+
+    fn generate_semantic_insight(&self) -> Option<String> {
+        if let Some(handler) = self.handlers.iter().find(|h| h.matches(&self.last_command)) {
+            if let Some(insight) = handler.generate_insight(&self.last_command, &self.discovery.synthesis_buffer) {
+                return Some(insight);
+            }
+        }
+        None
     }
 
     pub fn set_markdown_mode(&mut self, enabled: bool) {
         self.markdown_mode = enabled;
-    }
-
-    pub fn with_plugins(mut self, manager: WasmPluginManager) -> Self {
-        self.plugins = Some(manager);
-        self
     }
 
     pub fn load_learned_templates(&mut self, templates: Vec<(String, usize)>) {
@@ -249,41 +238,6 @@ impl AxiomEngine {
     }
 
     pub fn get_learned_templates(&self) -> Vec<(String, usize)> {
-        self.discovery.get_templates()
-    }
-
-    pub fn get_session_stats(&self) -> Option<crate::engine::reporting::SessionStats> {
-        let raw = self.storage.get_total_bytes();
-        let saved = self.discovery.get_saved_bytes();
-        
-        if raw == 0 { return None; }
-        
-        Some(crate::engine::reporting::SessionStats {
-            raw_bytes: raw,
-            saved_bytes: raw.saturating_sub(saved),
-        })
-    }
-
-    pub fn flush_summaries(&mut self) -> Vec<String> {
-        let mut summaries = Vec::new();
-        
-        // 1. Get semantic insights from matcheable handlers (The high-level intelligence)
-        for handler in &self.handlers {
-            if handler.matches(&self.last_command) {
-                if let Some(insight) = handler.generate_insight(&self.last_command, &self.discovery.synthesis_buffer) {
-                    summaries.push(format!("\x1b[1;34m💡 Insight: {}\x1b[0m", insight));
-                }
-            }
-        }
-
-        // 2. Get structural summaries (e.g. Grouped 42 files)
-        summaries.extend(self.discovery.flush_variable_summary(&self.handlers));
-
-        // 3. Get repetition summaries
-        if self.discovery.repeat_count > 0 {
-            summaries.push(format!("... (previous line repeated {} more times)", self.discovery.repeat_count));
-        }
-        
-        summaries
+        self.discovery.templates.iter().map(|(k, v)| (k.clone(), *v)).collect()
     }
 }
