@@ -2,49 +2,71 @@
 
 The Axiom CLI provides several commands to manage your installation, view analytics, and debug configurations.
 
+When you run `axiom` followed by any command not listed below, it acts as a **Semantic Firewall**, intercepting the command's output, applying privacy filters and semantic compression, and outputting an optimized, high-signal stream.
+
+## Proxy Flags
+
+When running in proxy mode (e.g., `axiom npm install`), you can use the following global flags:
+
+- `--raw`: Bypasses all Axiom processing and synthesis. Outputs the exact stream from the child process.
+- `--markdown`: Enables automatic transformation of terminal tables into Markdown format.
+- `--yes`: Automatically answer "yes" to all prompts.
+
 ## Core Commands
 
-### `axiom <command>`
-The primary usage. Acts as a proxy for the provided command.
-- **Usage**: `axiom npm install`, `axiom docker logs my-container`
-- **Behavior**: Intercepts the command's output, applies privacy filters, semantic compression, and outputs the optimized stream.
+### `axiom install`
+Install Axiom shell integration and AI context.
 - **Flags**:
-  - `--raw`: Bypasses all Axiom processing and synthesis. Outputs the exact stream from the child process.
-  - `--markdown`: Enables automatic transformation of terminal tables into Markdown format.
+  - `-p, --path <PATH>`: Project path to sync AI context (default: current dir).
+  - `--context-only`: Only install AI context files (e.g., `AGENTS.md`, `.cursorrules`), skip shell aliases.
 
-### `axiom intent`
-Manages the intelligence and relevance filtering levels.
-- **Subcommands**:
-  - `enable <mode>`: Enables intent-based filtering. Modes: `fuzzy` (default), `neural`.
-  - `disable`: Sets intelligence to Level 1 (OFF). Only structure and privacy are processed.
-  - `status`: Shows current intelligence mode and discovered intent.
+### `axiom uninstall`
+Remove all Axiom traces from the system.
+- **Flags**:
+  - `-p, --path <PATH>`: Project path to remove AI context (default: current dir).
+
+### `axiom doctor`
+Run system health check and diagnostics.
+- **Flags**:
+  - `-p, --path <PATH>`: Project path to check AI context (default: current dir).
+  - `-f, --fix`: Attempt to automatically fix detected issues.
+
+### `axiom self-update`
+Update Axiom to the latest version from GitHub.
+
+### `axiom last`
+Show the raw output of the last executed command.
+- **Flags**:
+  - `-t, --tail <LINES>`: Number of lines to show from the end.
+  - `-g, --grep <KEYWORD>`: Filter lines by a keyword.
 
 ### `axiom gain`
-Displays analytics on your token and cost savings.
-- **Usage**: `axiom gain`
+Show token savings analytics.
 - **Flags**:
-  - `--history`: Shows a detailed list of recent command executions and the exact token savings for each.
+  - `-s, --history`: Show detailed savings history.
 
-### `axiom status`
-Shows the current health, configuration, and telemetry status of your Axiom installation.
-- **Usage**: `axiom status`
-- **Output**: Edition (Community/Pro), Telemetry Level, Installation ID, and active schemas.
+### `axiom check-ai`
+Check if the current process was called by an AI agent. Exits with 0 if detected, 1 otherwise.
 
-### `axiom proxy <cmd>`
-Executes the raw command without filtering. Useful for debugging or bypassing Axiom entirely for a specific execution.
-- **Usage**: `axiom proxy npm install`
+## Configuration & Discovery Commands
 
-### `axiom discover`
-*(Beta)* Analyzes local AI agent history (like Claude Code) to find missed opportunities where Axiom could have saved tokens.
-- **Usage**: `axiom discover`
+### `axiom intent <action>`
+Manage Intent Discovery and Intelligence Levels.
+- **Actions**:
+  - `enable <mode>`: Enable intent intelligence. Modes: `fuzzy` (keywords) or `neural` (AI embeddings). Default is `fuzzy`.
+  - `disable`: Disable intent intelligence (maintain formatting but show all files).
+  - `status`: Show current intent discovery status and relevant files.
 
-## Configuration Commands
+### `axiom discovery <action>`
+List or manage currently learned structural templates.
+- **Actions**:
+  - `list` *(default)*: List all learned templates.
+  - `clear`: Clear all learned patterns.
+  - `forget <pattern>`: Forget a specific template pattern.
 
-### `axiom config telemetry <level>`
-Sets your preferred telemetry level.
-- **Levels**: `full`, `discovery`, `anonymous`, `off` (Pro only).
-- **Example**: `axiom config telemetry discovery`
-
-### `axiom config license <key>`
-Applies a Pro license key to unlock premium features like Offline telemetry mode.
-- **Example**: `axiom config license abc-123-xyz`
+### `axiom config <action>`
+Configuration management. If no action is provided, an interactive configuration menu is launched.
+- **Actions**:
+  - `init`: Initialize a local `.axiom.yaml` file with default values.
+  - `show`: Show current configuration.
+  - `set <key> <value>`: Set a configuration value (e.g., `axiom config set intelligence neural`).

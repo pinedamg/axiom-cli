@@ -2,39 +2,71 @@
 
 La interfaz de comandos (CLI) de Axiom proporciona varios comandos para gestionar tu instalación, ver análisis y depurar configuraciones.
 
+Cuando ejecutas `axiom` seguido de cualquier comando que no esté en la lista de abajo, actúa como un **Firewall Semántico**, interceptando la salida del comando, aplicando filtros de privacidad y compresión semántica, y devolviendo un flujo de salida optimizado de alta señal.
+
+## Banderas del Proxy
+
+Cuando se ejecuta en modo proxy (ej., `axiom npm install`), puedes usar las siguientes banderas (flags) globales:
+
+- `--raw`: Omite todo el procesamiento y síntesis de Axiom. Muestra el flujo exacto del proceso hijo.
+- `--markdown`: Habilita la transformación automática de tablas de la terminal a formato Markdown.
+- `--yes`: Responde automáticamente "sí" a todas las preguntas.
+
 ## Comandos Principales
 
-### `axiom <comando>`
-El uso principal. Actúa como un proxy para el comando proporcionado.
-- **Uso**: `axiom npm install`, `axiom docker logs mi-contenedor`
-- **Comportamiento**: Intercepta la salida del comando, aplica filtros de privacidad, compresión semántica y entrega el flujo optimizado.
+### `axiom install`
+Instala la integración de shell de Axiom y el contexto de IA.
+- **Banderas**:
+  - `-p, --path <PATH>`: Ruta del proyecto para sincronizar el contexto de IA (por defecto: directorio actual).
+  - `--context-only`: Instala solo los archivos de contexto de IA (ej., `AGENTS.md`, `.cursorrules`), omitiendo los alias de la shell.
+
+### `axiom uninstall`
+Elimina todos los rastros de Axiom del sistema.
+- **Banderas**:
+  - `-p, --path <PATH>`: Ruta del proyecto para eliminar el contexto de IA (por defecto: directorio actual).
+
+### `axiom doctor`
+Ejecuta un chequeo de salud y diagnósticos del sistema.
+- **Banderas**:
+  - `-p, --path <PATH>`: Ruta del proyecto para verificar el contexto de IA (por defecto: directorio actual).
+  - `-f, --fix`: Intenta solucionar automáticamente los problemas detectados.
+
+### `axiom self-update`
+Actualiza Axiom a la última versión desde GitHub.
+
+### `axiom last`
+Muestra la salida cruda del último comando ejecutado.
+- **Banderas**:
+  - `-t, --tail <LÍNEAS>`: Número de líneas a mostrar desde el final.
+  - `-g, --grep <PALABRA_CLAVE>`: Filtra las líneas por una palabra clave.
 
 ### `axiom gain`
-Muestra análisis sobre tus ahorros de tokens y costos.
-- **Uso**: `axiom gain`
-- **Banderas (Flags)**:
-  - `--history`: Muestra una lista detallada de las ejecuciones de comandos recientes y el ahorro exacto de tokens para cada una.
+Muestra análisis sobre el ahorro de tokens.
+- **Banderas**:
+  - `-s, --history`: Muestra el historial detallado de ahorros.
 
-### `axiom status`
-Muestra la salud actual, la configuración y el estado de la telemetría de tu instalación de Axiom.
-- **Uso**: `axiom status`
-- **Salida**: Edición (Community/Pro), Nivel de Telemetría, ID de Instalación y esquemas activos.
+### `axiom check-ai`
+Verifica si el proceso actual fue llamado por un agente de IA. Sale con código 0 si es detectado, 1 en caso contrario.
 
-### `axiom proxy <cmd>`
-Ejecuta el comando en bruto sin filtrado. Útil para depuración o para saltarse Axiom por completo en una ejecución específica.
-- **Uso**: `axiom proxy npm install`
+## Comandos de Configuración y Descubrimiento
 
-### `axiom discover`
-*(Beta)* Analiza el historial de agentes de IA locales (como Claude Code) para encontrar oportunidades perdidas donde Axiom podría haber ahorrado tokens.
-- **Uso**: `axiom discover`
+### `axiom intent <acción>`
+Gestiona el Descubrimiento de Intenciones (Intent Discovery) y los Niveles de Inteligencia.
+- **Acciones**:
+  - `enable <modo>`: Habilita la inteligencia de intenciones. Modos: `fuzzy` (palabras clave) o `neural` (embeddings de IA). Por defecto es `fuzzy`.
+  - `disable`: Deshabilita la inteligencia de intenciones (mantiene el formato pero muestra todos los archivos).
+  - `status`: Muestra el estado actual del descubrimiento de intenciones y los archivos relevantes.
 
-## Comandos de Configuración
+### `axiom discovery <acción>`
+Enumera o gestiona las plantillas estructurales aprendidas actualmente.
+- **Acciones**:
+  - `list` *(por defecto)*: Lista todas las plantillas aprendidas.
+  - `clear`: Limpia todos los patrones aprendidos.
+  - `forget <patrón>`: Olvida el patrón de una plantilla específica.
 
-### `axiom config telemetry <nivel>`
-Establece tu nivel de telemetría preferido.
-- **Niveles**: `full`, `discovery`, `anonymous`, `off` (solo Pro).
-- **Ejemplo**: `axiom config telemetry discovery`
-
-### `axiom config license <clave>`
-Aplica una clave de licencia Pro para desbloquear funciones premium como el modo de telemetría Offline.
-- **Ejemplo**: `axiom config license abc-123-xyz`
+### `axiom config <acción>`
+Gestión de la configuración. Si no se proporciona ninguna acción, se inicia un menú de configuración interactivo.
+- **Acciones**:
+  - `init`: Inicializa un archivo local `.axiom.yaml` con valores predeterminados.
+  - `show`: Muestra la configuración actual.
+  - `set <clave> <valor>`: Establece un valor de configuración (ej., `axiom config set intelligence neural`).
