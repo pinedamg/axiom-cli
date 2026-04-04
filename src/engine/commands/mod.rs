@@ -30,6 +30,16 @@ pub trait CommandHandler: Send + Sync {
     fn is_outlier(&self, _line: &str, _meta: &LineMetadata) -> bool {
         false
     }
+
+    /// Returns the semantic category for this line (e.g. GIT, DOCKER, CARGO)
+    fn get_category(&self, _perms: &str) -> String {
+        "FILE".to_string()
+    }
+
+    /// Returns the grouping key for the synthesis buffer
+    fn get_key(&self, prefix: &str, meta: &LineMetadata) -> String {
+        format!("{}:{}:{}", prefix, meta.perms, meta.size)
+    }
 }
 
 pub fn get_all_handlers() -> Vec<Box<dyn CommandHandler>> {

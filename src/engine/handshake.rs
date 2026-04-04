@@ -1,5 +1,6 @@
 use sha2::{Sha256, Digest};
 use serde::{Serialize, Deserialize};
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NodeRegisterReq {
@@ -7,6 +8,7 @@ pub struct NodeRegisterReq {
     pub os: String,
     pub arch: String,
     pub pow_nonce: u64,
+    pub funnel_id: Option<Uuid>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -48,12 +50,14 @@ impl Handshake {
     pub fn register_node() -> anyhow::Result<(String, String)> {
         let hash = Self::get_hardware_hash();
         let nonce = Self::solve_pow(&hash);
+        let funnel_id = std::env::var("AXIOM_FUNNEL_ID").ok().and_then(|s| Uuid::parse_str(&s).ok());
 
         let req = NodeRegisterReq {
             hardware_hash: hash,
             os: std::env::consts::OS.to_string(),
             arch: std::env::consts::ARCH.to_string(),
             pow_nonce: nonce,
+            funnel_id,
         };
 
         let response: NodeRegisterRes = ureq::post(Self::REGISTER_URL)

@@ -1,0 +1,18 @@
+name: "🚀 Feature Request"
+description: "Suggest an idea for Axiom"
+title: "[FEATURE] <title>"
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: "What is your idea?"
+      description: "Describe the feature or improvement you would like to see."
+      placeholder: "I would love for Axiom to support..."
+    validations:
+      required: true
+  - type: textarea
+    id: value
+    attributes:
+      label: "Why is this important?"
+      description: "Explain how this would help you or others."

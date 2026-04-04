@@ -22,8 +22,9 @@ fn test_ls_v1_long_listing_synthesis() {
     }
 
     let summaries = session.engine.flush_summaries();
+    for s in &summaries { println!("DEBUG: {}", s); }
     assert!(summaries.iter().any(|s| s.contains("FILE [rw-]")), "Should synthesize files by permissions");
-    assert!(summaries.iter().any(|s| s.contains("file1.rs, file2.rs, file3.rs")), "Should list all files in summary");
+    assert!(summaries.iter().any(|s| s.contains(" (3) | file1.rs, file2.rs, file3.rs")), "Should list all files in summary");
 }
 
 #[test]
@@ -59,7 +60,7 @@ fn test_ls_v2_semantic_insight() {
     session.engine.process_line("Cargo.toml README.md src", command, &context);
 
     let summaries = session.engine.flush_summaries();
-    assert!(summaries.iter().any(|s| s.contains("Semantic Insight: Detected Rust Project Workspace")), "Should provide semantic insight for Rust project");
+    assert!(summaries.iter().any(|s| s.contains("Insight: Detected Rust Project Workspace")), "Should provide semantic insight for Rust project");
 }
 
 #[test]

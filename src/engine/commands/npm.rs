@@ -90,4 +90,16 @@ impl CommandHandler for NpmHandler {
             _ => None
         }
     }
+
+    fn get_category(&self, perms: &str) -> String {
+        if ["WARN", "ADD", "AUDIT"].contains(&perms) {
+            "NPM".to_string()
+        } else {
+            "FILE".to_string()
+        }
+    }
+
+    fn get_key(&self, prefix: &str, meta: &LineMetadata) -> String {
+        format!("{}:{}", prefix, meta.perms)
+    }
 }

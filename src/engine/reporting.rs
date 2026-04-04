@@ -1,5 +1,10 @@
 use std::collections::HashMap;
 
+pub struct SessionStats {
+    pub raw_bytes: usize,
+    pub saved_bytes: usize,
+}
+
 pub struct EfficiencyReport {
     pub total_original: usize,
     pub total_compressed: usize,

@@ -94,4 +94,17 @@ impl CommandHandler for PsHandler {
             _ => None
         }
     }
+
+    fn get_category(&self, _perms: &str) -> String {
+        // We use is_dir as a proxy flag for kernel processes in our ps implementation
+        // This is a bit of a hack but it's KISS for this specific tool.
+        // Actually, we should check meta during get_key, but the trait only gives perms.
+        // Let's improve the trait to pass metadata or just handle it in get_key.
+        "PROC".to_string() 
+    }
+
+    fn get_key(&self, _prefix: &str, meta: &LineMetadata) -> String {
+        if meta.is_dir { format!("KERNEL:{}", meta.name) }
+        else { format!("PROC:{}", meta.name) }
+    }
 }

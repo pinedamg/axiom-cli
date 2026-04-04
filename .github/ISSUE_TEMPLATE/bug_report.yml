@@ -1,0 +1,34 @@
+name: "🐛 Bug Report"
+description: "Report a bug to help us improve Axiom"
+title: "[BUG] <title>"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug!
+  - type: textarea
+    id: description
+    attributes:
+      label: "Description"
+      description: "A clear and concise description of what the bug is."
+      placeholder: "When I run axiom-optimize, it crashes with..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: "Steps to Reproduce"
+      description: "How can we reproduce the behavior?"
+      placeholder: "1. Run... 2. See error..."
+  - type: textarea
+    id: environment
+    attributes:
+      label: "Environment Information"
+      description: "OS, version, hardware, etc."
+      placeholder: "Ubuntu 22.04, Axiom v0.1.0"
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Relevant Logs"
+      description: "Paste any relevant logs or error messages here."

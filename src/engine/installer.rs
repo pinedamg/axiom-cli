@@ -167,64 +167,6 @@ impl AxiomInstaller {
         Self::inject_block(path, CONTEXT_BLOCK_START, CONTEXT_BLOCK_END, AGENT_RULES, as_prefix)
     }
 
-    pub fn run_full_install(project_path: Option<&Path>, auto_yes: bool) -> anyhow::Result<()> {
-        println!("\x1b[1m🚀 Axiom Industrial Installation\x1b[0m");
-        println!("---------------------------------------\n");
-
-        let configs = Self::get_shell_configs();
-        let mut path_injected = false;
-
-        // 1. PATH Integration (New)
-        if !configs.is_empty() {
-            println!("\x1b[1m[PATH Configuration]\x1b[0m");
-            println!("Recommended: Add ~/.axiom/bin to your PATH for seamless integration.");
-            if Self::ask("Automatically configure PATH in your shell?", true, auto_yes) {
-                path_injected = true;
-            }
-        }
-
-        // 2. Shell Integration
-        if !configs.is_empty() {
-            println!("\x1b[1m[Shell Aliases]\x1b[0m");
-            for path in configs {
-                let prompt = format!("Configure aliases in {}?", path.display());
-                if Self::ask(&prompt, true, auto_yes) {
-                    print!("Processing {} ... ", path.display());
-                    let _ = Self::install_shell_integration(&path, path_injected);
-                    println!("✅");
-                }
-            }
-            println!();
-        }
-
-        // 3. Shims
-        println!("\x1b[1m[IDE & Agent Shims]\x1b[0m");
-        if Self::ask("Install Global Shims in ~/.axiom/bin?", true, auto_yes) {
-            print!("Installing Shims ... ");
-            let _ = Self::install_shims()?;
-            println!("✅");
-        }
-
-        // 4. AI Context Sync
-        if let Some(root) = project_path {
-            println!("\n\x1b[1m[AI Context Sync]\x1b[0m");
-            let context_files = ["GEMINI.md", "AGENTS.md", "CLAUDE.md", ".cursorrules", ".windsurfrules"];
-            for file_name in context_files {
-                let path = root.join(file_name);
-                if path.exists() || file_name == "CLAUDE.md" || file_name == "AGENTS.md" {
-                    if Self::ask(&format!("Sync Axiom in {}?", file_name), true, auto_yes) {
-                        print!("Syncing {} ... ", file_name);
-                        let _ = Self::inject_ai_context(&path, true);
-                        println!("✅");
-                    }
-                }
-            }
-        }
-
-        println!("\n\x1b[1m\x1b[32mInstallation Complete!\x1b[0m");
-        Ok(())
-    }
-
     /// Surgically removes all Axiom traces
     pub fn run_uninstall(project_path: Option<&Path>, auto_yes: bool) -> anyhow::Result<()> {
         println!("\x1b[1m🗑️ Axiom Industrial Uninstall\x1b[0m");

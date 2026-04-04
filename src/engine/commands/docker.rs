@@ -124,4 +124,17 @@ impl CommandHandler for DockerHandler {
             _ => None
         }
     }
+
+    fn get_category(&self, perms: &str) -> String {
+        if ["Running", "Stopped", "Created", "LAYER", "BUILD", "COMPOSE"].contains(&perms) {
+            "DOCKER".to_string()
+        } else {
+            "FILE".to_string()
+        }
+    }
+
+    fn get_key(&self, prefix: &str, meta: &LineMetadata) -> String {
+        if meta.perms == "LAYER" || meta.perms == "BUILD" { format!("{}:{}", prefix, meta.perms) }
+        else { format!("{}:{}:{}", prefix, meta.perms, meta.size) }
+    }
 }
