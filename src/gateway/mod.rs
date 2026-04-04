@@ -53,9 +53,10 @@ pub async fn execute_command(
                 match line? {
                     Some(l) => {
                         if raw_mode {
-                            println!("{}", l);
+                            let redacted = session.engine.redactor.redact(&l);
+                            println!("{}", redacted);
                             total_original += l.len();
-                            total_compressed += l.len();
+                            total_compressed += redacted.len();
                         } else {
                             process_line_output(&l, &command_str, context, session, &mut total_original, &mut total_compressed, false);
                         }
@@ -67,9 +68,10 @@ pub async fn execute_command(
                 match line? {
                     Some(l) => {
                         if raw_mode {
-                            eprintln!("{}", l);
+                            let redacted = session.engine.redactor.redact(&l);
+                            eprintln!("{}", redacted);
                             total_original += l.len();
-                            total_compressed += l.len();
+                            total_compressed += redacted.len();
                         } else {
                             process_line_output(&l, &command_str, context, session, &mut total_original, &mut total_compressed, true);
                         }
