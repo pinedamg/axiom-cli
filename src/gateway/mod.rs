@@ -120,8 +120,11 @@ fn process_line_output(
     is_stderr: bool,
 ) {
     *total_original += line.len();
+    session.engine.stats.raw_bytes += line.len();
+
     if let Some(processed) = session.engine.process_line(line, command, context) {
         *total_compressed += processed.len();
+        session.engine.stats.saved_bytes += processed.len();
         safe_print(&processed, is_stderr);
     }
 }

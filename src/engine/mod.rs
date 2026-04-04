@@ -24,6 +24,12 @@ use crate::engine::commands::{CommandHandler, get_all_handlers};
 use crate::engine::storage::LogManager;
 use std::borrow::Cow;
 
+#[derive(Default, Debug, Clone)]
+pub struct SessionStats {
+    pub raw_bytes: usize,
+    pub saved_bytes: usize,
+}
+
 pub struct AxiomEngine {
     pub redactor: PrivacyRedactor,
     pub schemas: Vec<ToolSchema>,
@@ -34,13 +40,14 @@ pub struct AxiomEngine {
     pub handlers: Vec<Box<dyn CommandHandler>>,
     pub markdown_mode: bool,
     pub last_command: String,
+    pub stats: SessionStats,
     line_counter: usize,
 }
 
 /// Governs the flow of a line through the Axiom pipeline.
-enum PipelineAction {
+enum PipelineAction<'a> {
     /// Continue to the next stage with the (possibly transformed) line.
-    Continue(String),
+    Continue(Cow<'a, str>),
     /// Stop processing and output this line immediately (bypass remaining stages).
     ShortCircuit(String),
     /// Stop processing and output nothing (swallow the line).
@@ -63,8 +70,18 @@ impl AxiomEngine {
             handlers: get_all_handlers(),
             markdown_mode: false,
             last_command: String::new(),
+            stats: SessionStats::default(),
             line_counter: 0,
         }
+    }
+
+    pub fn get_session_stats(&self) -> Option<&SessionStats> {
+        Some(&self.stats)
+    }
+
+    pub fn with_plugins(mut self, plugins: WasmPluginManager) -> Self {
+        self.plugins = Some(plugins);
+        self
     }
 
     pub fn prepare_session(&mut self, _intent: &str) -> anyhow::Result<()> {
@@ -99,9 +116,10 @@ impl AxiomEngine {
                 // 5. Analyze (Schema -> Structural -> Semantic)
                 match self.stage_analyze(&redacted, command, context) {
                     PipelineAction::Swallow => None,
-                    PipelineAction::ShortCircuit(out) | PipelineAction::Continue(out) => {
+                    PipelineAction::ShortCircuit(out) => self.stage_plugins(Some(out)),
+                    PipelineAction::Continue(out) => {
                         // 6. Plugins (External WASM)
-                        self.stage_plugins(Some(out))
+                        self.stage_plugins(Some(out.into_owned()))
                     }
                 }
             }
@@ -112,7 +130,7 @@ impl AxiomEngine {
 
     // --- Pipeline Stages ---
 
-    fn stage_deduplicate(&mut self, line: &str) -> (Option<String>, PipelineAction) {
+    fn stage_deduplicate<'a>(&mut self, line: &'a str) -> (Option<String>, PipelineAction<'a>) {
         if self.discovery.last_line.as_deref() == Some(line) {
             self.discovery.repeat_count += 1;
             (None, PipelineAction::Swallow)
@@ -122,7 +140,7 @@ impl AxiomEngine {
             } else { None };
             self.discovery.last_line = Some(line.to_string());
             self.discovery.repeat_count = 0;
-            (prefix, PipelineAction::Continue(line.to_string()))
+            (prefix, PipelineAction::Continue(Cow::Borrowed(line)))
         }
     }
 
@@ -135,7 +153,7 @@ impl AxiomEngine {
         }
     }
 
-    fn stage_guard(&mut self, line: &str, command: &str, context: &IntentContext) -> PipelineAction {
+    fn stage_guard<'a>(&mut self, line: &'a str, command: &str, context: &IntentContext) -> PipelineAction<'a> {
         let handler = self.handlers.iter().find(|h| h.matches(command)).map(|h| h.as_ref());
         
         let is_outlier = handler.map_or(false, |h| {
@@ -150,21 +168,21 @@ impl AxiomEngine {
                 return PipelineAction::Swallow;
             }
         }
-        PipelineAction::Continue(line.to_string())
+        PipelineAction::Continue(Cow::Borrowed(line))
     }
 
     fn stage_redact(&self, line: &str) -> String {
         self.redactor.redact(line)
     }
 
-    fn stage_analyze(&mut self, line: &str, command: &str, _context: &IntentContext) -> PipelineAction {
+    fn stage_analyze<'a>(&mut self, line: &'a str, command: &str, _context: &IntentContext) -> PipelineAction<'a> {
         let handler_idx = self.handlers.iter().position(|h| h.matches(command));
         
         // 5a. Schema Check
         if let Some(schema) = self.schemas.iter().find(|s| s.matches(command)) {
             if let Some(action) = schema.apply_rules(line) {
                 match action {
-                    Action::Keep => return PipelineAction::Continue(line.to_string()),
+                    Action::Keep => return PipelineAction::Continue(Cow::Borrowed(line)),
                     Action::Redact => return PipelineAction::ShortCircuit("[REDACTED_BY_SCHEMA]".to_string()),
                     Action::Hidden => return PipelineAction::Swallow,
                     Action::Collapse | Action::Synthesize => {
@@ -172,7 +190,7 @@ impl AxiomEngine {
                         if self.discovery.process_and_check_noise(line, handler, command) {
                             return PipelineAction::Swallow;
                         } else {
-                            return PipelineAction::Continue(line.to_string());
+                            return PipelineAction::Continue(Cow::Borrowed(line));
                         }
                     }
                 }
@@ -181,10 +199,18 @@ impl AxiomEngine {
 
         // 5b. General Synthesis (Discovery)
         let handler = handler_idx.map(|idx| self.handlers[idx].as_ref());
+
         if self.discovery.process_and_check_noise(line, handler, command) {
+            // Let's ask intelligence provider if it's highly relevant.
+            // If it is, bypass general synthesis to prevent swallowing important lines.
+            let is_relevant = self.intelligence.is_relevant(&_context.last_message, line, 0.7);
+            if is_relevant {
+                // Return it so we don't lose it, but maybe remove from buffer? No, returning is fine.
+                return PipelineAction::Continue(Cow::Borrowed(line));
+            }
             PipelineAction::Swallow
         } else {
-            PipelineAction::Continue(line.to_string())
+            PipelineAction::Continue(Cow::Borrowed(line))
         }
     }
 

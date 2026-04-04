@@ -62,8 +62,8 @@ impl WasmPluginManager {
         })
     }
 
-    pub fn transform(&mut self, line: &str) -> String {
-        let mut current_line = line.to_string();
+    pub fn process_line(&mut self, line: String) -> anyhow::Result<Option<String>> {
+        let mut current_line = line;
 
         for plugin in &mut self.plugins {
             if let Ok(new_line) = Self::call_plugin_transform(plugin, &current_line) {
@@ -71,7 +71,11 @@ impl WasmPluginManager {
             }
         }
 
-        current_line
+        if current_line.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(current_line))
+        }
     }
 
     fn call_plugin_transform(plugin: &mut WasmPlugin, input: &str) -> anyhow::Result<String> {
