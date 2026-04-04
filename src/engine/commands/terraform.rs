@@ -49,6 +49,10 @@ impl CommandHandler for TerraformHandler {
         None
     }
 
+    fn get_category(&self, _perms: &str) -> String {
+        "TF".to_string()
+    }
+
     fn generate_insight(&self, command: &str, buffer: &DiscoveryBuffer) -> Option<String> {
         let mut creates = 0;
         let mut destroys = 0;

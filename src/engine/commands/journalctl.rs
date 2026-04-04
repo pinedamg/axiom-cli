@@ -38,6 +38,10 @@ impl CommandHandler for JournalHandler {
         })
     }
 
+    fn get_category(&self, _perms: &str) -> String {
+        "SYS".to_string()
+    }
+
     fn generate_insight(&self, _command: &str, buffer: &DiscoveryBuffer) -> Option<String> {
         let mut noise = 0;
         let mut logs = 0;
