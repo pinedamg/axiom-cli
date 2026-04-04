@@ -100,4 +100,12 @@ impl CommandHandler for RgHandler {
             Some(format!("• {}: {} matches (lines: {}{})", location, count, lines.join(", "), suffix))
         }
     }
+
+    fn get_category(&self, _perms: &str) -> String {
+        "SEARCH".to_string()
+    }
+
+    fn get_key(&self, prefix: &str, meta: &LineMetadata) -> String {
+        format!("{}:{}:{}", prefix, meta.perms, meta.size)
+    }
 }
