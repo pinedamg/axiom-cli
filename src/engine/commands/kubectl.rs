@@ -43,6 +43,10 @@ impl CommandHandler for KubectlHandler {
         None
     }
 
+    fn get_category(&self, _perms: &str) -> String {
+        "K8S".to_string()
+    }
+
     fn generate_insight(&self, _command: &str, buffer: &DiscoveryBuffer) -> Option<String> {
         let mut running = 0;
         let mut critical = 0;

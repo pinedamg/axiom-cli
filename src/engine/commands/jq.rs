@@ -36,6 +36,10 @@ impl CommandHandler for JqHandler {
         None
     }
 
+    fn get_category(&self, _perms: &str) -> String {
+        "DATA".to_string()
+    }
+
     fn generate_insight(&self, _command: &str, buffer: &DiscoveryBuffer) -> Option<String> {
         let mut objects = 0;
         let mut key_count = 0;
