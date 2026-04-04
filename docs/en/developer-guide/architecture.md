@@ -29,7 +29,8 @@ Axiom follows a **Layered Clean Architecture** adapted for Rust's performance ne
 - **Responsibility**: The orchestrator. It coordinates:
     - **Discovery**: Automatically identifies the tool and its intent.
     - **Intelligence**: Uses keyword, fuzzy, and neural (BERT-based) matching to determine relevance.
-    - **Transformer**: Applies the transformation rules (Collapse, Drop, Pass).
+    - **Transformer**: Applies the transformation rules (e.g. Markdown formatting, Guard thresholds).
+    - **Plugins**: Executes third-party logic via isolated WebAssembly.
 
 ### 📊 5. Persistence (Analytics Layer)
 - **Location**: `src/persistence/`
@@ -48,11 +49,14 @@ Axiom follows a **Layered Clean Architecture** adapted for Rust's performance ne
 1.  **Command Execution**: `axiom npm install` starts.
 2.  **Process Detective**: Identifies `npm` and the current project context.
 3.  **Stream Capture**: Raw bytes are read from the sub-process.
-4.  **Privacy Shield**: Lines are scanned and redacted if necessary.
-5.  **Semantic Match**: The Engine checks if a line matches a "Noise Rule" (e.g., download progress).
-6.  **Transformation**: The line is either passed, dropped, or added to a collapse buffer.
-7.  **Final Output**: High-signal output is printed to the terminal for the AI agent to consume.
-8.  **Analytics**: Savings are calculated and stored in the local SQLite DB.
+4.  **Deduplicate**: The Engine drops duplicate lines sequentially.
+5.  **Transform**: Formatting adjustments (e.g. Markdown conversion).
+6.  **Guard**: Aborts or limits output for extremely noisy processes (Guardian Mode).
+7.  **Redact (Privacy Shield)**: Lines are scanned and redacted if necessary.
+8.  **Analyze**: Schema validation, structure summary, and Semantic Intent execution.
+9.  **Plugins**: Lines are optionally mutated via WASM filters.
+10. **Final Output**: High-signal output is printed to the terminal for the AI agent to consume.
+11. **Analytics**: Savings are calculated and stored in the local SQLite DB.
 
 ## 4. Security Standards
 

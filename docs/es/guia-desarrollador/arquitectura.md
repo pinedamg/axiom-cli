@@ -29,7 +29,8 @@ Axiom sigue una **Arquitectura Limpia por Capas (Layered Clean Architecture)** a
 - **Responsabilidad**: El orquestador. Coordina:
     - **Discovery**: Identifica automáticamente la herramienta y su intención.
     - **Intelligence**: Usa coincidencia de palabras clave, fuzzy y neural (basada en BERT) para determinar la relevancia.
-    - **Transformer**: Aplica las reglas de transformación (Colapsar, Descartar, Pasar).
+    - **Transformer**: Aplica las reglas de transformación (ej. formato Markdown, umbrales del Guardián).
+    - **Plugins**: Ejecuta lógica de terceros a través de WebAssembly aislado.
 
 ### 📊 5. Persistence (Capa de Analíticas)
 - **Ubicación**: `src/persistence/`
@@ -48,11 +49,14 @@ Axiom sigue una **Arquitectura Limpia por Capas (Layered Clean Architecture)** a
 1.  **Ejecución de Comando**: Inicia `axiom npm install`.
 2.  **Detective de Procesos**: Identifica `npm` y el contexto actual del proyecto.
 3.  **Captura de Flujo**: Se leen bytes en bruto del subproceso.
-4.  **Escudo de Privacidad**: Las líneas se escanean y se redactan si es necesario.
-5.  **Coincidencia Semántica**: El Engine comprueba si una línea coincide con una "Regla de Ruido" (ej. progreso de descarga).
-6.  **Transformación**: La línea se pasa, se descarta o se añade a un buffer de colapso.
-7.  **Salida Final**: La salida de alta señal se imprime en la terminal para que el agente de IA la consuma.
-8.  **Analíticas**: Se calculan los ahorros y se almacenan en la BD local SQLite.
+4.  **Deduplicate**: El Engine descarta líneas duplicadas de forma secuencial.
+5.  **Transform**: Ajustes de formato (ej. conversión a Markdown).
+6.  **Guard**: Aborta o limita la salida para procesos extremadamente ruidosos (Modo Guardián).
+7.  **Redact (Escudo de Privacidad)**: Las líneas se escanean y se redactan si es necesario.
+8.  **Analyze**: Validación de esquemas, resumen estructural y ejecución de Intención Semántica.
+9.  **Plugins**: Las líneas mutan opcionalmente a través de filtros WASM.
+10. **Salida Final**: La salida de alta señal se imprime en la terminal para que el agente de IA la consuma.
+11. **Analíticas**: Se calculan los ahorros y se almacenan en la BD local SQLite.
 
 ## 4. Estándares de Seguridad
 

@@ -19,6 +19,7 @@ Instala la integración de shell de Axiom y el contexto de IA.
 - **Banderas**:
   - `-p, --path <PATH>`: Ruta del proyecto para sincronizar el contexto de IA (por defecto: directorio actual).
   - `--context-only`: Instala solo los archivos de contexto de IA (ej., `AGENTS.md`, `.cursorrules`), omitiendo los alias de la shell.
+  - `--funnel-id <ID>`: ID de sesión anónimo desde el script de instalación.
 
 ### `axiom uninstall`
 Elimina todos los rastros de Axiom del sistema.
@@ -69,4 +70,4 @@ Gestión de la configuración. Si no se proporciona ninguna acción, se inicia u
 - **Acciones**:
   - `init`: Inicializa un archivo local `.axiom.yaml` con valores predeterminados.
   - `show`: Muestra la configuración actual.
-  - `set <clave> <valor>`: Establece un valor de configuración (ej., `axiom config set intelligence neural`).
+  - `set <clave> <valor>`: Establece un valor de configuración (ej., `axiom config set intelligence neural` o `axiom config set markdown true`).

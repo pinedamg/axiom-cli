@@ -19,6 +19,7 @@ Install Axiom shell integration and AI context.
 - **Flags**:
   - `-p, --path <PATH>`: Project path to sync AI context (default: current dir).
   - `--context-only`: Only install AI context files (e.g., `AGENTS.md`, `.cursorrules`), skip shell aliases.
+  - `--funnel-id <ID>`: Anonymous session ID from install script.
 
 ### `axiom uninstall`
 Remove all Axiom traces from the system.
@@ -69,4 +70,4 @@ Configuration management. If no action is provided, an interactive configuration
 - **Actions**:
   - `init`: Initialize a local `.axiom.yaml` file with default values.
   - `show`: Show current configuration.
-  - `set <key> <value>`: Set a configuration value (e.g., `axiom config set intelligence neural`).
+  - `set <key> <value>`: Set a configuration value (e.g., `axiom config set intelligence neural` or `axiom config set markdown true`).
