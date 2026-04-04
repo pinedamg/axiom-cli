@@ -58,6 +58,10 @@ impl CommandHandler for RgHandler {
         None
     }
 
+    fn get_category(&self, _perms: &str) -> String {
+        "SEARCH".to_string()
+    }
+
     fn generate_insight(&self, _command: &str, buffer: &DiscoveryBuffer) -> Option<String> {
         let mut total_matches = 0;
         let mut files = std::collections::HashSet::new();
