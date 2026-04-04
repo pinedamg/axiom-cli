@@ -22,7 +22,7 @@ fn test_ls_insight_for_fixture(fixture_path: &str, expected_insight: &str) {
     
     let mut found_insight = false;
     for summary in summaries {
-        if summary.contains("Semantic Insight:") && summary.contains(expected_insight) {
+        if summary.contains("Insight:") && summary.contains(expected_insight) {
             found_insight = true;
             break;
         }

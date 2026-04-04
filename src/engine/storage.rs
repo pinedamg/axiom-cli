@@ -65,6 +65,10 @@ impl LogManager {
 
         Ok(lines)
     }
+
+    pub fn get_total_bytes(&self) -> usize {
+        fs::metadata(&self.log_path).map(|m| m.len() as usize).unwrap_or(0)
+    }
 }
 
 #[cfg(test)]

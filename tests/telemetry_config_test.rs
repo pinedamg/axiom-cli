@@ -19,14 +19,14 @@ fn test_config_serialization_deserialization() {
     let content = fs::read_to_string(&config_path).expect("Failed to read test config");
     let decoded: AxiomConfig = serde_yaml::from_str(&content).expect("Failed to deserialize config");
     
-    assert_eq!(decoded.installation_id, config.installation_id);
+    assert_eq!(decoded.node_id, config.node_id);
     assert_eq!(decoded.telemetry_level, TelemetryLevel::Discovery);
 }
 
 #[test]
-fn test_installation_id_persistence() {
-    let config1 = AxiomConfig::default();
-    assert!(!config1.installation_id.is_empty());
+fn test_node_id_registration() {
+    let config1 = AxiomConfig::load(); // Load ensures node_id is registered
+    assert!(!config1.node_id.is_empty());
 }
 
 #[test]

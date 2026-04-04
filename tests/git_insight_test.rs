@@ -23,7 +23,7 @@ fn test_git_status_insight() {
     
     let mut found_insight = false;
     for summary in summaries {
-        if summary.contains("Semantic Insight: Repository has pending changes") {
+        if summary.contains("Insight: Repository has pending changes") {
             found_insight = true;
             assert!(summary.contains("1 modified"));
             assert!(summary.contains("1 untracked"));
@@ -54,7 +54,7 @@ fn test_git_log_insight() {
     
     let mut found_insight = false;
     for summary in summaries {
-        if summary.contains("Semantic Insight: Detected active history") {
+        if summary.contains("Insight: Detected active history") {
             found_insight = true;
             assert!(summary.contains("3 commits"));
         }

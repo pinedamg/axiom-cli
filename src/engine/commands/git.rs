@@ -113,4 +113,17 @@ impl CommandHandler for GitHandler {
         // Detect merge conflicts
         line.contains("both modified:") || line.contains("<<<<<<<") || line.contains("=======")
     }
+
+    fn get_category(&self, perms: &str) -> String {
+        if ["LOG_COMMIT", "MODIFIED", "UNTRACKED", "DELETED", "NEW", "RENAMED", "STAGED"].contains(&perms) { 
+            "GIT".to_string() 
+        } else {
+            "FILE".to_string()
+        }
+    }
+
+    fn get_key(&self, prefix: &str, meta: &LineMetadata) -> String {
+        if meta.perms == "LOG_COMMIT" { format!("{}:{}:ALL", prefix, meta.perms) }
+        else { format!("{}:{}:{}", prefix, meta.perms, meta.size) }
+    }
 }

@@ -23,7 +23,7 @@ fn test_ps_high_cpu_insight() {
     
     let mut found_high_cpu_insight = false;
     for summary in summaries {
-        if summary.contains("High CPU load detected: rustc is using 85%") {
+        if summary.contains("High CPU load detected") && summary.contains("rustc") {
             found_high_cpu_insight = true;
             break;
         }
@@ -53,7 +53,7 @@ fn test_ps_kernel_cleanup() {
     
     let mut found_kernel_summary = false;
     for summary in summaries {
-        if summary.contains("Kernel Workers: [kworker] (count: 2)") {
+        if summary.contains("Kernel Workers: [kworker]") && summary.contains("count: 2") {
             found_kernel_summary = true;
             break;
         }

@@ -48,6 +48,9 @@ enum Commands {
         /// Only install AI context, skip shell aliases
         #[arg(long)]
         context_only: bool,
+        /// Anonymous session ID from install script
+        #[arg(long)]
+        funnel_id: Option<String>,
     },
     /// Remove all Axiom traces from the system
     Uninstall {
@@ -165,7 +168,7 @@ async fn main() -> anyhow::Result<()> {
     // 2. Handle Subcommands
     if let Some(cmd) = cli.command {
         match cmd {
-            Commands::Install { path, context_only } => {
+            Commands::Install { path, context_only, funnel_id } => {
                 let project_path = Path::new(&path);
                 if context_only {
                     let context_files = ["GEMINI.md", "AGENTS.md", "CLAUDE.md", ".cursorrules", ".windsurfrules"];
@@ -177,7 +180,7 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
                 } else {
-                    AxiomInstaller::run_full_install(Some(project_path), cli.yes)?;
+                    axiom::engine::ui::OnboardingManager::run_install_flow(Some(project_path), cli.yes, funnel_id)?;
                 }
                 return Ok(());
             }
@@ -354,6 +357,9 @@ async fn main() -> anyhow::Result<()> {
     let program = &cli.proxy_args[0];
     let cmd_args = &cli.proxy_args[1..];
     execute_command(program, cmd_args, &context, &mut session, cli.raw).await?;
+
+    // 6. Post-execution Feedback (Human only + Configurable)
+    axiom::engine::ui::DopamineEngine::render_session_savings(&session, cli.raw);
 
     Ok(())
 }

@@ -95,4 +95,14 @@ impl CommandHandler for LsHandler {
         
         false
     }
+
+    fn get_category(&self, perms: &str) -> String {
+        if perms.contains('x') || perms == "rwx" { "DIR".to_string() }
+        else { "FILE".to_string() }
+    }
+
+    fn get_key(&self, prefix: &str, meta: &LineMetadata) -> String {
+        // Group by permissions only, ignore size for ls aggregation
+        format!("{}:{}", prefix, meta.perms)
+    }
 }

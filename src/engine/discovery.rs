@@ -43,14 +43,45 @@ impl DiscoveryEngine {
         }
     }
 
+    pub fn get_templates(&self) -> Vec<(String, usize)> {
+        self.templates.iter().map(|(k, v)| (k.clone(), *v)).collect()
+    }
+
+    pub fn get_saved_bytes(&self) -> usize {
+        // Approximate saved bytes from synthesis and variable buffers
+        let mut total = 0;
+        for items in self.synthesis_buffer.values() {
+            for item in items {
+                total += item.name.len() + 20; // Plus overhead
+            }
+        }
+        for (template, var_sets) in &self.variable_buffer {
+            total += template.len() * var_sets.len();
+        }
+        total
+    }
+
     fn parse_standard_ls(&self, line: &str, handler: Option<&dyn CommandHandler>, command: &str) -> Vec<LineMetadata> {
         if !command.starts_with("ls") { return vec![]; }
         
         let trimmed = line.trim();
         if trimmed.is_empty() || trimmed.starts_with('(') || trimmed.len() > 100 { return vec![]; }
-        if line.starts_with('d') || line.starts_with('-') || line.starts_with('l') || line.starts_with("total") { return vec![]; }
         
-        // Anti-collision: skip lines that look like logs or structured data
+        // Swallow metadata lines (total, current dir, parent dir) by returning a marker or just empty
+        // but synthesize_line needs to know we 'handled' it.
+        if trimmed.starts_with("total") || trimmed == "." || trimmed == ".." { 
+            return vec![LineMetadata { perms: "META".to_string(), size: "0".to_string(), name: "metadata".to_string(), is_dir: false }];
+        }
+
+        // Handle 'ls -la' format (permissions, links, owner, group, size, month, day, time, name)
+        let parts: Vec<&str> = trimmed.split_whitespace().collect();
+        if parts.len() >= 9 && (trimmed.starts_with('d') || trimmed.starts_with('-') || trimmed.starts_with('l')) {
+            let name = parts[8..].join(" ");
+            let perms = &parts[0][1..4]; // Take first 3 chars of perms after type
+            let is_dir = trimmed.starts_with('d');
+            return vec![LineMetadata { perms: perms.to_string(), size: parts[4].to_string(), name, is_dir }];
+        }
+
         if trimmed.starts_with('[') || trimmed.contains(": ") || trimmed.contains(" = ") {
             return vec![];
         }
@@ -71,63 +102,10 @@ impl DiscoveryEngine {
         if let Some(h) = handler {
             if let Some(meta) = h.parse_line(line) {
                 let is_outlier = h.is_outlier(line, &meta);
-                
-                let prefix = if ["LOG_COMMIT", "MODIFIED", "UNTRACKED", "DELETED", "NEW", "RENAMED", "STAGED"].contains(&meta.perms.as_str()) { 
-                    "GIT" 
-                } else if ["Running", "Stopped", "Created", "LAYER", "BUILD", "COMPOSE"].contains(&meta.perms.as_str()) {
-                    "DOCKER"
-                } else if meta.perms == "MATCH" {
-                    "SEARCH"
-                } else if ["Checking", "Compiling", "Downloading", "Downloaded", "Finished", "Processing"].contains(&meta.perms.as_str()) {
-                    "CARGO"
-                } else if meta.perms == "PROGRESS" || meta.perms == "NETWORK_NOISE" {
-                    "IO"
-                } else if ["WARN", "ADD", "AUDIT"].contains(&meta.perms.as_str()) {
-                    "NPM"
-                } else if ["TEST_RESULT", "COMPILING"].contains(&meta.perms.as_str()) {
-                    "GO"
-                } else if ["RESOURCE", "METADATA"].contains(&meta.perms.as_str()) {
-                    "K8S"
-                } else if ["PLAN", "ATTRIBUTE", "STATE"].contains(&meta.perms.as_str()) {
-                    "TF"
-                } else if ["RESOURCE", "ROW"].contains(&meta.perms.as_str()) && (h.matches("gcloud") || h.matches("aws") || h.matches("az")) {
-                    "CLOUD"
-                } else if ["STRUCT", "KEY"].contains(&meta.perms.as_str()) {
-                    "DATA"
-                } else if ["NOISE", "LOG"].contains(&meta.perms.as_str()) {
-                    "SYS"
-                } else if meta.is_dir && h.matches("ps") {
-                    "KERNEL"
-                } else if !meta.is_dir && h.matches("ps") {
-                    "PROC"
-                } else if meta.is_dir { 
-                    "DIR" 
-                } else { 
-                    "FILE" 
-                };
-
-                let key = if prefix == "GIT" {
-                    if meta.perms == "LOG_COMMIT" {
-                        format!("{}:{}:ALL", prefix, meta.perms)
-                    } else {
-                        format!("{}:{}:{}", prefix, meta.perms, meta.size)
-                    }
-                } else if prefix == "CARGO" || prefix == "NPM" || (prefix == "DOCKER" && (meta.perms == "LAYER" || meta.perms == "BUILD")) {
-                    format!("{}:{}", prefix, meta.perms)
-                } else if prefix == "GO" || prefix == "K8S" || prefix == "TF" || prefix == "CLOUD" || prefix == "DATA" || prefix == "SYS" {
-                    format!("{}:{}:{}", prefix, meta.perms, meta.size)
-                } else if prefix == "DOCKER" || prefix == "SEARCH" || prefix == "IO" {
-                    format!("{}:{}:{}", prefix, meta.perms, meta.size)
-                } else if prefix == "PROC" || prefix == "KERNEL" {
-                    format!("{}:{}", prefix, meta.name)
-                } else {
-                    format!("{}:{}", prefix, meta.perms)
-                };
+                let prefix = h.get_category(&meta.perms);
+                let key = h.get_key(&prefix, &meta);
 
                 self.synthesis_buffer.entry(key).or_default().push(meta);
-                
-                // If it's an outlier, we return false so the line is printed, 
-                // but it's already in the buffer for the final insight.
                 return !is_outlier;
             }
         }

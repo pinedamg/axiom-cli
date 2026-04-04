@@ -41,6 +41,7 @@ tokenizers = "0.21"
 hf-hub = "0.4"
 
 # Telemetry & Identity
+uuid = { version = "1.0", features = ["v4", "serde"] }
 chrono = "0.4"
 ureq = { version = "2.9", features = ["json"] }
 sha2 = "0.10"

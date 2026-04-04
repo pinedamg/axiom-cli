@@ -51,6 +51,7 @@ pub struct AxiomConfig {
     pub semantic_threshold: f32,
     pub intelligence_mode: IntelligenceMode,
     pub markdown_enabled: bool,
+    pub show_savings_footer: bool,
     pub telemetry_level: TelemetryLevel,
     pub node_id: String,
     pub node_token: String,
@@ -70,6 +71,7 @@ impl Default for AxiomConfig {
             semantic_threshold: DEFAULT_SEMANTIC_THRESHOLD,
             intelligence_mode: IntelligenceMode::Fuzzy,
             markdown_enabled: false,
+            show_savings_footer: true,
             telemetry_level: TelemetryLevel::Basic, // Default to Basic for insights
             node_id: String::new(),
             node_token: String::new(),
@@ -148,6 +150,10 @@ impl AxiomConfig {
         Self::apply_env_overrides(&mut config);
 
         config
+    }
+
+    pub fn get_pulse_endpoint(&self) -> String {
+        "https://axiom-pulse-api.mpineda.com.ar".to_string()
     }
 
     fn load_global() -> Option<Self> {
