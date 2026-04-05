@@ -19,6 +19,7 @@ Install Axiom shell integration and AI context.
 - **Flags**:
   - `-p, --path <PATH>`: Project path to sync AI context (default: current dir).
   - `--context-only`: Only install AI context files (e.g., `AGENTS.md`, `.cursorrules`), skip shell aliases.
+  - `--funnel-id <ID>`: Anonymous session ID from install script.
 
 ### `axiom uninstall`
 Remove all Axiom traces from the system.
