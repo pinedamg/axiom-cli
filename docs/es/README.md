@@ -27,17 +27,21 @@ graph TD
     A[Comando de Terminal] -->|Intercepción| B{AXIOM PROXY}
     
     subgraph "EJECUCIÓN LOCAL (Sub-10ms)"
-    B --> C[🛡️ ESCUDO DE PRIVACIDAD]
-    C -->|Redacción de Entropía y PII| D[🧠 MOTOR SEMÁNTICO]
-    D -->|Agregación y Filtrado Inteligente| E[⚡ FLUJO DE ALTA SEÑAL]
+    B --> C[Deduplicar]
+    C --> D[Transformar]
+    D --> E[Guardia]
+    E --> F[Redactar]
+    F --> G[Analizar]
+    G --> H[Plugins]
     end
     
-    E --> F[🤖 AGENTE DE IA / CURSOR / CLAUDE]
-    E --> G[👤 DESARROLLADOR ZEN]
+    H --> I[⚡ FLUJO DE ALTA SEÑAL]
+    I --> J[🤖 AGENTE DE IA / CURSOR / CLAUDE]
+    I --> K[👤 DESARROLLADOR ZEN]
 
-    style C fill:#ff9999,stroke:#333,stroke-width:2px,color:#000
-    style D fill:#99ccff,stroke:#333,stroke-width:2px,color:#000
-    style E fill:#99ff99,stroke:#333,stroke-width:4px,color:#000
+    style E fill:#ff9999,stroke:#333,stroke-width:2px,color:#000
+    style G fill:#99ccff,stroke:#333,stroke-width:2px,color:#000
+    style I fill:#99ff99,stroke:#333,stroke-width:4px,color:#000
 ```
 
 ---

@@ -153,6 +153,6 @@ This section defines the expansion of default schemas and intelligent modes for 
 - [x] **netstat / lsof / ss**: Filter system-reserved ports.
 
 ### 🚀 Advanced Intelligent Modes (Behavioral Flags)
-- **`--markdown`**: Automatically transform table outputs into real Markdown tables.
+- [x] **`--markdown`**: Automatically transform table outputs into real Markdown tables.
 - **`--diff-only`**: Show only what changed since the last execution.
 - **`--explain`**: Prepend a natural language summary of what Axiom compressed.

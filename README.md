@@ -77,13 +77,17 @@ graph TD
     A[Raw Terminal Command] -->|Shim Interception| B{AXIOM PROXY}
     
     subgraph "LOCAL EXECUTION (Sub-10ms)"
-    B --> C[🛡️ PRIVACY SHIELD]
-    C -->|Entropy & PII Redaction| D[🧠 SEMANTIC ENGINE]
-    D -->|Deduplication & Grouping| E[⚡ HIGH-SIGNAL STREAM]
+    B --> C[Deduplicate]
+    C --> D[Transform]
+    D --> E[Guard]
+    E --> F[Redact]
+    F --> G[Analyze]
+    G --> H[Plugins]
     end
     
-    E --> F[🤖 AI AGENT]
-    E --> G[👤 DEVELOPER ZEN]
+    H --> I[⚡ HIGH-SIGNAL STREAM]
+    I --> J[🤖 AI AGENT]
+    I --> K[👤 DEVELOPER ZEN]
 ```
 
 ---

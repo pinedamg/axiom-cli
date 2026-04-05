@@ -48,11 +48,14 @@ Axiom sigue una **Arquitectura Limpia por Capas (Layered Clean Architecture)** a
 1.  **Ejecución de Comando**: Inicia `axiom npm install`.
 2.  **Detective de Procesos**: Identifica `npm` y el contexto actual del proyecto.
 3.  **Captura de Flujo**: Se leen bytes en bruto del subproceso.
-4.  **Escudo de Privacidad**: Las líneas se escanean y se redactan si es necesario.
-5.  **Coincidencia Semántica**: El Engine comprueba si una línea coincide con una "Regla de Ruido" (ej. progreso de descarga).
-6.  **Transformación**: La línea se pasa, se descarta o se añade a un buffer de colapso.
-7.  **Salida Final**: La salida de alta señal se imprime en la terminal para que el agente de IA la consuma.
-8.  **Analíticas**: Se calculan los ahorros y se almacenan en la BD local SQLite.
+4.  **Deduplicar**: El motor verifica las líneas repetidas y las colapsa.
+5.  **Transformar**: Contenido como tablas se convierte a formato Markdown.
+6.  **Guardia**: Se comprueban los umbrales para evitar la saturación de la terminal (Modo Guardián).
+7.  **Redactar**: Las líneas se escanean y los secretos/PII se redactan.
+8.  **Analizar**: La lógica del esquema y las coincidencias semánticas procesan la línea limpia.
+9.  **Plugins**: Cualquier plugin de WebAssembly realiza manipulaciones finales.
+10. **Salida Final**: La salida de alta señal se imprime en la terminal para que el agente de IA la consuma.
+11. **Analíticas**: Se calculan los ahorros y se almacenan en la BD local SQLite.
 
 ## 4. Estándares de Seguridad
 
