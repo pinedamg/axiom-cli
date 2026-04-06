@@ -48,24 +48,16 @@ The final boss of testing. Since Axiom is for IAs, we let an IA judge its qualit
 
 ---
 
-## 🤖 4. AI Agent Protocol
+## 🤖 4. AI Agent Protocol (Orchestration Manifesto)
 
-If you are an AI agent operating this terminal:
-1.  **Self-Optimization:** Always use `axiom <command>` for noisy operations to preserve your own context window.
-2.  **Context Injection:** Export `AXIOM_CONTEXT="current task"` to help Axiom prioritize relevant signals.
-3.  **Semantic Doubt:** If an Axiom summary lacks the precision required for your current reasoning (e.g., missing timestamps or specific line content), re-run the command with `--raw` to bypass synthesis.
-4.  **Audit:** Use `axiom gain` to monitor your token savings and verify you aren't "running blind".
+Como agente operando en este repositorio, debes seguir el **Axiom Orchestration Manifesto** (ver `/GEMINI.md` en la raíz).
 
-### Axiom Intent Management (Intelligence Levels)
-Axiom filters output based on its Intent Discovery engine. You MUST dynamically adjust this level based on your task complexity:
-*   **Level 1 - OFF (Raw/Disabled):** Use `axiom intent disable` if you need the full, unfiltered output (e.g., when the Fuzzy filter is hiding critical stack traces). This mode only formats and reduces raw noise without semantic filtering.
-*   **Level 2 - FUZZY (Standard/Keyword):** Use `axiom intent enable fuzzy`. This is the **default**. It filters based on keywords (`error`, `fail`, `version`) and Git context. Ideal for standard development and routine commands (`npm`, `cargo`).
-*   **Level 3 - NEURAL (Semantic/Deep):** Use `axiom intent enable neural`. Activate this mode proactively for complex debugging, obscure bug root-cause analysis, or when standard keyword filtering isn't providing enough semantic context to solve the problem.
-
-### 🛡️ Emergency Escape (Raw Mode)
-If you suspect Axiom is hiding data you need, or you require maximum precision (timestamps, full paths), use the `--raw` flag:
-`axiom --raw <command>`
-This bypasses all Axiom intelligence while still logging character savings for audit.
+### Reglas Críticas:
+1.  **Anti-Recursividad**: Durante el desarrollo, builds y tests de `axiom-cli`, **NO** usar el comando `axiom`. Usa comandos nativos (`cargo`, `npm`) para asegurar transparencia total.
+2.  **Evidencia Obligatoria**: No declares una tarea como terminada sin incluir los logs de tests (`cargo test`) que validen el cambio.
+3.  **Matriz de Impacto**: Antes de aplicar cambios en el CLI, evalúa si impactan en **Pulse** (Handshake) o **Web** (Docs).
+4.  **Semantic Doubt**: Si un resumen de Axiom (en uso diario) oculta detalles necesarios, usa `--raw`.
 
 ---
-*“In Axiom we trust, but we verify through Tiers.”*
+*“In Axiom we trust, but we verify through the Manifesto.”*
+

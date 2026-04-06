@@ -7,6 +7,7 @@ use crate::engine::handshake::Handshake;
 pub const DEFAULT_DB_PATH: &str = "axiom.db";
 pub const DEFAULT_SCHEMAS_DIR: &str = "config/schemas";
 pub const DEFAULT_PLUGINS_DIR: &str = "config/plugins";
+pub const DEFAULT_DISCOVERY_THRESHOLD: usize = 3;
 pub const DEFAULT_ENTROPY_THRESHOLD: f64 = 4.5;
 pub const DEFAULT_SEMANTIC_THRESHOLD: f32 = 0.75;
 
@@ -47,6 +48,7 @@ pub struct AxiomConfig {
     pub db_path: PathBuf,
     pub schemas_dir: PathBuf,
     pub plugins_dir: PathBuf,
+    pub discovery_threshold: usize,
     pub entropy_threshold: f64,
     pub semantic_threshold: f32,
     pub intelligence_mode: IntelligenceMode,
@@ -59,6 +61,9 @@ pub struct AxiomConfig {
     pub intent_keywords: Vec<String>,
     pub pii_patterns: Vec<String>,
     pub intent_sources: Vec<IntentSource>,
+    pub enabled: bool,
+    pub blacklist: Vec<String>,
+    pub bypass_count: usize,
 }
 
 impl Default for AxiomConfig {
@@ -67,6 +72,7 @@ impl Default for AxiomConfig {
             db_path: PathBuf::from(DEFAULT_DB_PATH),
             schemas_dir: PathBuf::from(DEFAULT_SCHEMAS_DIR),
             plugins_dir: PathBuf::from(DEFAULT_PLUGINS_DIR),
+            discovery_threshold: DEFAULT_DISCOVERY_THRESHOLD,
             entropy_threshold: DEFAULT_ENTROPY_THRESHOLD,
             semantic_threshold: DEFAULT_SEMANTIC_THRESHOLD,
             intelligence_mode: IntelligenceMode::Fuzzy,
@@ -102,6 +108,15 @@ impl Default for AxiomConfig {
                     strategy: IntentStrategy::LastLine,
                 },
             ],
+            enabled: true,
+            blacklist: vec![
+                "vi".to_string(), "vim".to_string(), "nano".to_string(), 
+                "ssh".to_string(), "top".to_string(), "htop".to_string(), 
+                "man".to_string(), "less".to_string(), "more".to_string(),
+                "cat".to_string(), "sudo".to_string(), "axiom".to_string(),
+                "cd".to_string(), "clear".to_string(), "exit".to_string(),
+            ],
+            bypass_count: 0,
         }
     }
 }

@@ -1,15 +1,9 @@
-use axiom::config::AxiomConfig;
-use axiom::session::AxiomSession;
+mod common;
 use axiom::IntentContext;
-
-fn setup_session() -> AxiomSession {
-    let config = AxiomConfig::default();
-    AxiomSession::new(config).expect("Failed to setup session for testing")
-}
 
 #[test]
 fn test_cargo_noise_reduction() {
-    let mut session = setup_session();
+    let mut session = common::setup_session();
     let command = "cargo build";
     let context = IntentContext {
         last_message: "compile the project".to_string(),
@@ -45,7 +39,7 @@ warning: unused variable: `x`
 
 #[test]
 fn test_npm_deprecation_collapse() {
-    let mut session = setup_session();
+    let mut session = common::setup_session();
     let command = "npm install";
     let context = IntentContext {
         last_message: "install dependencies".to_string(),

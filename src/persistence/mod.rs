@@ -62,7 +62,71 @@ impl PersistenceManager {
             [],
         )?;
 
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS global_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            [],
+        )?;
+
+        // Initialize default global settings
+        conn.execute("INSERT OR IGNORE INTO global_settings (key, value) VALUES ('enabled', 'true')", [])?;
+        conn.execute("INSERT OR IGNORE INTO global_settings (key, value) VALUES ('bypass_count', '0')", [])?;
+
         Ok(Self { conn })
+    }
+
+    pub fn get_global_enabled(&self) -> anyhow::Result<bool> {
+        let mut stmt = self.conn.prepare("SELECT value FROM global_settings WHERE key = 'enabled'")?;
+        let mut rows = stmt.query([])?;
+        if let Some(row) = rows.next()? {
+            let val: String = row.get(0)?;
+            Ok(val == "true")
+        } else {
+            Ok(true)
+        }
+    }
+
+    pub fn set_global_enabled(&self, enabled: bool) -> anyhow::Result<()> {
+        self.conn.execute(
+            "INSERT INTO global_settings (key, value) VALUES ('enabled', ?1)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value, last_updated = CURRENT_TIMESTAMP",
+            params![enabled.to_string()],
+        )?;
+        Ok(())
+    }
+
+    pub fn get_bypass_count(&self) -> anyhow::Result<usize> {
+        let mut stmt = self.conn.prepare("SELECT value FROM global_settings WHERE key = 'bypass_count'")?;
+        let mut rows = stmt.query([])?;
+        if let Some(row) = rows.next()? {
+            let val: String = row.get(0)?;
+            Ok(val.parse().unwrap_or(0))
+        } else {
+            Ok(0)
+        }
+    }
+
+    pub fn set_bypass_count(&self, count: usize) -> anyhow::Result<()> {
+        self.conn.execute(
+            "INSERT INTO global_settings (key, value) VALUES ('bypass_count', ?1)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value, last_updated = CURRENT_TIMESTAMP",
+            params![count.to_string()],
+        )?;
+        Ok(())
+    }
+
+    pub fn decrement_bypass_count(&self) -> anyhow::Result<usize> {
+        let current = self.get_bypass_count()?;
+        if current > 0 {
+            let next = current - 1;
+            self.set_bypass_count(next)?;
+            Ok(next)
+        } else {
+            Ok(0)
+        }
     }
 
     pub fn set_session_intelligence(&self, session_id: &str, mode: &str) -> anyhow::Result<()> {

@@ -58,7 +58,12 @@ impl AxiomSession {
                 IntelligenceMode::Off => Box::new(FuzzyIntelligence), // Fallback to fuzzy but transformer will skip filtering
             };
         
-        let mut engine = AxiomEngine::new(redactor, schemas, intelligence);
+        let mut engine = AxiomEngine::new(
+            redactor, 
+            schemas, 
+            intelligence,
+            config.discovery_threshold
+        );
         
         if config.markdown_enabled {
             engine.set_markdown_mode(true);

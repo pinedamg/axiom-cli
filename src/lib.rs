@@ -18,6 +18,16 @@ pub struct IntentContext {
     pub keywords: Vec<String>,
 }
 
+impl Default for IntentContext {
+    fn default() -> Self {
+        Self {
+            last_message: "Automated Session".to_string(),
+            command: "unknown".to_string(),
+            keywords: vec![],
+        }
+    }
+}
+
 impl IntentContext {
     /// Determines if a keyword or concept is relevant to the user's intent
     pub fn is_relevant(&self, text: &str) -> bool {

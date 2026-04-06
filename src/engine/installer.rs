@@ -2,9 +2,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::io::{self, Write};
 
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
-
 pub struct AxiomInstaller;
 
 const SHELL_BLOCK_START: &str = "# >>> axiom initialize >>>";
@@ -13,16 +10,71 @@ const SHELL_BLOCK_END: &str = "# <<< axiom initialize <<<";
 const CONTEXT_BLOCK_START: &str = "<!-- BEGIN AXIOM INSTRUCTIONS -->";
 const CONTEXT_BLOCK_END: &str = "<!-- END AXIOM INSTRUCTIONS -->";
 
-const DEFAULT_ALIASES: &[&str] = &[
-    "alias git='axiom git'",
-    "alias docker='axiom docker'",
-    "alias ls='axiom ls'",
-    "alias npm='axiom npm'",
-    "alias cargo='axiom cargo'",
-    "alias kubectl='axiom kubectl'",
-];
+const SHELL_HOOK_SCRIPT: &str = r#"
+# Axiom Dynamic Interceptor Hook
+axiom() {
+  if [[ "$1" == "disable" ]]; then
+    command axiom disable
+    export AXIOM_DISABLED=1
+  elif [[ "$1" == "enable" ]]; then
+    command axiom enable
+    export AXIOM_DISABLED=0
+  elif [[ "$1" == "bypass" ]]; then
+    if [[ "$2" =~ ^[0-9]+$ ]]; then
+        command axiom bypass "$2"
+    elif [[ "$2" == "always" || "$2" == "never" ]]; then
+        command axiom bypass "$2" "$3"
+    else
+        shift
+        command "$@"
+    fi
+  else
+    command axiom "$@"
+  fi
+}
 
-const SHIM_COMMANDS: &[&str] = &["git", "docker", "ls", "npm", "cargo", "kubectl", "rg", "ps", "go"];
+_axiom_hook_setup() {
+  # Blacklist of commands that should NEVER be intercepted
+  local blacklist=("vi" "vim" "nano" "ssh" "top" "htop" "man" "less" "more" "cat" "sudo" "axiom" "cd" "clear" "exit" "git-lfs")
+  
+  # Get all executables in PATH (Bash/Zsh compatible)
+  local cmds
+  if [ -n "$ZSH_VERSION" ]; then
+    cmds=(${(k)commands})
+  else
+    cmds=$(compgen -c)
+  fi
+
+  for cmd in $cmds; do
+    local skip=0
+    for b in "${blacklist[@]}"; do
+      if [[ "$cmd" == "$b" ]]; then skip=1; break; fi
+    done
+    
+    if [ $skip -eq 0 ]; then
+       # Create a wrapper function that calls axiom
+       eval "$cmd() { axiom $cmd \"\$@\"; }"
+    fi
+  done
+}
+
+# Aliases for common tools (fast path)
+alias git='axiom git'
+alias docker='axiom docker'
+alias npm='axiom npm'
+alias cargo='axiom cargo'
+alias kubectl='axiom kubectl'
+alias terraform='axiom terraform'
+alias ls='axiom ls'
+alias ps='axiom ps'
+alias rg='axiom rg'
+alias go='axiom go'
+alias make='axiom make'
+alias jest='axiom jest'
+alias vitest='axiom vitest'
+alias eslint='axiom eslint'
+alias prettier='axiom prettier'
+"#;
 
 const AGENT_RULES: &str = r#"
 ### 🤖 Axiom: Agent Execution Protocol
@@ -31,7 +83,8 @@ const AGENT_RULES: &str = r#"
 
 - **ALWAYS** prefix with `axiom` for: `npm`, `cargo`, `docker`, `git`, `kubectl`, `terraform`.
 - **REDACTION**: Axiom handles secrets locally. Do not leak credentials into context.
-- **RAW MODE**: Use `axiom --raw <cmd>` if you need 100% metadata precision (timestamps, etc.).
+- **BYPASS**: Use `axiom --raw <cmd>` if you need 100% metadata precision (timestamps, etc.).
+- **QUICK BYPASS**: Use `axiom bypass <N>` to bypass filtering for the next N commands.
 "#;
 
 impl AxiomInstaller {
@@ -126,40 +179,14 @@ impl AxiomInstaller {
         Ok(())
     }
 
-    pub fn install_shell_integration(path: &Path, include_path: bool) -> anyhow::Result<()> {
-        let mut content = String::new();
-        if include_path {
-            let home = std::env::var("HOME")?;
-            content.push_str(&format!("export PATH=\"{}/.axiom/bin:$PATH\"\n", home));
-        }
-        for alias in DEFAULT_ALIASES {
-            content.push_str(alias);
-            content.push('\n');
-        }
-        Self::inject_block(path, SHELL_BLOCK_START, SHELL_BLOCK_END, &content, false)
+    pub fn install_shell_integration(path: &Path, _include_path: bool) -> anyhow::Result<()> {
+        Self::inject_block(path, SHELL_BLOCK_START, SHELL_BLOCK_END, SHELL_HOOK_SCRIPT, false)
     }
 
     pub fn install_shims() -> anyhow::Result<PathBuf> {
         let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
         let shim_dir = Path::new(&home).join(".axiom/bin");
         fs::create_dir_all(&shim_dir)?;
-
-        let axiom_path = std::env::current_exe()?;
-        let axiom_path_str = axiom_path.to_string_lossy();
-
-        for cmd in SHIM_COMMANDS {
-            let shim_path = shim_dir.join(cmd);
-            // Use absolute path to axiom to avoid recursive $PATH lookups
-            let content = format!("#!/bin/sh\nexec \"{}\" {} \"$@\"\n", axiom_path_str, cmd);
-            fs::write(&shim_path, content)?;
-            
-            #[cfg(unix)]
-            {
-                let mut perms = fs::metadata(&shim_path)?.permissions();
-                perms.set_mode(0o755);
-                fs::set_permissions(&shim_path, perms)?;
-            }
-        }
         Ok(shim_dir)
     }
 
