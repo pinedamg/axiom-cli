@@ -40,6 +40,15 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    /// Enable Axiom globally
+    Enable,
+    /// Disable Axiom globally (passthrough mode)
+    Disable,
+    /// Bypass Axiom filtering
+    Bypass {
+        #[command(subcommand)]
+        action: BypassAction,
+    },
     /// Install Axiom shell integration and AI context
     Install {
         /// Project path to sync AI context (default: current dir)
@@ -100,6 +109,27 @@ enum Commands {
     Intent {
         #[command(subcommand)]
         action: IntentAction,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum BypassAction {
+    /// Bypass the next N commands (e.g., bypass 3)
+    Count {
+        count: usize,
+    },
+    /// Permanently blacklist a command
+    Always {
+        command: String,
+    },
+    /// Remove a command from the blacklist
+    Never {
+        command: String,
+    },
+    /// Execute a single command without filtering
+    Run {
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
     },
 }
 
@@ -168,6 +198,59 @@ async fn main() -> anyhow::Result<()> {
     // 2. Handle Subcommands
     if let Some(cmd) = cli.command {
         match cmd {
+            Commands::Enable => {
+                session.persistence.set_global_enabled(true)?;
+                println!("✅ Axiom ENABLED globally.");
+                return Ok(());
+            }
+            Commands::Disable => {
+                session.persistence.set_global_enabled(false)?;
+                println!("❌ Axiom DISABLED globally (Passthrough Mode).");
+                return Ok(());
+            }
+            Commands::Bypass { action } => {
+                match action {
+                    BypassAction::Count { count } => {
+                        session.persistence.set_bypass_count(count)?;
+                        if count > 0 {
+                            println!("🚀 Axiom will bypass the next {} commands.", count);
+                        } else {
+                            println!("✅ Bypass countdown reset.");
+                        }
+                    }
+                    BypassAction::Always { command } => {
+                        let mut config = session.config.clone();
+                        if !config.blacklist.contains(&command) {
+                            config.blacklist.push(command.clone());
+                            config.save_global()?;
+                            println!("🚫 '{}' added to the permanent blacklist.", command);
+                        } else {
+                            println!("ℹ️ '{}' is already in the blacklist.", command);
+                        }
+                    }
+                    BypassAction::Never { command } => {
+                        let mut config = session.config.clone();
+                        if let Some(pos) = config.blacklist.iter().position(|x| x == &command) {
+                            config.blacklist.remove(pos);
+                            config.save_global()?;
+                            println!("✅ '{}' removed from the blacklist.", command);
+                        } else {
+                            println!("ℹ️ '{}' was not in the blacklist.", command);
+                        }
+                    }
+                    BypassAction::Run { args } => {
+                        if args.is_empty() {
+                            println!("Error: No command provided to bypass.");
+                            exit(1);
+                        }
+                        let program = &args[0];
+                        let cmd_args = &args[1..];
+                        // Execute raw
+                        execute_command(program, cmd_args, &IntentContext::default(), &mut session, true).await?;
+                    }
+                }
+                return Ok(());
+            }
             Commands::Install { path, context_only, funnel_id } => {
                 let project_path = Path::new(&path);
                 if context_only {
@@ -356,7 +439,20 @@ async fn main() -> anyhow::Result<()> {
     // 5. Execute
     let program = &cli.proxy_args[0];
     let cmd_args = &cli.proxy_args[1..];
-    execute_command(program, cmd_args, &context, &mut session, cli.raw).await?;
+    
+    // Check global state
+    let is_enabled = session.persistence.get_global_enabled().unwrap_or(true);
+    let bypass_count = session.persistence.get_bypass_count().unwrap_or(0);
+    
+    let mut final_raw = cli.raw;
+    if !is_enabled || bypass_count > 0 {
+        final_raw = true;
+        if bypass_count > 0 {
+            let _ = session.persistence.decrement_bypass_count();
+        }
+    }
+
+    execute_command(program, cmd_args, &context, &mut session, final_raw).await?;
 
     // 6. Post-execution Feedback (Human only + Configurable)
     axiom::engine::ui::DopamineEngine::render_session_savings(&session, cli.raw);

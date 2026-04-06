@@ -50,12 +50,16 @@ impl AxiomEngine {
     pub fn new(
         redactor: PrivacyRedactor, 
         schemas: Vec<ToolSchema>,
-        intelligence: Box<dyn IntelligenceProvider>
+        intelligence: Box<dyn IntelligenceProvider>,
+        discovery_threshold: usize,
     ) -> Self {
+        let mut discovery = DiscoveryEngine::default();
+        discovery.threshold = discovery_threshold;
+        
         Self {
             redactor,
             schemas,
-            discovery: DiscoveryEngine::default(),
+            discovery,
             storage: LogManager::default(),
             plugins: None,
             intelligence,

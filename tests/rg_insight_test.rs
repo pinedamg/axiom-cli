@@ -6,7 +6,7 @@ use axiom::IntentContext;
 #[test]
 fn test_rg_aggregation() {
     let redactor = PrivacyRedactor::new(4.5, vec![]);
-    let mut engine = AxiomEngine::new(redactor, vec![], Box::new(FuzzyIntelligence));
+    let mut engine = AxiomEngine::new(redactor, vec![], Box::new(FuzzyIntelligence), 3);
     let context = IntentContext {
         last_message: "Find something".to_string(),
         command: "rg Axiom".to_string(),

@@ -9,7 +9,7 @@ fn test_recipe_pipeline_full_flow() {
     // Arrange
     let redactor = PrivacyRedactor::default();
     let intelligence = Box::new(FuzzyIntelligence);
-    let mut engine = AxiomEngine::new(redactor, vec![], intelligence);
+    let mut engine = AxiomEngine::new(redactor, vec![], intelligence, 3);
     engine.handlers = get_all_handlers();
     
     // Use an intent that clearly overlaps with the line
@@ -32,7 +32,7 @@ fn test_recipe_pipeline_full_flow() {
 fn test_recipe_pipeline_deduplication() {
     let redactor = PrivacyRedactor::default();
     let intelligence = Box::new(FuzzyIntelligence);
-    let mut engine = AxiomEngine::new(redactor, vec![], intelligence);
+    let mut engine = AxiomEngine::new(redactor, vec![], intelligence, 3);
     
     let context = IntentContext {
         last_message: "List files".to_string(),

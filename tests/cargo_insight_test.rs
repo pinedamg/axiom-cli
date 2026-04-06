@@ -6,7 +6,7 @@ use axiom::IntentContext;
 #[test]
 fn test_cargo_aggregation() {
     let redactor = PrivacyRedactor::new(4.5, vec![]);
-    let mut engine = AxiomEngine::new(redactor, vec![], Box::new(FuzzyIntelligence));
+    let mut engine = AxiomEngine::new(redactor, vec![], Box::new(FuzzyIntelligence), 3);
     let context = IntentContext {
         last_message: "Build the project".to_string(),
         command: "cargo build".to_string(),

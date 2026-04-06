@@ -3,7 +3,6 @@ use std::path::Path;
 use crate::config::AxiomConfig;
 use crate::session::AxiomSession;
 use crate::gateway::detective::ProcessDetective;
-use crate::engine::telemetry::Telemetry;
 use crate::engine::installer::AxiomInstaller;
 
 pub struct DopamineEngine;
@@ -17,7 +16,8 @@ impl DopamineEngine {
         if let Some(stats) = session.engine.get_session_stats() {
             if stats.raw_bytes > 500 {
                 let savings = (stats.raw_bytes as f64 - stats.saved_bytes as f64) / stats.raw_bytes as f64 * 100.0;
-                println!(
+                // Output to stderr to keep stdout clean for AI
+                eprintln!(
                     "\n\x1b[32m✨ Axiom: {} bytes → {} bytes ({:.1}% reduction)\x1b[0m",
                     stats.raw_bytes, stats.saved_bytes, savings
                 );
@@ -33,123 +33,93 @@ impl OnboardingManager {
         println!("\x1b[1;36m🚀 AXIOM: The Semantic Token Streamer\x1b[0m");
         println!("---------------------------------------\n");
 
-        if auto_yes {
-            return Self::apply_profile(1, project_path, funnel_id);
-        }
-
-        println!("\x1b[1mSelect your installation profile:\x1b[0m\n");
-        
-        println!("  \x1b[32m[1] Full Automation (Recommended)\x1b[0m");
-        println!("      • \x1b[1mWhat changes:\x1b[0m Adds aliases to your shell config and installs shims in ~/.axiom/bin.");
-        println!("      • \x1b[1mWhy:\x1b[0m You don't need to change your habits. Commands like 'npm' or 'git' will");
-        println!("        automatically be filtered to save context and protect secrets.");
-        println!();
-
-        println!("  \x1b[33m[2] Manual (Proxy Mode)\x1b[0m");
-        println!("      • \x1b[1mWhat changes:\x1b[0m ZERO system-wide changes. Only installs the binary.");
-        println!("      • \x1b[1mWhy:\x1b[0m You prefer full control. You only use Axiom when you explicitly type");
-        println!("        the 'axiom' prefix (e.g., 'axiom docker logs').");
-        println!();
-
-        println!("  \x1b[34m[3] AI Integration Only\x1b[0m");
-        println!("      • \x1b[1mWhat changes:\x1b[0m Only injects AI-specific rules (.md files) into this project.");
-        println!("      • \x1b[1mWhy:\x1b[0m You want your AI Agent (Cursor/Claude) to know how to optimize its own");
-        println!("        context usage without changing your local terminal experience.");
-        println!();
-        
-        println!("\x1b[2m💡 Note: You can always undo these changes by running 'axiom uninstall'.\x1b[0m\n");
-
-        print!("\x1b[1mSelect profile [1-3, Default: 1]: \x1b[0m");
-        io::stdout().flush()?;
-        
-        let mut choice = String::new();
-        io::stdin().read_line(&mut choice)?;
-        let choice_num = choice.trim().parse::<u8>().unwrap_or(1);
-
-        Self::apply_profile(choice_num, project_path, funnel_id)
-    }
-
-    pub fn apply_profile(choice: u8, project_path: Option<&Path>, funnel_id: Option<String>) -> anyhow::Result<()> {
-        let configs = AxiomInstaller::get_shell_configs();
-        
         // Load config (this triggers node registration if first run)
-        // If funnel_id is present, it will be used during registration
         if let Some(fid) = &funnel_id {
             std::env::set_var("AXIOM_FUNNEL_ID", fid);
         }
-        let axiom_config = AxiomConfig::load();
+        let _axiom_config = AxiomConfig::load();
 
-        let profile_name = match choice {
-            1 => "full",
-            2 => "manual",
-            3 => "ai_only",
-            _ => "unknown",
-        };
-        
-        // 1. Report Choice to Telemetry (Event)
-        Telemetry::report_event(
-            &axiom_config, 
-            "install_profile_selected", 
-            Some(profile_name), 
-            choice as usize, 
-            0, 
-            None
-        );
+        println!("📦 \x1b[1mInstalling Axiom Stealth (Dynamic Shell Hook)...\x1b[0m");
 
-        // 2. Update Node Profile in Pulse (Permanent Column)
-        let endpoint = format!("{}/v1/node/profile", axiom_config.get_pulse_endpoint());
-        let payload = serde_json::json!({
-            "iid": axiom_config.node_id,
-            "profile": profile_name
-        });
-        let _ = ureq::post(&endpoint).send_json(payload);
-
-        match choice {
-            1 => {
-                println!("\n\x1b[1mApplying Full Automation...\x1b[0m");
-                if !configs.is_empty() {
-                    for path in &configs {
-                        print!("  - Configuring {} ... ", path.display());
-                        let _ = AxiomInstaller::install_shell_integration(path, true);
-                        println!("✅");
-                    }
-                }
-                print!("  - Installing Global Shims in ~/.axiom/bin ... ");
-                let _ = AxiomInstaller::install_shims()?;
+        // 1. Install Shell Integration
+        let configs = AxiomInstaller::get_shell_configs();
+        if !configs.is_empty() {
+            for path in &configs {
+                print!("  - Configuring {} ... ", path.display());
+                let _ = AxiomInstaller::install_shell_integration(path, true);
                 println!("✅");
-                Self::sync_context(project_path)?;
             }
-            2 => {
-                println!("\n\x1b[1mApplying Manual Mode...\x1b[0m");
-                println!("  - No system changes made.");
-                println!("  - Use 'axiom <command>' to filter manually.");
-                Self::sync_context(project_path)?;
-            }
-            3 => {
-                println!("\n\x1b[1mApplying AI Integration Only...\x1b[0m");
-                Self::sync_context(project_path)?;
-            }
-            _ => return Self::apply_profile(1, project_path, funnel_id),
         }
-
-        println!("\n\x1b[1;32mInstallation Complete!\x1b[0m");
-        println!("\x1b[2mTry running 'axiom doctor' to verify your environment status.\x1b[0m");
-        Ok(())
-    }
-
-    fn sync_context(project_path: Option<&Path>) -> anyhow::Result<()> {
+        
+        // 2. Sync AI Context
         if let Some(root) = project_path {
-            println!("  - Syncing AI Context Rules...");
+            print!("  - Syncing AI Context Rules ... ");
             let context_files = ["GEMINI.md", "AGENTS.md", "CLAUDE.md", ".cursorrules", ".windsurfrules"];
             for file_name in context_files {
                 let path = root.join(file_name);
                 if path.exists() || file_name == "CLAUDE.md" || file_name == "AGENTS.md" {
-                    print!("    - Updating {} ... ", file_name);
                     let _ = AxiomInstaller::inject_ai_context(&path, true);
-                    println!("✅");
                 }
             }
+            println!("✅");
         }
+
+        println!("\n\x1b[1;32mInstallation Complete!\x1b[0m");
+        println!("---------------------------------------\n");
+
+        // 3. The "Aha!" Moment Demo
+        println!("\x1b[1;33m💡 Let's see Axiom in action (The Aha! Moment):\x1b[0m");
+        
+        // Setup dummy noise for the demo
+        let demo_dir = project_path.unwrap_or(Path::new(".")).join(".axiom_demo");
+        let _ = std::fs::create_dir_all(&demo_dir);
+        for i in 0..15 {
+            let _ = std::fs::write(demo_dir.join(format!("temp_log_{}.log", i)), "noise");
+        }
+
+        println!("\n1. \x1b[1mStandard 'ls -la' (Raw Output is noisy!):\x1b[0m");
+        println!("\x1b[2m----------------------------------------------------------\x1b[0m");
+        let _ = std::process::Command::new("ls")
+            .arg("-la")
+            .arg(&demo_dir)
+            .spawn()?
+            .wait()?;
+        println!("\x1b[2m----------------------------------------------------------\x1b[0m");
+
+        println!("\n2. \x1b[1m'axiom ls -la' (Semantic Output is clean!):\x1b[0m");
+        println!("\x1b[1;32m----------------------------------------------------------\x1b[0m");
+        // Run our own binary in proxy mode
+        let _ = std::process::Command::new(std::env::current_exe()?)
+            .arg("ls")
+            .arg("-la")
+            .arg(&demo_dir)
+            .spawn()?
+            .wait()?;
+        println!("\x1b[1;32m----------------------------------------------------------\x1b[0m");
+
+        // Cleanup demo
+        let _ = std::fs::remove_dir_all(&demo_dir);
+
+        println!("\n\x1b[1m🚀 Axiom is now ACTIVE and protecting your terminal.\x1b[0m");
+        println!("\nQuick Commands:");
+        println!("  - \x1b[1maxiom disable\x1b[0m         : Turn off for this session");
+        println!("  - \x1b[1maxiom enable\x1b[0m          : Turn back on");
+        println!("  - \x1b[1maxiom bypass 3\x1b[0m        : Bypass for next 3 commands");
+        println!("  - \x1b[1maxiom bypass always <c>\x1b[0m : Blacklist a command forever");
+        println!("\nTry running 'axiom doctor' to verify your status.");
+
+        if !auto_yes {
+            print!("\nWould you like to keep Axiom enabled? [Y/n] ");
+            io::stdout().flush()?;
+            let mut input = String::new();
+            io::stdin().read_line(&mut input)?;
+            if input.trim().to_lowercase().starts_with('n') {
+                let p = crate::persistence::PersistenceManager::new()?;
+                p.set_global_enabled(false)?;
+                println!("❌ Axiom disabled. You can re-enable it with 'axiom enable'.");
+            }
+        }
+
         Ok(())
     }
 

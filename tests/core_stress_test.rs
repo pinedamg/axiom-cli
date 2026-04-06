@@ -1,11 +1,9 @@
-use axiom::config::AxiomConfig;
-use axiom::session::AxiomSession;
+mod common;
 use axiom::IntentContext;
 
 #[test]
 fn test_core_generic_scenarios() {
-    let config = AxiomConfig::default();
-    let mut session = AxiomSession::new(config).expect("Failed to create session");
+    let mut session = common::setup_session();
     
     let command = "complex-logger-tool";
     
@@ -46,9 +44,10 @@ fn test_core_generic_scenarios() {
 
 #[test]
 fn test_aggregator_no_information_loss() {
-    let config = AxiomConfig::default();
-    let mut session = AxiomSession::new(config).expect("Failed to create session");
+    let (mut session, _tmp) = common::setup_test_session();
+    session.engine.discovery.threshold = 5; // Match old default for this test
     let command = "batch-processor";
+
     
     let context = IntentContext {
         last_message: "wait until done".to_string(),

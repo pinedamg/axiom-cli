@@ -12,6 +12,7 @@ fn test_learning_lifecycle_and_persistence() {
     
     let mut config = AxiomConfig::default();
     config.db_path = std::path::PathBuf::from(db_path.clone());
+    config.discovery_threshold = 5;
     
     let command = "custom-miner-tool";
     let context = IntentContext {

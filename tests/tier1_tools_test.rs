@@ -23,7 +23,8 @@ drwxr-xr-x 20 user group  4096 Mar 22 10:00 ..
     let mut compressed_output = String::new();
     for line in raw_output.lines() {
         if let Some(processed) = session.engine.process_line(line, command, &context) {
-            compressed_output.push_str(&processed);
+            let p: String = processed;
+            compressed_output.push_str(&p);
             compressed_output.push('\n');
         }
     }
