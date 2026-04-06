@@ -1,5 +1,6 @@
 mod common;
 use axiom::IntentContext;
+use axiom::gateway::core::TerminalEvent;
 
 #[test]
 fn test_jq_structural_synthesis() {
@@ -27,7 +28,7 @@ fn test_jq_structural_synthesis() {
     ";
 
     for line in raw_output.lines() {
-        session.engine.process_line(line, command, &context);
+        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
     }
     
     let summaries = session.engine.flush_summaries();
@@ -54,7 +55,7 @@ Mar 27 18:53 machine systemd[1]: Started User Manager for UID 1000.
     ";
 
     for line in raw_output.lines() {
-        session.engine.process_line(line, command, &context);
+        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
     }
     
     let summaries = session.engine.flush_summaries();

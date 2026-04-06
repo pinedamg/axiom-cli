@@ -1,5 +1,6 @@
 mod common;
 use axiom::IntentContext;
+use axiom::gateway::core::TerminalEvent;
 
 #[test]
 fn test_ls_efficiency() {
@@ -22,7 +23,7 @@ drwxr-xr-x 20 user group  4096 Mar 22 10:00 ..
 
     let mut compressed_output = String::new();
     for line in raw_output.lines() {
-        if let Some(processed) = session.engine.process_line(line, command, &context) {
+        if let Some(processed) = session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context) {
             let p: String = processed;
             compressed_output.push_str(&p);
             compressed_output.push('\n');
@@ -55,7 +56,7 @@ fn test_ripgrep_aggregation() {
     }
 
     for line in raw_output.lines() {
-        session.engine.process_line(line, command, &context);
+        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
     }
     
     let summaries = session.engine.flush_summaries();
@@ -81,7 +82,7 @@ fn test_cat_guardian_mode() {
     let mut guardian_triggered = false;
 
     for line in raw_output.lines() {
-        if let Some(processed) = session.engine.process_line(line, command, &context) {
+        if let Some(processed) = session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context) {
             lines_printed += 1;
             if processed.contains("Guardian Mode") {
                 guardian_triggered = true;
@@ -115,7 +116,7 @@ fn test_curl_io_handling() {
     ";
 
     for line in raw_output.lines() {
-        session.engine.process_line(line, command, &context);
+        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
     }
     
     let summaries = session.engine.flush_summaries();

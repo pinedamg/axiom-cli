@@ -2,6 +2,7 @@ use axiom::engine::AxiomEngine;
 use axiom::IntentContext;
 use axiom::privacy::PrivacyRedactor;
 use axiom::engine::intelligence::FuzzyIntelligence;
+use axiom::gateway::core::TerminalEvent;
 use std::fs;
 use tempfile::tempdir;
 
@@ -15,11 +16,11 @@ async fn test_aggressive_deduplication() {
 
     // First line should be processed normally
     let line1 = "Downloading package...";
-    let res1 = engine.process_line(line1, "test", &context);
+    let res1 = engine.process_line(TerminalEvent::StaticLine(line1.to_string()), "test", &context);
     assert_eq!(res1, Some(line1.to_string()));
 
     // Second identical line should be swallowed (since threshold is 1)
-    let res2 = engine.process_line(line1, "test", &context);
+    let res2 = engine.process_line(TerminalEvent::StaticLine(line1.to_string()), "test", &context);
     assert_eq!(res2, None);
 }
 

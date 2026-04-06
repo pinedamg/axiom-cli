@@ -2,6 +2,7 @@ use axiom::engine::AxiomEngine;
 use axiom::privacy::PrivacyRedactor;
 use axiom::engine::intelligence::FuzzyIntelligence;
 use axiom::IntentContext;
+use axiom::gateway::core::TerminalEvent;
 
 #[test]
 fn test_cargo_aggregation() {
@@ -21,7 +22,7 @@ fn test_cargo_aggregation() {
     ];
 
     for line in lines {
-        engine.process_line(line, "cargo build", &context);
+        engine.process_line(TerminalEvent::StaticLine(line.to_string()), "cargo build", &context);
     }
 
     let summaries = engine.flush_summaries();

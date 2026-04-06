@@ -23,6 +23,8 @@ use crate::engine::transformer::ContentTransformer;
 use crate::engine::commands::{CommandHandler, get_all_handlers};
 use crate::engine::storage::LogManager;
 
+use crate::gateway::core::TerminalEvent;
+
 pub struct AxiomEngine {
     pub redactor: PrivacyRedactor,
     pub schemas: Vec<ToolSchema>,
@@ -77,17 +79,29 @@ impl AxiomEngine {
     }
 
     /// The main pipeline orchestrator (The Recipe).
-    pub fn process_line(&mut self, line: &str, command: &str, context: &IntentContext) -> Option<String> {
+    pub fn process_line(&mut self, event: TerminalEvent, command: &str, context: &IntentContext) -> Option<String> {
+        let (line, is_progress) = match event {
+            TerminalEvent::StaticLine(l) => (l, false),
+            TerminalEvent::ProgressUpdate(l) => (l, true),
+            TerminalEvent::StreamEnd => return None,
+        };
+
+        if is_progress {
+            // Transient progress bar: we swallow it completely to save tokens and avoid
+            // spamming the terminal with `writeln!`. Progress bars are pure noise for AI.
+            return None;
+        }
+
         self.line_counter += 1;
         self.last_command = command.to_string();
-        let _ = self.storage.append_line(line);
+        let _ = self.storage.append_line(&line);
 
         // 1. Deduplicate (Stateful)
-        let (prefix, action) = self.stage_deduplicate(line);
+        let (prefix, action) = self.stage_deduplicate(&line);
         if matches!(action, PipelineAction::Swallow) { return None; }
 
         // 2. Transform (Pure)
-        let working_line = self.stage_transform(line);
+        let working_line = self.stage_transform(&line);
 
         // 3. Guard (Stateful / Thresholds)
         let action = self.stage_guard(&working_line, command, context);

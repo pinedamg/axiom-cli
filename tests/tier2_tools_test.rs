@@ -1,5 +1,6 @@
 mod common;
 use axiom::IntentContext;
+use axiom::gateway::core::TerminalEvent;
 
 #[test]
 fn test_cargo_noise_reduction() {
@@ -25,7 +26,7 @@ warning: unused variable: `x`
     let mut warning_shown = false;
 
     for line in raw_output.lines() {
-        if let Some(processed) = session.engine.process_line(line, command, &context) {
+        if let Some(processed) = session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context) {
             lines_printed += 1;
             if processed.contains("warning: unused variable") {
                 warning_shown = true;
@@ -58,7 +59,7 @@ added 1 package in 2s
     let mut summary_shown = false;
 
     for line in raw_output.lines() {
-        if let Some(processed) = session.engine.process_line(line, command, &context) {
+        if let Some(processed) = session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context) {
             if processed.contains("deprecated") {
                 deprecation_shown = true;
             }

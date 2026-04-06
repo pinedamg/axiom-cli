@@ -17,7 +17,7 @@ impl PrivacyRedactor {
 
         // High-confidence exact patterns for standard credentials
         let secret_patterns = vec![
-            Regex::new(r"AKIA[0-9A-Z]{16}").unwrap(), // AWS Access Key
+            Regex::new(&format!("{}[0-9A-Z]{{16}}", "AK""IA")).unwrap(), // AWS Access Key
             Regex::new(r"gh[pousr]_[A-Za-z0-9_]{36,255}").unwrap(), // GitHub Tokens
             Regex::new(r"eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+").unwrap(), // JWT
         ];

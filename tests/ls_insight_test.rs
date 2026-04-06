@@ -1,5 +1,6 @@
 mod common;
 use axiom::IntentContext;
+use axiom::gateway::core::TerminalEvent;
 use std::fs;
 
 fn test_ls_insight_for_fixture(fixture_path: &str, expected_insight: &str) {
@@ -15,7 +16,7 @@ fn test_ls_insight_for_fixture(fixture_path: &str, expected_insight: &str) {
         .expect(&format!("Failed to load fixture: {}", fixture_path));
 
     for line in raw_output.lines() {
-        session.engine.process_line(line, command, &context);
+        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
     }
 
     let summaries = session.engine.flush_summaries();

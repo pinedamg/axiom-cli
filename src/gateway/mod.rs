@@ -1,11 +1,14 @@
+pub mod core;
+pub mod process;
+pub mod render;
+pub mod stream;
 pub mod detective;
-use std::process::Stdio;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Command;
+pub mod filters;
+
 use crate::IntentContext;
 use crate::session::AxiomSession;
-
-use std::env;
+use crate::gateway::core::OutputRenderer;
+use crate::gateway::render::TtyRenderer;
 
 /// Executes a command under Axiom's supervision.
 pub async fn execute_command(
@@ -15,74 +18,22 @@ pub async fn execute_command(
     session: &mut AxiomSession,
     raw_mode: bool,
 ) -> anyhow::Result<()> {
-    // Industrial logic: create a sanitized PATH for the child process
-    // that excludes Axiom's shim directory to prevent infinite recursion.
-    let home = env::var("HOME").unwrap_or_default();
-    let shim_dir = format!("{}/.axiom/bin", home);
-    
-    let current_path = env::var_os("PATH").unwrap_or_default();
-    let filtered_path = env::join_paths(
-        env::split_paths(&current_path)
-            .filter(|p| {
-                let p_str = p.to_string_lossy();
-                !p_str.contains(".axiom/bin") && p_str != shim_dir
-            })
-    )?;
-
-    let mut child = Command::new(program)
-        .args(args)
-        .env("PATH", filtered_path) // Inject sanitized PATH
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let stdout = child.stdout.take().ok_or_else(|| anyhow::anyhow!("Failed to capture stdout"))?;
-    let stderr = child.stderr.take().ok_or_else(|| anyhow::anyhow!("Failed to capture stderr"))?;
-
+    let mut child = process::spawn_child(program, args)?;
     let command_str = format!("{} {}", program, args.join(" "));
+    let mut renderer = TtyRenderer;
 
-    let mut stdout_lines = BufReader::new(stdout).lines();
-    let mut stderr_lines = BufReader::new(stderr).lines();
-
-    let mut total_original = 0;
-    let mut total_compressed = 0;
-
-    loop {
-        tokio::select! {
-            line = stdout_lines.next_line() => {
-                match line? {
-                    Some(l) => {
-                        if raw_mode {
-                            println!("{}", l);
-                            total_original += l.len();
-                            total_compressed += l.len();
-                        } else {
-                            process_line_output(&l, &command_str, context, session, &mut total_original, &mut total_compressed, false);
-                        }
-                    },
-                    None => break,
-                }
-            }
-            line = stderr_lines.next_line() => {
-                match line? {
-                    Some(l) => {
-                        if raw_mode {
-                            eprintln!("{}", l);
-                            total_original += l.len();
-                            total_compressed += l.len();
-                        } else {
-                            process_line_output(&l, &command_str, context, session, &mut total_original, &mut total_compressed, true);
-                        }
-                    },
-                    None => {}, 
-                }
-            }
-        }
-    }
+    let (total_original, total_compressed) = stream::stream_io(
+        &mut child, 
+        &command_str, 
+        context, 
+        session, 
+        &mut renderer,
+        raw_mode
+    ).await?;
 
     if !raw_mode {
-        // Flush final summaries and insights once the command execution is finished
-        flush_and_print_summaries(session, false);
+        let summaries = session.engine.flush_summaries();
+        renderer.render_summary(&summaries, false);
     }
 
     session.finalize(&command_str, total_original, total_compressed)?;
@@ -90,50 +41,3 @@ pub async fn execute_command(
     Ok(())
 }
 
-use std::io::Write;
-
-fn safe_print(msg: &str, is_stderr: bool) {
-    let result = if is_stderr {
-        let mut stderr = std::io::stderr().lock();
-        writeln!(stderr, "{}", msg)
-    } else {
-        let mut stdout = std::io::stdout().lock();
-        writeln!(stdout, "{}", msg)
-    };
-
-    if let Err(e) = result {
-        if e.kind() == std::io::ErrorKind::BrokenPipe {
-            std::process::exit(0);
-        }
-    }
-}
-
-fn process_line_output(
-    line: &str,
-    command: &str,
-    context: &IntentContext,
-    session: &mut AxiomSession,
-    total_original: &mut usize,
-    total_compressed: &mut usize,
-    is_stderr: bool,
-) {
-    *total_original += line.len();
-    if let Some(processed) = session.engine.process_line(line, command, context) {
-        *total_compressed += processed.len();
-        safe_print(&processed, is_stderr);
-    }
-}
-
-fn flush_and_print_summaries(session: &mut AxiomSession, is_stderr: bool) {
-    let summaries = session.engine.flush_summaries();
-    if summaries.is_empty() { return; }
-
-    // Compact Header for token efficiency
-    let header = "\x1b[1;33m[AXIOM]\x1b[0m";
-    safe_print(header, is_stderr);
-
-    for summary in summaries {
-        let msg = format!("\x1b[33m• {}\x1b[0m", summary);
-        safe_print(&msg, is_stderr);
-    }
-}

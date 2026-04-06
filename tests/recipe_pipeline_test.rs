@@ -3,6 +3,7 @@ use axiom::privacy::PrivacyRedactor;
 use axiom::engine::intelligence::FuzzyIntelligence;
 use axiom::IntentContext;
 use axiom::engine::commands::get_all_handlers;
+use axiom::gateway::core::TerminalEvent;
 
 #[test]
 fn test_recipe_pipeline_full_flow() {
@@ -21,7 +22,7 @@ fn test_recipe_pipeline_full_flow() {
 
     // Act
     let important_line = "main.rs";
-    let out = engine.process_line(important_line, "ls", &context);
+    let out = engine.process_line(TerminalEvent::StaticLine(important_line.to_string()), "ls", &context);
     
     // Assert
     assert!(out.is_some(), "Stage 5 (Semantic) should let pass lines relevant to the message");
@@ -41,8 +42,9 @@ fn test_recipe_pipeline_deduplication() {
     };
     let line = "file.txt";
 
-    let _ = engine.process_line(line, "ls", &context);
-    let out2 = engine.process_line(line, "ls", &context);
+    let _ = engine.process_line(TerminalEvent::StaticLine(line.to_string()), "ls", &context);
+    let out2 = engine.process_line(TerminalEvent::StaticLine(line.to_string()), "ls", &context);
     
     assert!(out2.is_none(), "Stage 1 (Dedup) should swallow repeated lines");
 }
+

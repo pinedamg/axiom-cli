@@ -2,6 +2,7 @@ mod common;
 use axiom::IntentContext;
 use axiom::config::AxiomConfig;
 use axiom::session::AxiomSession;
+use axiom::gateway::core::TerminalEvent;
 use std::fs;
 
 #[test]
@@ -31,7 +32,7 @@ fn test_learning_lifecycle_and_persistence() {
         let mut kept_count = 0;
         for i in 0..10 {
             let line = format!("Status: Processing hash 0x{:x}...", i);
-            if session.engine.process_line(&line, command, &context).is_some() {
+            if session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context).is_some() {
                 kept_count += 1;
             }
         }
@@ -56,14 +57,15 @@ fn test_learning_lifecycle_and_persistence() {
         
         // Enviamos la misma línea. Ahora debería colapsar DESDE LA PRIMERA.
         let line = "Status: Processing hash 0xabc123...";
-        let result = session.engine.process_line(line, command, &context);
+        let result = session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
         
         assert!(result.is_none(), "Session 2 should instantly collapse known patterns from line 1");
         
         // --- SESIÓN 3: SEGURIDAD (Outlier) ---
         // Aunque el patrón es conocido, si hay un secreto, NO debe colapsar.
-        let secret_line = "Status: Processing hash 0xabc123... Secret: AKIAIOSFODNN7EXAMPLE";
-        let result_security = session.engine.process_line(secret_line, command, &context);
+        let secret = "AWS_ACCESS_KEY_EXAMPLE_123456789";
+        let secret_line = format!("Status: Processing hash 0xabc123... Secret: {}", secret);
+        let result_security = session.engine.process_line(TerminalEvent::StaticLine(secret_line.to_string()), command, &context);
         
         assert!(result_security.is_some(), "Known patterns must NOT collapse if they contain secrets (V3 Priority)");
         assert!(result_security.unwrap().contains("[REDACTED_SECRET]"));

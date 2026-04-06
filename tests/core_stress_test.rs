@@ -1,5 +1,6 @@
 mod common;
 use axiom::IntentContext;
+use axiom::gateway::core::TerminalEvent;
 
 #[test]
 fn test_core_generic_scenarios() {
@@ -31,12 +32,12 @@ fn test_core_generic_scenarios() {
         keywords: vec!["crash".to_string()],
     };
     
-    let result = session.engine.process_line(error_line, command, &context_error);
+    let result = session.engine.process_line(TerminalEvent::StaticLine(error_line.to_string()), command, &context_error);
     assert!(result.is_some());
     assert!(result.unwrap().contains("failure"));
 
-    let secret_line = "The token is AKIA5G4H3J2K1L0M9N8P7Q6R5S4T3U2V1W0X and email is dev@test.com";
-    let result_privacy = session.engine.process_line(secret_line, command, &context_generic);
+    let secret_line = "The token is AWS_ACCESS_KEY_EXAMPLE_123456789 and email is dev@test.com";
+    let result_privacy = session.engine.process_line(TerminalEvent::StaticLine(secret_line.to_string()), command, &context_generic);
     let output = result_privacy.unwrap();
     assert!(output.contains("[REDACTED_PII]"));
     assert!(output.contains("[REDACTED_SECRET]"));
@@ -57,7 +58,7 @@ fn test_aggregator_no_information_loss() {
 
     for i in 0..15 {
         let line = format!("Log entry sequence #{}", i);
-        session.engine.process_line(&line, command, &context);
+        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
     }
 
     let summaries = session.engine.flush_summaries();
