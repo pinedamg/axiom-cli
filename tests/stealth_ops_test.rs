@@ -68,6 +68,7 @@ fn test_discovery_threshold_logic() {
     use axiom::privacy::PrivacyRedactor;
     use axiom::engine::intelligence::FuzzyIntelligence;
     use axiom::IntentContext;
+    use axiom::gateway::core::TerminalEvent;
 
     let redactor = PrivacyRedactor::default();
     let intelligence = Box::new(FuzzyIntelligence);
@@ -81,9 +82,9 @@ fn test_discovery_threshold_logic() {
     let line = "Generating noise...";
     
     // Line 1: Normal
-    engine.process_line(line, "unknown", &context);
+    engine.process_line(TerminalEvent::StaticLine(line.to_string()), "unknown", &context);
     // Line 2: Should trigger threshold
-    let res2 = engine.process_line(line, "unknown", &context);
+    let res2 = engine.process_line(TerminalEvent::StaticLine(line.to_string()), "unknown", &context);
     
     // res2 should be None (swallowed) because threshold is 1
     assert_eq!(res2, None);

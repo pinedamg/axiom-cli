@@ -1,5 +1,6 @@
 mod common;
 use axiom::IntentContext;
+use axiom::gateway::core::TerminalEvent;
 
 #[test]
 fn test_docker_pull_synthesis() {
@@ -19,7 +20,7 @@ e17133b79956: Downloading [=========>                                         ] 
     ";
 
     for line in raw_output.lines() {
-        session.engine.process_line(line, command, &context);
+        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
     }
     
     let summaries = session.engine.flush_summaries();
@@ -46,7 +47,7 @@ redis-master             1/1     Running            0          10d
     ";
 
     for line in raw_output.lines() {
-        session.engine.process_line(line, command, &context);
+        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
     }
     
     let summaries = session.engine.flush_summaries();
@@ -79,7 +80,7 @@ fn test_terraform_plan_synthesis() {
     ";
 
     for line in raw_output.lines() {
-        session.engine.process_line(line, command, &context);
+        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
     }
     
     let summaries = session.engine.flush_summaries();

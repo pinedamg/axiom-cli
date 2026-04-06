@@ -2,6 +2,7 @@ use axiom::engine::AxiomEngine;
 use axiom::privacy::PrivacyRedactor;
 use axiom::engine::intelligence::FuzzyIntelligence;
 use axiom::IntentContext;
+use axiom::gateway::core::TerminalEvent;
 
 #[test]
 fn test_rg_aggregation() {
@@ -21,7 +22,7 @@ fn test_rg_aggregation() {
     ];
 
     for line in lines {
-        engine.process_line(line, "rg Axiom", &context);
+        engine.process_line(TerminalEvent::StaticLine(line.to_string()), "rg Axiom", &context);
     }
 
     let summaries = engine.flush_summaries();

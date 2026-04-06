@@ -24,6 +24,8 @@ use crate::engine::commands::{CommandHandler, get_all_handlers};
 use crate::engine::storage::LogManager;
 use std::borrow::Cow;
 
+use crate::gateway::core::TerminalEvent;
+
 pub struct AxiomEngine {
     pub redactor: PrivacyRedactor,
     pub schemas: Vec<ToolSchema>,
@@ -78,17 +80,29 @@ impl AxiomEngine {
     }
 
     /// The main pipeline orchestrator (The Recipe).
-    pub fn process_line(&mut self, line: &str, command: &str, context: &IntentContext) -> Option<String> {
+    pub fn process_line(&mut self, event: TerminalEvent, command: &str, context: &IntentContext) -> Option<String> {
+        let (line, is_progress) = match event {
+            TerminalEvent::StaticLine(l) => (l, false),
+            TerminalEvent::ProgressUpdate(l) => (l, true),
+            TerminalEvent::StreamEnd => return None,
+        };
+
+        if is_progress {
+            // Transient progress bar: we swallow it completely to save tokens and avoid
+            // spamming the terminal with `writeln!`. Progress bars are pure noise for AI.
+            return None;
+        }
+
         self.line_counter += 1;
         self.last_command = command.to_string();
-        let _ = self.storage.append_line(line);
+        let _ = self.storage.append_line(&line);
 
         // 1. Deduplicate (Stateful)
-        let (prefix, action) = self.stage_deduplicate(line);
+        let (prefix, action) = self.stage_deduplicate(&line);
         if matches!(action, PipelineAction::Swallow) { return None; }
 
         // 2. Transform (Pure)
-        let working_line = self.stage_transform(line);
+        let working_line = self.stage_transform(&line);
 
         // 3. Guard (Stateful / Thresholds)
         let action = self.stage_guard(&working_line, command, context);
@@ -161,7 +175,7 @@ impl AxiomEngine {
         self.redactor.redact(line)
     }
 
-    fn stage_analyze(&mut self, line: &str, command: &str, _context: &IntentContext) -> PipelineAction {
+    fn stage_analyze(&mut self, line: &str, command: &str, context: &IntentContext) -> PipelineAction {
         let handler_idx = self.handlers.iter().position(|h| h.matches(command));
         
         // 5a. Schema Check
@@ -183,7 +197,12 @@ impl AxiomEngine {
             }
         }
 
-        // 5b. General Synthesis (Discovery)
+        // 5b. Semantic Relevance (AI Intent)
+        if context.is_relevant(line) || self.intelligence.is_relevant(&context.last_message, line, 0.7) {
+            return PipelineAction::Continue(line.to_string());
+        }
+
+        // 5c. General Synthesis (Discovery)
         let handler = handler_idx.map(|idx| self.handlers[idx].as_ref());
         if self.discovery.process_and_check_noise(line, handler, command) {
             PipelineAction::Swallow
@@ -193,14 +212,12 @@ impl AxiomEngine {
     }
 
     fn stage_plugins(&mut self, line: Option<String>) -> Option<String> {
-        if let Some(manager) = &mut self.plugins {
-            match manager.process_line(line.unwrap_or_default()) {
-                Ok(Some(processed)) => Some(processed),
-                Ok(None) => None,
-                Err(_) => None, // Fail silent on plugin errors for stability
+        match (line, &mut self.plugins) {
+            (Some(mut current), Some(manager)) => {
+                current = manager.transform(&current);
+                if current.is_empty() { None } else { Some(current) }
             }
-        } else {
-            line
+            (l, _) => l,
         }
     }
 
@@ -211,6 +228,23 @@ impl AxiomEngine {
             (Some(p), None) => Some(p),
             (None, None) => None,
         }
+    }
+
+    pub fn with_plugins(mut self, manager: WasmPluginManager) -> Self {
+        self.plugins = Some(manager);
+        self
+    }
+
+    pub fn get_session_stats(&self) -> Option<crate::engine::reporting::SessionStats> {
+        let raw = self.storage.get_total_bytes();
+        let saved = self.discovery.get_saved_bytes();
+        
+        if raw == 0 { return None; }
+        
+        Some(crate::engine::reporting::SessionStats {
+            raw_bytes: raw,
+            saved_bytes: raw.saturating_sub(saved),
+        })
     }
 
     pub fn flush_summaries(&mut self) -> Vec<String> {

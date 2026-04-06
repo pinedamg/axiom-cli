@@ -1,5 +1,6 @@
 mod common;
 use axiom::IntentContext;
+use axiom::gateway::core::TerminalEvent;
 use std::fs;
 
 #[test]
@@ -16,7 +17,7 @@ fn test_docker_ps_insight() {
         .expect("Failed to load docker ps fixture");
 
     for line in raw_output.lines() {
-        session.engine.process_line(line, command, &context);
+        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
     }
 
     let summaries = session.engine.flush_summaries();

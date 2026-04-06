@@ -10,7 +10,7 @@ pub fn setup_session() -> AxiomSession {
     // but cleaned up by the OS eventually. This is acceptable for tests 
     // to maintain compatibility with the existing test suite signature.
     let dir = tempdir().expect("Failed to create temp dir");
-    let db_path = dir.into_path().join("test_axiom.db");
+    let db_path = dir.keep().join("test_axiom.db");
     
     config.db_path = db_path;
     

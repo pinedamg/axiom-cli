@@ -1,4 +1,5 @@
 use axiom::IntentContext;
+use axiom::gateway::core::TerminalEvent;
 mod common;
 
 #[test]
@@ -18,7 +19,7 @@ fn test_ls_v1_long_listing_synthesis() {
 ";
 
     for line in raw_output.lines().filter(|l| !l.is_empty()) {
-        session.engine.process_line(line, command, &context);
+        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
     }
 
     let summaries = session.engine.flush_summaries();
@@ -40,7 +41,7 @@ fn test_ls_v1_standard_extension_synthesis() {
     // Standard ls output with multiple columns
     let raw_output = "Cargo.toml  README.md  src  target  test.rs  another.rs";
 
-    session.engine.process_line(raw_output, command, &context);
+    session.engine.process_line(TerminalEvent::StaticLine(raw_output.to_string()), command, &context);
 
     let summaries = session.engine.flush_summaries();
     assert!(summaries.iter().any(|s| s.contains("Grouped 2 files by extension [RS]")), "Should synthesize standard ls by extension");
@@ -57,7 +58,7 @@ fn test_ls_v2_semantic_insight() {
     };
 
     // Process a line that includes Cargo.toml
-    session.engine.process_line("Cargo.toml README.md src", command, &context);
+    session.engine.process_line(TerminalEvent::StaticLine("Cargo.toml README.md src".to_string()), command, &context);
 
     let summaries = session.engine.flush_summaries();
     assert!(summaries.iter().any(|s| s.contains("Insight: Detected Rust Project Workspace")), "Should provide semantic insight for Rust project");
@@ -74,7 +75,7 @@ fn test_ls_v3_privacy_redaction() {
     };
 
     let hidden_line = ".env secret_key=12345";
-    let result = session.engine.process_line(hidden_line, command, &context);
+    let result = session.engine.process_line(TerminalEvent::StaticLine(hidden_line.to_string()), command, &context);
     
     // Result should be None because it's synthesized/redacted OR it should contain REDACTED_BY_SCHEMA
     if let Some(processed) = result {

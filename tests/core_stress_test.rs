@@ -1,9 +1,10 @@
 mod common;
 use axiom::IntentContext;
+use axiom::gateway::core::TerminalEvent;
 
 #[test]
 fn test_core_generic_scenarios() {
-    let mut session = common::setup_session();
+    let (mut session, _tmp) = common::setup_test_session();
     
     let command = "complex-logger-tool";
     
@@ -31,12 +32,12 @@ fn test_core_generic_scenarios() {
         keywords: vec!["crash".to_string()],
     };
     
-    let result = session.engine.process_line(error_line, command, &context_error);
+    let result = session.engine.process_line(TerminalEvent::StaticLine(error_line.to_string()), command, &context_error);
     assert!(result.is_some());
     assert!(result.unwrap().contains("failure"));
 
-    let secret_line = "The token is AKIA5G4H3J2K1L0M9N8P7Q6R5S4T3U2V1W0X and email is dev@test.com";
-    let result_privacy = session.engine.process_line(secret_line, command, &context_generic);
+    let secret_line = "The token is AKIA5G4H3J2K1L0M9N8P7Q6R5S4T3U2V1W0X and email is dev@test.com"; // axiom-scan:ignore
+    let result_privacy = session.engine.process_line(TerminalEvent::StaticLine(secret_line.to_string()), command, &context_generic);
     let output = result_privacy.unwrap();
     assert!(output.contains("[REDACTED_PII]"));
     assert!(output.contains("[REDACTED_SECRET]"));
@@ -48,7 +49,6 @@ fn test_aggregator_no_information_loss() {
     session.engine.discovery.threshold = 5; // Match old default for this test
     let command = "batch-processor";
 
-    
     let context = IntentContext {
         last_message: "wait until done".to_string(),
         command: command.to_string(),
@@ -57,7 +57,7 @@ fn test_aggregator_no_information_loss() {
 
     for i in 0..15 {
         let line = format!("Log entry sequence #{}", i);
-        session.engine.process_line(&line, command, &context);
+        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
     }
 
     let summaries = session.engine.flush_summaries();
@@ -67,17 +67,16 @@ fn test_aggregator_no_information_loss() {
 
 #[test]
 fn test_adversarial_secrets() {
-    let config = AxiomConfig::default();
-    let session = AxiomSession::new(config).expect("Failed to create session");
+    let (session, _tmp) = common::setup_test_session();
 
     let fake_keys = vec![
-        "AKIAIOSFODNN7EXAMPLE",                                // AWS
-        "sk-ant-api03-abcdefghijklmnopqrstuvwxyz1234567890",   // Anthropic
-        "gsk_ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",            // Groq
-        "sk_live_51MzhABCDEF1234567890",                       // Stripe
-        "ya29.a0AfB_byCDEF1234567890",                         // Google OAuth
-        "sk-proj-abcDEFghiJKLmnoPQRstuVWXyz123456",            // OpenAI Project
-        "sk-123456789012345678901234567890123456789012345678", // OpenAI Legacy
+        "AKIAIOSFODNN7EXAMPLE",                                // AWS // axiom-scan:ignore
+        "sk-ant-api03-abcdefghijklmnopqrstuvwxyz1234567890",   // Anthropic // axiom-scan:ignore
+        "gsk_ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",            // Groq // axiom-scan:ignore
+        "sk_live_51MzhABCDEF1234567890",                       // Stripe // axiom-scan:ignore
+        "ya29.a0AfB_byCDEF1234567890",                         // Google OAuth // axiom-scan:ignore
+        "sk-proj-abcDEFghiJKLmnoPQRstuVWXyz123456",            // OpenAI Project // axiom-scan:ignore
+        "sk-123456789012345678901234567890123456789012345678", // OpenAI Legacy // axiom-scan:ignore
     ];
 
     for key in fake_keys {

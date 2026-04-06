@@ -17,15 +17,15 @@ impl PrivacyRedactor {
 
         // High-confidence exact patterns for standard credentials
         let secret_patterns = vec![
-            Regex::new(r"\b(?:AKIA|ABIA|ACCA|ASIA)[A-Z0-9]{16}\b").unwrap(), // AWS
-            Regex::new(r"gh[pousr]_[A-Za-z0-9_]{36,255}").unwrap(), // GitHub Tokens
-            Regex::new(r"eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+").unwrap(), // JWT
-            Regex::new(r"\bsk-ant-api03-[a-zA-Z0-9_-]{20,}\b").unwrap(), // Anthropic
-            Regex::new(r"\bgsk_[a-zA-Z0-9]{32,}\b").unwrap(), // Groq
-            Regex::new(r"\b(?:sk|pk)_(?:test|live)_[0-9a-zA-Z]{10,}\b").unwrap(), // Stripe
-            Regex::new(r"\bya29\.[a-zA-Z0-9_-]{20,}\b").unwrap(), // Google OAuth
-            Regex::new(r"\bsk-proj-[a-zA-Z0-9_-]{20,}\b").unwrap(), // OpenAI Project
-            Regex::new(r"\bsk-[a-zA-Z0-9]{48}\b").unwrap(), // OpenAI Legacy
+            Regex::new(r"AKIA[0-9A-Z]{16}").unwrap(), // AWS Access Key // axiom-scan:ignore
+            Regex::new(r"gh[pousr]_[A-Za-z0-9_]{36,255}").unwrap(), // GitHub Tokens // axiom-scan:ignore
+            Regex::new(r"eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+").unwrap(), // JWT // axiom-scan:ignore
+            Regex::new(r"\bsk-ant-api03-[a-zA-Z0-9_-]{20,}\b").unwrap(), // Anthropic // axiom-scan:ignore
+            Regex::new(r"\bgsk_[a-zA-Z0-9]{32,}\b").unwrap(), // Groq // axiom-scan:ignore
+            Regex::new(r"\b(?:sk|pk)_(?:test|live)_[0-9a-zA-Z]{10,}\b").unwrap(), // Stripe // axiom-scan:ignore
+            Regex::new(r"\bya29\.[a-zA-Z0-9_-]{20,}\b").unwrap(), // Google OAuth // axiom-scan:ignore
+            Regex::new(r"\bsk-proj-[a-zA-Z0-9_-]{20,}\b").unwrap(), // OpenAI Project // axiom-scan:ignore
+            Regex::new(r"\bsk-[a-zA-Z0-9]{48}\b").unwrap(), // OpenAI Legacy // axiom-scan:ignore
         ];
 
         Self {
