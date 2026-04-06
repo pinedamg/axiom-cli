@@ -63,8 +63,7 @@ fn test_learning_lifecycle_and_persistence() {
         
         // --- SESIÓN 3: SEGURIDAD (Outlier) ---
         // Aunque el patrón es conocido, si hay un secreto, NO debe colapsar.
-        let secret = "AWS_ACCESS_KEY_EXAMPLE_123456789";
-        let secret_line = format!("Status: Processing hash 0xabc123... Secret: {}", secret);
+        let secret_line = "Status: Processing hash 0xabc123... Secret: AKIAIOSFODNN7EXAMPLE"; // axiom-scan:ignore
         let result_security = session.engine.process_line(TerminalEvent::StaticLine(secret_line.to_string()), command, &context);
         
         assert!(result_security.is_some(), "Known patterns must NOT collapse if they contain secrets (V3 Priority)");

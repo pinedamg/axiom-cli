@@ -9,6 +9,14 @@ impl CommandHandler for LsHandler {
     }
 
     fn parse_line(&self, line: &str) -> Option<LineMetadata> {
+        if line.starts_with("total ") {
+            return Some(LineMetadata {
+                perms: "total".to_string(),
+                size: "0".to_string(),
+                name: "total".to_string(),
+                is_dir: false
+            });
+        }
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() < 5 { return None; }
         

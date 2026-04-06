@@ -4,7 +4,7 @@ use axiom::gateway::core::TerminalEvent;
 
 #[test]
 fn test_core_generic_scenarios() {
-    let mut session = common::setup_session();
+    let (mut session, _tmp) = common::setup_test_session();
     
     let command = "complex-logger-tool";
     
@@ -36,7 +36,7 @@ fn test_core_generic_scenarios() {
     assert!(result.is_some());
     assert!(result.unwrap().contains("failure"));
 
-    let secret_line = "The token is AWS_ACCESS_KEY_EXAMPLE_123456789 and email is dev@test.com";
+    let secret_line = "The token is AKIA5G4H3J2K1L0M9N8P7Q6R5S4T3U2V1W0X and email is dev@test.com"; // axiom-scan:ignore
     let result_privacy = session.engine.process_line(TerminalEvent::StaticLine(secret_line.to_string()), command, &context_generic);
     let output = result_privacy.unwrap();
     assert!(output.contains("[REDACTED_PII]"));
@@ -49,7 +49,6 @@ fn test_aggregator_no_information_loss() {
     session.engine.discovery.threshold = 5; // Match old default for this test
     let command = "batch-processor";
 
-    
     let context = IntentContext {
         last_message: "wait until done".to_string(),
         command: command.to_string(),
@@ -64,4 +63,39 @@ fn test_aggregator_no_information_loss() {
     let summaries = session.engine.flush_summaries();
     assert!(!summaries.is_empty(), "Aggregator should have captured noise lines");
     assert!(summaries[0].contains("matched 10 more times"));
+}
+
+#[test]
+fn test_adversarial_secrets() {
+    let (session, _tmp) = common::setup_test_session();
+
+    let fake_keys = vec![
+        "AKIAIOSFODNN7EXAMPLE",                                // AWS // axiom-scan:ignore
+        "sk-ant-api03-abcdefghijklmnopqrstuvwxyz1234567890",   // Anthropic // axiom-scan:ignore
+        "gsk_ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",            // Groq // axiom-scan:ignore
+        "sk_live_51MzhABCDEF1234567890",                       // Stripe // axiom-scan:ignore
+        "ya29.a0AfB_byCDEF1234567890",                         // Google OAuth // axiom-scan:ignore
+        "sk-proj-abcDEFghiJKLmnoPQRstuVWXyz123456",            // OpenAI Project // axiom-scan:ignore
+        "sk-123456789012345678901234567890123456789012345678", // OpenAI Legacy // axiom-scan:ignore
+    ];
+
+    for key in fake_keys {
+        let line = format!("Found key: {}", key);
+        let result = session.engine.redactor.redact(&line);
+        assert!(
+            result.contains("[REDACTED_SECRET]"),
+            "Secret not redacted: {}", key
+        );
+        assert!(!result.contains(key), "Secret leaked in output: {}", key);
+    }
+
+    // Test false positives (Git SHA and Docker IDs should NOT be redacted)
+    let git_sha = "9b4662d55d3e020e98031e405a415053e1a0678d"; // 40 chars
+    let docker_id = "65239e235a9f6e14a1f68153eb268df1d02c81729ecf6168e36fa33c7f1a3028"; // 64 chars
+
+    let result_git = session.engine.redactor.redact(&format!("commit {}", git_sha));
+    assert!(result_git.contains(git_sha), "Git SHA falsely redacted");
+
+    let result_docker = session.engine.redactor.redact(&format!("container {}", docker_id));
+    assert!(result_docker.contains(docker_id), "Docker ID falsely redacted");
 }

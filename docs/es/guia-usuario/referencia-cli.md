@@ -19,6 +19,7 @@ Instala la integración de shell de Axiom y el contexto de IA.
 - **Banderas**:
   - `-p, --path <PATH>`: Ruta del proyecto para sincronizar el contexto de IA (por defecto: directorio actual).
   - `--context-only`: Instala solo los archivos de contexto de IA (ej., `AGENTS.md`, `.cursorrules`), omitiendo los alias de la shell.
+  - `--funnel-id <ID>`: ID de sesión anónimo desde el script de instalación.
 
 ### `axiom uninstall`
 Elimina todos los rastros de Axiom del sistema.

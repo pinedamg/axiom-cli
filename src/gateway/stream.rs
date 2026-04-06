@@ -38,8 +38,9 @@ pub async fn stream_io(
                         total_original += n;
                         if raw_mode {
                             let text = String::from_utf8_lossy(&out_buf[..n]);
-                            renderer.render_line(&text, false);
-                            total_compressed += n;
+                            let redacted = session.engine.redactor.redact(&text);
+                            renderer.render_line(&redacted, false);
+                            total_compressed += redacted.len();
                         } else {
                             let events = stdout_pipeline.process(&out_buf[..n]);
                             process_events(events, command_str, context, session, renderer, &mut total_original, &mut total_compressed, false, false);
@@ -58,8 +59,9 @@ pub async fn stream_io(
                         total_original += n;
                         if raw_mode {
                             let text = String::from_utf8_lossy(&err_buf[..n]);
-                            renderer.render_line(&text, true);
-                            total_compressed += n;
+                            let redacted = session.engine.redactor.redact(&text);
+                            renderer.render_line(&redacted, true);
+                            total_compressed += redacted.len();
                         } else {
                             let events = stderr_pipeline.process(&err_buf[..n]);
                             process_events(events, command_str, context, session, renderer, &mut total_original, &mut total_compressed, true, false);
