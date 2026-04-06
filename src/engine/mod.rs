@@ -34,6 +34,7 @@ pub struct AxiomEngine {
     pub handlers: Vec<Box<dyn CommandHandler>>,
     pub markdown_mode: bool,
     pub last_command: String,
+    pub stats: SessionStats,
     line_counter: usize,
 }
 
@@ -64,6 +65,7 @@ impl AxiomEngine {
             markdown_mode: false,
             last_command: String::new(),
             line_counter: 0,
+            stats: SessionStats::default(),
         }
     }
 
@@ -138,6 +140,18 @@ impl AxiomEngine {
     fn stage_guard(&mut self, line: &str, command: &str, context: &IntentContext) -> PipelineAction {
         let handler = self.handlers.iter().find(|h| h.matches(command)).map(|h| h.as_ref());
         
+        let intent_str = format!("{} {}", context.last_message, context.keywords.join(" "));
+        if !intent_str.trim().is_empty() && self.intelligence.is_relevant(&intent_str, line, 0.7) {
+            // Don't short-circuit if it's a Cargo line that we want to summarize
+            let is_cargo_aggregate = command.starts_with("cargo") && (line.contains("Checking") || line.contains("Compiling"));
+            let is_docker_aggregate = command.starts_with("docker") && (line.contains("Pulling") || line.contains("Waiting") || line.contains("Download") || line.contains("Extracting"));
+            if is_cargo_aggregate || is_docker_aggregate {
+                // Let it continue to synthesis
+            } else {
+                return PipelineAction::ShortCircuit(line.to_string());
+            }
+        }
+
         let is_outlier = handler.map_or(false, |h| {
             h.parse_line(line).map_or(false, |m| h.is_outlier(line, &m))
         });
@@ -157,9 +171,8 @@ impl AxiomEngine {
         self.redactor.redact(line)
     }
 
-    fn stage_analyze(&mut self, line: &str, command: &str, _context: &IntentContext) -> PipelineAction {
+    fn stage_analyze(&mut self, line: &str, command: &str, context: &IntentContext) -> PipelineAction {
         let handler_idx = self.handlers.iter().position(|h| h.matches(command));
-        
         // 5a. Schema Check
         if let Some(schema) = self.schemas.iter().find(|s| s.matches(command)) {
             if let Some(action) = schema.apply_rules(line) {
@@ -168,6 +181,8 @@ impl AxiomEngine {
                     Action::Redact => return PipelineAction::ShortCircuit("[REDACTED_BY_SCHEMA]".to_string()),
                     Action::Hidden => return PipelineAction::Swallow,
                     Action::Collapse | Action::Synthesize => {
+
+
                         let handler = handler_idx.map(|idx| self.handlers[idx].as_ref());
                         if self.discovery.process_and_check_noise(line, handler, command) {
                             return PipelineAction::Swallow;
@@ -190,10 +205,11 @@ impl AxiomEngine {
 
     fn stage_plugins(&mut self, line: Option<String>) -> Option<String> {
         if let Some(manager) = &mut self.plugins {
-            match manager.process_line(line.unwrap_or_default()) {
-                Ok(Some(processed)) => Some(processed),
-                Ok(None) => None,
-                Err(_) => None, // Fail silent on plugin errors for stability
+            let processed = manager.transform(&line.unwrap_or_default());
+            if processed.is_empty() {
+                None
+            } else {
+                Some(processed)
             }
         } else {
             line
@@ -229,6 +245,11 @@ impl AxiomEngine {
         None
     }
 
+    pub fn with_plugins(mut self, plugins: WasmPluginManager) -> Self {
+        self.plugins = Some(plugins);
+        self
+    }
+
     pub fn set_markdown_mode(&mut self, enabled: bool) {
         self.markdown_mode = enabled;
     }
@@ -237,7 +258,17 @@ impl AxiomEngine {
         self.discovery.load_templates(templates);
     }
 
+    pub fn get_session_stats(&self) -> Option<&SessionStats> {
+        Some(&self.stats)
+    }
+
     pub fn get_learned_templates(&self) -> Vec<(String, usize)> {
         self.discovery.templates.iter().map(|(k, v)| (k.clone(), *v)).collect()
     }
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct SessionStats {
+    pub raw_bytes: usize,
+    pub saved_bytes: usize,
 }

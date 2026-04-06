@@ -13,16 +13,6 @@ impl DopamineEngine {
         if ProcessDetective::is_called_by_ai() || raw_mode || !session.config.show_savings_footer {
             return;
         }
-
-        if let Some(stats) = session.engine.get_session_stats() {
-            if stats.raw_bytes > 500 {
-                let savings = (stats.raw_bytes as f64 - stats.saved_bytes as f64) / stats.raw_bytes as f64 * 100.0;
-                println!(
-                    "\n\x1b[32m✨ Axiom: {} bytes → {} bytes ({:.1}% reduction)\x1b[0m",
-                    stats.raw_bytes, stats.saved_bytes, savings
-                );
-            }
-        }
     }
 }
 
