@@ -40,11 +40,11 @@ pub struct AxiomEngine {
 }
 
 /// Governs the flow of a line through the Axiom pipeline.
-enum PipelineAction {
+enum PipelineAction<'a> {
     /// Continue to the next stage with the (possibly transformed) line.
-    Continue(String),
+    Continue(Cow<'a, str>),
     /// Stop processing and output this line immediately (bypass remaining stages).
-    ShortCircuit(String),
+    ShortCircuit(Cow<'a, str>),
     /// Stop processing and output nothing (swallow the line).
     Swallow,
 }
@@ -112,16 +112,20 @@ impl AxiomEngine {
             PipelineAction::ShortCircuit(out) => Some(out),
             PipelineAction::Continue(line) => {
                 // 4. Redact (Pure / Privacy)
+                // The redacted string is owned, so we can't safely return a Cow::Borrowed
+                // that references it if it goes out of scope.
+                // We map stage_analyze immediately so that any Cow<'a, str> returned
+                // is immediately converted to Cow::Owned if it borrows `redacted`.
                 let redacted = self.stage_redact(&line);
-
-                // 5. Analyze (Schema -> Structural -> Semantic)
-                match self.stage_analyze(&redacted, command, context) {
+                let analyze_result = match self.stage_analyze(&redacted, command, context) {
                     PipelineAction::Swallow => None,
                     PipelineAction::ShortCircuit(out) | PipelineAction::Continue(out) => {
-                        // 6. Plugins (External WASM)
-                        self.stage_plugins(Some(out))
+                        Some(Cow::Owned(out.into_owned()))
                     }
-                }
+                };
+
+                // 6. Plugins (External WASM)
+                self.stage_plugins(analyze_result)
             }
         };
 
@@ -130,7 +134,7 @@ impl AxiomEngine {
 
     // --- Pipeline Stages ---
 
-    fn stage_deduplicate(&mut self, line: &str) -> (Option<String>, PipelineAction) {
+    fn stage_deduplicate<'a>(&mut self, line: &'a str) -> (Option<String>, PipelineAction<'a>) {
         if self.discovery.last_line.as_deref() == Some(line) {
             self.discovery.repeat_count += 1;
             (None, PipelineAction::Swallow)
@@ -140,7 +144,7 @@ impl AxiomEngine {
             } else { None };
             self.discovery.last_line = Some(line.to_string());
             self.discovery.repeat_count = 0;
-            (prefix, PipelineAction::Continue(line.to_string()))
+            (prefix, PipelineAction::Continue(Cow::Borrowed(line)))
         }
     }
 
@@ -153,7 +157,7 @@ impl AxiomEngine {
         }
     }
 
-    fn stage_guard(&mut self, line: &str, command: &str, context: &IntentContext) -> PipelineAction {
+    fn stage_guard<'a>(&mut self, line: &'a str, command: &str, context: &IntentContext) -> PipelineAction<'a> {
         let handler = self.handlers.iter().find(|h| h.matches(command)).map(|h| h.as_ref());
         
         let is_outlier = handler.map_or(false, |h| {
@@ -162,35 +166,35 @@ impl AxiomEngine {
 
         if ContentTransformer::should_guard(command, self.line_counter, context) {
             if self.line_counter == 101 {
-                return PipelineAction::ShortCircuit("[AXIOM] High noise detected. Activating Guardian Mode...".to_string());
+                return PipelineAction::ShortCircuit(Cow::Owned("[AXIOM] High noise detected. Activating Guardian Mode...".to_string()));
             }
             if self.line_counter > 100 && !is_outlier {
                 return PipelineAction::Swallow;
             }
         }
-        PipelineAction::Continue(line.to_string())
+        PipelineAction::Continue(Cow::Borrowed(line))
     }
 
     fn stage_redact(&self, line: &str) -> String {
         self.redactor.redact(line)
     }
 
-    fn stage_analyze(&mut self, line: &str, command: &str, context: &IntentContext) -> PipelineAction {
+    fn stage_analyze<'a>(&mut self, line: &'a str, command: &str, context: &IntentContext) -> PipelineAction<'a> {
         let handler_idx = self.handlers.iter().position(|h| h.matches(command));
         
         // 5a. Schema Check
         if let Some(schema) = self.schemas.iter().find(|s| s.matches(command)) {
             if let Some(action) = schema.apply_rules(line) {
                 match action {
-                    Action::Keep => return PipelineAction::Continue(line.to_string()),
-                    Action::Redact => return PipelineAction::ShortCircuit("[REDACTED_BY_SCHEMA]".to_string()),
+                    Action::Keep => return PipelineAction::Continue(Cow::Borrowed(line)),
+                    Action::Redact => return PipelineAction::ShortCircuit(Cow::Owned("[REDACTED_BY_SCHEMA]".to_string())),
                     Action::Hidden => return PipelineAction::Swallow,
                     Action::Collapse | Action::Synthesize => {
                         let handler = handler_idx.map(|idx| self.handlers[idx].as_ref());
                         if self.discovery.process_and_check_noise(line, handler, command) {
                             return PipelineAction::Swallow;
                         } else {
-                            return PipelineAction::Continue(line.to_string());
+                            return PipelineAction::Continue(Cow::Borrowed(line));
                         }
                     }
                 }
@@ -199,7 +203,7 @@ impl AxiomEngine {
 
         // 5b. Semantic Relevance (AI Intent)
         if context.is_relevant(line) || self.intelligence.is_relevant(&context.last_message, line, 0.7) {
-            return PipelineAction::Continue(line.to_string());
+            return PipelineAction::Continue(Cow::Borrowed(line));
         }
 
         // 5c. General Synthesis (Discovery)
@@ -207,24 +211,24 @@ impl AxiomEngine {
         if self.discovery.process_and_check_noise(line, handler, command) {
             PipelineAction::Swallow
         } else {
-            PipelineAction::Continue(line.to_string())
+            PipelineAction::Continue(Cow::Borrowed(line))
         }
     }
 
-    fn stage_plugins(&mut self, line: Option<String>) -> Option<String> {
+    fn stage_plugins<'a>(&mut self, line: Option<Cow<'a, str>>) -> Option<Cow<'a, str>> {
         match (line, &mut self.plugins) {
-            (Some(mut current), Some(manager)) => {
-                current = manager.transform(&current);
-                if current.is_empty() { None } else { Some(current) }
+            (Some(current), Some(manager)) => {
+                let transformed = manager.transform(&current);
+                if transformed.is_empty() { None } else { Some(Cow::Owned(transformed)) }
             }
             (l, _) => l,
         }
     }
 
-    fn assemble_output(&self, prefix: Option<String>, main: Option<String>) -> Option<String> {
+    fn assemble_output(&self, prefix: Option<String>, main: Option<Cow<'_, str>>) -> Option<String> {
         match (prefix, main) {
             (Some(p), Some(m)) => Some(format!("{}\n{}", p, m)),
-            (None, Some(m)) => Some(m),
+            (None, Some(m)) => Some(m.into_owned()),
             (Some(p), None) => Some(p),
             (None, None) => None,
         }

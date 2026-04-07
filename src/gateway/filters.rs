@@ -10,7 +10,7 @@ pub struct StreamPipeline {
 impl Default for StreamPipeline {
     fn default() -> Self {
         Self {
-            buffer: String::new(),
+            buffer: String::with_capacity(1024),
             ansi_regex: Regex::new(r"[\u001b\u009b][\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]").unwrap(),
             last_was_cr: false,
         }
@@ -19,7 +19,7 @@ impl Default for StreamPipeline {
 
 impl StreamFilter for StreamPipeline {
     fn process(&mut self, chunk: &[u8]) -> Vec<TerminalEvent> {
-        let mut events = Vec::new();
+        let mut events = Vec::with_capacity(16);
         let text = String::from_utf8_lossy(chunk);
         let stripped = self.ansi_regex.replace_all(&text, "");
 

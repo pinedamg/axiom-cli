@@ -161,7 +161,8 @@ impl DiscoveryEngine {
         let re_time = RE_TIME.get_or_init(|| Regex::new(r"\d{1,2}:\d{2}").unwrap());
         let re_num = RE_NUM.get_or_init(|| Regex::new(r"\d+").unwrap());
 
-        let mut variables = Vec::new();
+        // Pre-allocate variable list to avoid reallocations
+        let mut variables = Vec::with_capacity(8);
         
         let s = re_uuid.replace_all(line, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<UUID>" });
         let s = re_hex.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<HEX>" });
