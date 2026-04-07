@@ -14,6 +14,20 @@ When running in proxy mode (e.g., `axiom npm install`), you can use the followin
 
 ## Core Commands
 
+### `axiom enable`
+Enable Axiom globally.
+
+### `axiom disable`
+Disable Axiom globally (passthrough mode).
+
+### `axiom bypass <action>`
+Bypass Axiom filtering.
+- **Actions**:
+  - `count <COUNT>`: Bypass the next N commands (e.g., `bypass count 3`).
+  - `always <COMMAND>`: Permanently blacklist a command.
+  - `never <COMMAND>`: Remove a command from the blacklist.
+  - `run <ARGS>...`: Execute a single command without filtering.
+
 ### `axiom install`
 Install Axiom shell integration and AI context.
 - **Flags**:

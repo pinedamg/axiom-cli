@@ -14,6 +14,20 @@ Cuando se ejecuta en modo proxy (ej., `axiom npm install`), puedes usar las sigu
 
 ## Comandos Principales
 
+### `axiom enable`
+Habilita Axiom a nivel global.
+
+### `axiom disable`
+Deshabilita Axiom a nivel global (modo passthrough).
+
+### `axiom bypass <acción>`
+Omite el filtrado de Axiom.
+- **Acciones**:
+  - `count <CANTIDAD>`: Omite los siguientes N comandos (ej. `bypass count 3`).
+  - `always <COMANDO>`: Añade un comando a la lista negra permanente.
+  - `never <COMANDO>`: Elimina un comando de la lista negra.
+  - `run <ARGS>...`: Ejecuta un único comando sin filtrado.
+
 ### `axiom install`
 Instala la integración de shell de Axiom y el contexto de IA.
 - **Banderas**:
