@@ -21,5 +21,5 @@ Ejecuta `axiom status` en cualquier momento para ver exactamente qué datos se e
 ## Cómo Te Protegemos
 
 - **Sanitización de Comandos**: Incluso en el modo `Full`, **SOLO** capturamos el nombre del binario (ej. `npm`), nunca los argumentos (ej. `install paquete-secreto`).
-- **ID Anónimo**: Usamos un `installation_id` aleatorio para contar instancias activas sin saber quién eres.
+- **ID Anónimo**: Usamos un `node_id` aleatorio para contar instancias activas sin saber quién eres.
 - **Privacidad Pro**: Apoya a Axiom subiendo a Pro para desbloquear el modo de telemetría `Off`.
