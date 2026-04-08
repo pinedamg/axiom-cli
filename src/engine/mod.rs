@@ -109,27 +109,28 @@ impl AxiomEngine {
         
         let final_output = match action {
             PipelineAction::Swallow => None,
-            PipelineAction::ShortCircuit(out) => Some(out),
-            PipelineAction::Continue(line) => {
-                // 4. Redact (Pure / Privacy)
-                // The redacted string is owned, so we can't safely return a Cow::Borrowed
-                // that references it if it goes out of scope.
-                // We map stage_analyze immediately so that any Cow<'a, str> returned
-                // is immediately converted to Cow::Owned if it borrows `redacted`.
-                let redacted = self.stage_redact(&line);
-                let analyze_result = match self.stage_analyze(&redacted, command, context) {
+            PipelineAction::ShortCircuit(out) => Some(out.into_owned()),
+            PipelineAction::Continue(line_cow) => {
+                // `line_cow` borrows `working_line` or owns a transformed string.
+                // We pass `&line_cow` to redact. It gives us a Cow referencing `line_cow`.
+                // However, `stage_analyze` needs to return something that lives longer
+                // than this match arm, so we convert it to an owned String.
+
+                let redacted = self.stage_redact(&line_cow);
+
+                // 5. Analyze (Schema / Semantic / Discovery)
+                let analyze_result = match self.stage_analyze(redacted, command, context) {
                     PipelineAction::Swallow => None,
-                    PipelineAction::ShortCircuit(out) | PipelineAction::Continue(out) => {
-                        Some(Cow::Owned(out.into_owned()))
-                    }
+                    PipelineAction::ShortCircuit(out) => Some(Cow::Owned(out.into_owned())),
+                    PipelineAction::Continue(out) => Some(Cow::Owned(out.into_owned())),
                 };
 
                 // 6. Plugins (External WASM)
-                self.stage_plugins(analyze_result)
+                self.stage_plugins(analyze_result).map(|cow| cow.into_owned())
             }
         };
 
-        self.assemble_output(prefix, final_output)
+        self.assemble_output(prefix, final_output.map(Cow::Owned))
     }
 
     // --- Pipeline Stages ---
@@ -175,26 +176,26 @@ impl AxiomEngine {
         PipelineAction::Continue(Cow::Borrowed(line))
     }
 
-    fn stage_redact(&self, line: &str) -> String {
+    fn stage_redact<'a>(&self, line: &'a str) -> Cow<'a, str> {
         self.redactor.redact(line)
     }
 
-    fn stage_analyze<'a>(&mut self, line: &'a str, command: &str, context: &IntentContext) -> PipelineAction<'a> {
+    fn stage_analyze<'a>(&mut self, redacted: Cow<'a, str>, command: &str, context: &IntentContext) -> PipelineAction<'a> {
         let handler_idx = self.handlers.iter().position(|h| h.matches(command));
         
         // 5a. Schema Check
         if let Some(schema) = self.schemas.iter().find(|s| s.matches(command)) {
-            if let Some(action) = schema.apply_rules(line) {
+            if let Some(action) = schema.apply_rules(&redacted) {
                 match action {
-                    Action::Keep => return PipelineAction::Continue(Cow::Borrowed(line)),
+                    Action::Keep => return PipelineAction::Continue(redacted),
                     Action::Redact => return PipelineAction::ShortCircuit(Cow::Owned("[REDACTED_BY_SCHEMA]".to_string())),
                     Action::Hidden => return PipelineAction::Swallow,
                     Action::Collapse | Action::Synthesize => {
                         let handler = handler_idx.map(|idx| self.handlers[idx].as_ref());
-                        if self.discovery.process_and_check_noise(line, handler, command) {
+                        if self.discovery.process_and_check_noise(&redacted, handler, command) {
                             return PipelineAction::Swallow;
                         } else {
-                            return PipelineAction::Continue(Cow::Borrowed(line));
+                            return PipelineAction::Continue(redacted);
                         }
                     }
                 }
@@ -202,16 +203,16 @@ impl AxiomEngine {
         }
 
         // 5b. Semantic Relevance (AI Intent)
-        if context.is_relevant(line) || self.intelligence.is_relevant(&context.last_message, line, 0.7) {
-            return PipelineAction::Continue(Cow::Borrowed(line));
+        if context.is_relevant(&redacted) || self.intelligence.is_relevant(&context.last_message, &redacted, 0.7) {
+            return PipelineAction::Continue(redacted);
         }
 
         // 5c. General Synthesis (Discovery)
         let handler = handler_idx.map(|idx| self.handlers[idx].as_ref());
-        if self.discovery.process_and_check_noise(line, handler, command) {
+        if self.discovery.process_and_check_noise(&redacted, handler, command) {
             PipelineAction::Swallow
         } else {
-            PipelineAction::Continue(Cow::Borrowed(line))
+            PipelineAction::Continue(redacted)
         }
     }
 

@@ -93,9 +93,11 @@ fn test_adversarial_secrets() {
     let git_sha = "9b4662d55d3e020e98031e405a415053e1a0678d"; // 40 chars
     let docker_id = "65239e235a9f6e14a1f68153eb268df1d02c81729ecf6168e36fa33c7f1a3028"; // 64 chars
 
-    let result_git = session.engine.redactor.redact(&format!("commit {}", git_sha));
+    let git_str = format!("commit {}", git_sha);
+    let result_git = session.engine.redactor.redact(&git_str);
     assert!(result_git.contains(git_sha), "Git SHA falsely redacted");
 
-    let result_docker = session.engine.redactor.redact(&format!("container {}", docker_id));
+    let docker_str = format!("container {}", docker_id);
+    let result_docker = session.engine.redactor.redact(&docker_str);
     assert!(result_docker.contains(docker_id), "Docker ID falsely redacted");
 }
