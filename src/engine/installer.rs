@@ -29,7 +29,8 @@ axiom() {
         command "$@"
     fi
   else
-    command axiom "$@"
+    # AXIOM_SHIM=1 identifies calls from automated aliases/hooks
+    AXIOM_SHIM=1 command axiom "$@"
   fi
 }
 
@@ -58,6 +59,19 @@ _axiom_hook_setup() {
   done
 }
 
+_axiom_initialize() {
+  # 1. AI Detection & Path Prioritization
+  # If we are in an AI session, we prioritize Axiom shims to ensure 100% interception
+  if [[ -n "$GEMINI_CLI" || -n "$CLAUDE_CODE" || "$TERM_PROGRAM" == "vscode" ]]; then
+    export PATH="$HOME/.axiom/bin:$PATH"
+    # In AI mode, we also run the full hook setup for maximum coverage
+    # _axiom_hook_setup 
+  fi
+}
+
+# Run initialization
+_axiom_initialize
+
 # Aliases for common tools (fast path)
 alias git='axiom git'
 alias docker='axiom docker'
@@ -77,14 +91,14 @@ alias prettier='axiom prettier'
 "#;
 
 const AGENT_RULES: &str = r#"
-### 🤖 Axiom: Agent Execution Protocol
+### 🤖 Axiom: Agent Execution Protocol (Universal Middleware)
 > **CRITICAL**: This project uses **Axiom** to optimize terminal streams. 
-> As an AI Agent, use `axiom` for noisy commands (git, npm, docker, etc.) to preserve context and redact secrets.
+> Axiom is installed as a **Universal Middleware**. Most commands (git, npm, cargo, etc.) are automatically intercepted and optimized.
 
-- **ALWAYS** prefix with `axiom` for: `npm`, `cargo`, `docker`, `git`, `kubectl`, `terraform`.
+- **AUTOMATIC**: You don't need to prefix with `axiom` anymore. Standard commands are already optimized.
 - **REDACTION**: Axiom handles secrets locally. Do not leak credentials into context.
-- **BYPASS**: Use `axiom --raw <cmd>` if you need 100% metadata precision (timestamps, etc.).
-- **QUICK BYPASS**: Use `axiom bypass <N>` to bypass filtering for the next N commands.
+- **RECOVERY**: Axiom caches 100% of raw output. If context is missing, run `axiom last` (with `--grep` or `--tail`) to peek at the raw data from `~/.axiom/logs/last_run.log`.
+- **BYPASS**: Use `axiom --raw <cmd>` only if you need a fresh, unfiltered live stream.
 "#;
 
 impl AxiomInstaller {

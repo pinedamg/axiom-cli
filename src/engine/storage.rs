@@ -8,9 +8,9 @@ pub struct LogManager {
 
 impl Default for LogManager {
     fn default() -> Self {
-        Self {
-            log_path: PathBuf::from("/tmp/axiom/last_run.log"),
-        }
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+        let log_path = std::path::Path::new(&home).join(".axiom/logs/last_run.log");
+        Self { log_path }
     }
 }
 

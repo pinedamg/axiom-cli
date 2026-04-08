@@ -445,6 +445,15 @@ async fn main() -> anyhow::Result<()> {
     let bypass_count = session.persistence.get_bypass_count().unwrap_or(0);
     
     let mut final_raw = cli.raw;
+
+    // --- Stealth Mode Logic ---
+    // If called via a shim (alias/hook) and the user is a human, we bypass filtering
+    // to keep Axiom invisible for standard interactive use.
+    let is_shim = std::env::var("AXIOM_SHIM").unwrap_or_default() == "1";
+    if is_shim && !ProcessDetective::is_called_by_ai() {
+        final_raw = true;
+    }
+
     if !is_enabled || bypass_count > 0 {
         final_raw = true;
         if bypass_count > 0 {

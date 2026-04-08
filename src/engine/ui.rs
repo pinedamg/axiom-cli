@@ -9,18 +9,26 @@ pub struct DopamineEngine;
 
 impl DopamineEngine {
     pub fn render_session_savings(session: &AxiomSession, raw_mode: bool) {
-        if ProcessDetective::is_called_by_ai() || raw_mode || !session.config.show_savings_footer {
+        if raw_mode || !session.config.show_savings_footer {
             return;
         }
 
         if let Some(stats) = session.engine.get_session_stats() {
             if stats.raw_bytes > 500 {
                 let savings = (stats.raw_bytes as f64 - stats.saved_bytes as f64) / stats.raw_bytes as f64 * 100.0;
-                // Output to stderr to keep stdout clean for AI
-                eprintln!(
+                
+                let message = format!(
                     "\n\x1b[32m✨ Axiom: {} bytes → {} bytes ({:.1}% reduction)\x1b[0m",
                     stats.raw_bytes, stats.saved_bytes, savings
                 );
+
+                if ProcessDetective::is_called_by_ai() {
+                    // Output to stderr to keep stdout clean for AI context windows
+                    eprintln!("{}", message);
+                } else {
+                    // Output to stdout for human visual feedback
+                    println!("{}", message);
+                }
             }
         }
     }

@@ -56,7 +56,8 @@ Como agente operando en este repositorio, debes seguir el **Axiom Orchestration 
 1.  **Anti-Recursividad**: Durante el desarrollo, builds y tests de `axiom-cli`, **NO** usar el comando `axiom`. Usa comandos nativos (`cargo`, `npm`) para asegurar transparencia total.
 2.  **Evidencia Obligatoria**: No declares una tarea como terminada sin incluir los logs de tests (`cargo test`) que validen el cambio.
 3.  **Matriz de Impacto**: Antes de aplicar cambios en el CLI, evalúa si impactan en **Pulse** (Handshake) o **Web** (Docs).
-4.  **Semantic Doubt**: Si un resumen de Axiom (en uso diario) oculta detalles necesarios, usa `--raw`.
+4.  **Resiliencia y Recuperación (Shadow Logs)**: Si un resumen de Axiom oculta detalles necesarios, **NO** re-ejecutes el comando con `--raw` inmediatamente. Axiom guarda el 100% de la salida cruda en `~/.axiom/logs/last_run.log`. Usa `axiom last` (con `--grep` o `--tail`) para interrogar el log crudo sin quemar tokens innecesarios. Usa `--raw` solo si necesitas precisión absoluta en un flujo en vivo (timestamps, metadata de terminal, etc.).
+5.  **Token Economy**: Tu prioridad es minimizar la basura en el context window. Si Axiom está activo, confía en su filtrado y solo "interroga" lo crudo si detectas una inconsistencia crítica.
 
 ---
 *“In Axiom we trust, but we verify through the Manifesto.”*
