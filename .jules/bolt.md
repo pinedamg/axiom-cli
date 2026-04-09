@@ -18,3 +18,10 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+
+## Memory Profiling: PrivacyRedactor and Engine Pipeline (Cow over String)
+* **Date**: 2024-05-18
+* **Target**: `src/privacy/redactor.rs` and `src/engine/mod.rs`
+* **Observation**: The `PrivacyRedactor::redact` function was previously unconditionally returning an owned `String`, and `stage_analyze` in the engine was unconditionally calling `.into_owned()` on the returned borrowed strings. This caused at least one heap allocation per line processed in the terminal, even when 99% of lines contain no secrets or PII.
+* **Action**: Refactored `PrivacyRedactor::redact` to accept and return `Cow<'a, str>`. Chained this return type correctly through `stage_analyze` inside `process_line` so that strings that are never modified by the regex engines strictly remain as borrowed slices (`&str`).
+* **Impact**: Drastically reduced unnecessary heap allocations in the absolute hottest path of the application (the line-by-line stream orchestrator). This prevents gigabytes of ephemeral memory churn for high-volume commands like `npm install` or massive `docker logs`, maintaining a stable memory footprint.

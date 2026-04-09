@@ -48,21 +48,25 @@ impl Default for PrivacyRedactor {
 }
 
 impl PrivacyRedactor {
-    pub fn redact(&self, input: &str) -> String {
-        let mut output = input.to_string();
+    pub fn redact<'a>(&self, input: &'a str) -> std::borrow::Cow<'a, str> {
+        let mut current = std::borrow::Cow::Borrowed(input);
 
         // 1. Exact Pattern Redaction (High Confidence Secrets)
         for pattern in &self.secret_patterns {
-            output = pattern.replace_all(&output, "[REDACTED_SECRET]").to_string();
+            if let std::borrow::Cow::Owned(s) = pattern.replace_all(&current, "[REDACTED_SECRET]") {
+                current = std::borrow::Cow::Owned(s);
+            }
         }
 
         // 2. Regex Redaction (PII)
         for pattern in &self.pii_patterns {
-            output = pattern.replace_all(&output, "[REDACTED_PII]").to_string();
+            if let std::borrow::Cow::Owned(s) = pattern.replace_all(&current, "[REDACTED_PII]") {
+                current = std::borrow::Cow::Owned(s);
+            }
         }
 
         // 3. Entropy Redaction (Generic Secrets fallback)
-        self.word_regex.replace_all(&output, |caps: &regex::Captures| {
+        if let std::borrow::Cow::Owned(s) = self.word_regex.replace_all(&current, |caps: &regex::Captures| {
             let word = &caps[0];
             
             // Skip entropy redaction for common hex strings (like Git SHAs or Docker IDs)
@@ -77,7 +81,11 @@ impl PrivacyRedactor {
                 }
             }
             word.to_string()
-        }).to_string()
+        }) {
+            current = std::borrow::Cow::Owned(s);
+        }
+
+        current
     }
 }
 
