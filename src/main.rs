@@ -33,6 +33,10 @@ struct Cli {
     #[arg(short, long, global = true)]
     raw: bool,
 
+    /// Enable Developer Laboratory Mode (Decision Tracing)
+    #[arg(short, long, global = true)]
+    dev: bool,
+
     /// Automatically answer yes to all prompts
     #[arg(short, long, global = true)]
     yes: bool,
@@ -86,6 +90,12 @@ enum Commands {
         /// Filter lines by a keyword
         #[arg(short, long)]
         grep: Option<String>,
+    },
+    /// Run a command in Developer Laboratory Mode (Decision Tracing)
+    Dev {
+        /// The command to execute
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
     },
     /// Show token savings analytics
     Gain {
@@ -181,6 +191,9 @@ async fn main() -> anyhow::Result<()> {
     let mut config = AxiomConfig::load();
     if cli.markdown {
         config.markdown_enabled = true;
+    }
+    if cli.dev {
+        config.dev_mode = true;
     }
     
     let mut session = AxiomSession::new(config)?;
@@ -306,6 +319,37 @@ async fn main() -> anyhow::Result<()> {
                     }
                     Err(e) => println!("Error retrieving logs: {}", e),
                 }
+                return Ok(());
+            }
+            Commands::Dev { args } => {
+                if args.is_empty() {
+                    println!("Error: No command provided for dev mode.");
+                    exit(1);
+                }
+                
+                // Re-initialize session with dev_mode = true
+                let mut config = AxiomConfig::load();
+                config.dev_mode = true;
+                let mut session = AxiomSession::new(config)?;
+                
+                let program = &args[0];
+                let cmd_args = &args[1..];
+                
+                let intent = env::var("AXIOM_CONTEXT")
+                    .ok()
+                    .or_else(|| IntentDiscoverer::discover(&session.config.intent_sources))
+                    .unwrap_or_else(|| "Dev Session".to_string());
+
+                let context = IntentContext {
+                    last_message: intent.clone(),
+                    command: args.join(" "),
+                    keywords: session.config.intent_keywords.clone(),
+                };
+
+                let _ = session.engine.prepare_session(&intent);
+                execute_command(program, cmd_args, &context, &mut session, cli.raw).await?;
+                
+                axiom::engine::ui::LaboratoryRenderer::render_trace_report(session.engine.get_traces());
                 return Ok(());
             }
             Commands::Gain { history: _ } => {
@@ -465,6 +509,10 @@ async fn main() -> anyhow::Result<()> {
 
     // 6. Post-execution Feedback (Human only + Configurable)
     axiom::engine::ui::DopamineEngine::render_session_savings(&session, cli.raw);
+
+    if session.engine.dev_mode {
+        axiom::engine::ui::LaboratoryRenderer::render_trace_report(session.engine.get_traces());
+    }
 
     Ok(())
 }

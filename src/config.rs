@@ -62,6 +62,7 @@ pub struct AxiomConfig {
     pub pii_patterns: Vec<String>,
     pub intent_sources: Vec<IntentSource>,
     pub enabled: bool,
+    pub dev_mode: bool,
     pub blacklist: Vec<String>,
     pub bypass_count: usize,
 }
@@ -109,6 +110,7 @@ impl Default for AxiomConfig {
                 },
             ],
             enabled: true,
+            dev_mode: false,
             blacklist: vec![
                 "vi".to_string(), "vim".to_string(), "nano".to_string(), 
                 "ssh".to_string(), "top".to_string(), "htop".to_string(), 
@@ -208,6 +210,9 @@ impl AxiomConfig {
         }
         if let Ok(path) = env::var("AXIOM_DB_PATH") {
             config.db_path = PathBuf::from(path);
+        }
+        if env::var("AXIOM_DEV").is_ok() || env::var("AXIOM_DEV").unwrap_or_default() == "1" {
+            config.dev_mode = true;
         }
     }
 }

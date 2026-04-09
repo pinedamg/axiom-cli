@@ -160,3 +160,72 @@ impl OnboardingManager {
         Ok(())
     }
 }
+
+pub struct LaboratoryRenderer;
+
+impl LaboratoryRenderer {
+    pub fn render_trace_report(traces: &[crate::engine::LineTrace]) {
+        println!("\n\x1b[1;35m🔬 Axiom Developer Laboratory Report\x1b[0m");
+        println!("---------------------------------------\n");
+
+        if traces.is_empty() {
+            println!("No traces captured. Did any output occur?");
+            return;
+        }
+
+        println!("{:<6} | {:<10} | {:<25} | {:<30} | {}", "Line", "Status", "Primary Reason", "Output Preview", "Events/Stages");
+        println!("{}", "-".repeat(120));
+
+        // Only show first 50 and last 50 if there are too many
+        let limit = 100;
+        let show_all = traces.len() <= limit;
+
+        for (i, trace) in traces.iter().enumerate() {
+            if !show_all && i >= 50 && i < traces.len() - 50 {
+                if i == 50 {
+                    println!("... [{} lines hidden for brevity] ...", traces.len() - 100);
+                }
+                continue;
+            }
+
+            let status = if trace.final_output.is_some() {
+                "\x1b[32mKEEP\x1b[0m"
+            } else {
+                "\x1b[31mDROP\x1b[0m"
+            };
+
+            let preview = trace.final_output.as_deref().unwrap_or("[EMPTY]");
+            let preview_clean = if preview.len() > 30 { format!("{}...", &preview[..27]) } else { preview.to_string() };
+
+            // Find primary reason from Analyzed event or the first one available
+            let mut primary_reason = "Unknown".to_string();
+            let mut event_summary = Vec::new();
+
+            for event in &trace.events {
+                match event {
+                    crate::engine::TraceEvent::Deduplicated(r) => event_summary.push(format!("Dedup({})", r)),
+                    crate::engine::TraceEvent::Transformed(r) => event_summary.push(format!("Trans({})", r)),
+                    crate::engine::TraceEvent::Guarded(r) => event_summary.push(format!("Guard({})", r)),
+                    crate::engine::TraceEvent::Redacted(r) => event_summary.push(format!("Redact({})", r)),
+                    crate::engine::TraceEvent::Analyzed(_, r) => {
+                        primary_reason = r.clone();
+                        event_summary.push("Analyzed".to_string());
+                    }
+                    crate::engine::TraceEvent::Buffered(r) => event_summary.push(format!("Buffer({})", r)),
+                    crate::engine::TraceEvent::PluginTransformed(p, r) => event_summary.push(format!("Plugin:{}({})", p, r)),
+                }
+            }
+
+            println!("{:<6} | {:<10} | {:<25} | {:<30} | {}", 
+                trace.line_number, 
+                status,
+                if primary_reason.len() > 25 { format!("{}...", &primary_reason[..22]) } else { primary_reason },
+                preview_clean,
+                event_summary.join(" -> ")
+            );
+        }
+
+        println!("\n\x1b[1mSummary:\x1b[0m {} total lines analyzed.", traces.len());
+        println!("\x1b[2mUse 'axiom last' to see the raw output of these lines.\x1b[0m\n");
+    }
+}

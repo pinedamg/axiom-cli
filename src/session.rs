@@ -69,6 +69,10 @@ impl AxiomSession {
             engine.set_markdown_mode(true);
         }
 
+        if config.dev_mode {
+            engine.set_dev_mode(true);
+        }
+
         // Initialize WASM plugins
         if let Ok(plugin_manager) = WasmPluginManager::new(&config.plugins_dir) {
             engine = engine.with_plugins(plugin_manager);

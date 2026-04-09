@@ -33,6 +33,9 @@ pub async fn execute_command(
 
     if !raw_mode {
         let summaries = session.engine.flush_summaries();
+        for s in &summaries {
+            session.engine.trace_summary(s);
+        }
         renderer.render_summary(&summaries, false);
     }
 
@@ -40,4 +43,3 @@ pub async fn execute_command(
     child.wait().await?;
     Ok(())
 }
-
