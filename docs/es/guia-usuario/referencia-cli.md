@@ -10,6 +10,7 @@ Cuando se ejecuta en modo proxy (ej., `axiom npm install`), puedes usar las sigu
 
 - `--raw`: Omite todo el procesamiento y síntesis de Axiom. Muestra el flujo exacto del proceso hijo.
 - `--markdown`: Habilita la transformación automática de tablas de la terminal a formato Markdown.
+- `--dev`: Habilita el Modo de Laboratorio para Desarrolladores (Rastreo de Decisiones).
 - `--yes`: Responde automáticamente "sí" a todas las preguntas.
 
 ## Comandos Principales
@@ -59,6 +60,9 @@ Muestra la salida cruda del último comando ejecutado.
 Muestra análisis sobre el ahorro de tokens.
 - **Banderas**:
   - `-s, --history`: Muestra el historial detallado de ahorros.
+
+### `axiom dev <args>...`
+Ejecuta un comando en el Modo de Laboratorio para Desarrolladores (Rastreo de Decisiones).
 
 ### `axiom check-ai`
 Verifica si el proceso actual fue llamado por un agente de IA. Sale con código 0 si es detectado, 1 en caso contrario.

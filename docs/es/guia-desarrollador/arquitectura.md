@@ -29,7 +29,7 @@ Axiom sigue una **Arquitectura Limpia por Capas (Layered Clean Architecture)** a
 - **Responsabilidad**: El orquestador. Coordina:
     - **Discovery**: Identifica automáticamente la herramienta y su intención.
     - **Intelligence**: Usa coincidencia de palabras clave, fuzzy y neural (basada en BERT) para determinar la relevancia.
-    - **Transformer**: Aplica las reglas de transformación (Colapsar, Descartar, Pasar).
+    - **Transformer**: Aplica las reglas de transformación (Keep, Collapse, Redact, Hidden, Synthesize).
 
 ### 📊 5. Persistence (Capa de Analíticas)
 - **Ubicación**: `src/persistence/`
