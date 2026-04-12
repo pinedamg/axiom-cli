@@ -18,3 +18,9 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+
+### 🧩 String Buffer Memory Optimization in Gateway Filters
+*   **Buffer Flushing (`src/gateway/filters.rs`)**: Identified a memory anti-pattern inside the hot-path loop parsing ANSI terminal streams (`StreamPipeline::process`). The buffer was cleared using `std::mem::take(&mut self.buffer)`, which drains the buffer but leaves a default, zero-capacity `String` in its place. This caused continuous heap re-allocation of `String` on every terminal linefeed (`\n`), discarding the explicitly defined pre-allocation of `1024` bytes.
+*   **Resolution**: Replaced `std::mem::take` with explicit `.clone()` and `.clear()` on the `buffer`. The `clear()` method accurately drains string bytes without destroying the internal capacity reserve, ensuring the `1024` capacity allocation handles incoming streams persistently, saving continuous heap re-allocation latency for line buffers.
+
+**Impact**: Ensures stable pre-allocated memory capacity across the terminal stream ingest pipeline. Saves N allocations per N terminal lines received on the stdout/stderr stream.
