@@ -49,6 +49,10 @@ Ejecuta un chequeo de salud y diagnósticos del sistema.
 ### `axiom self-update`
 Actualiza Axiom a la última versión desde GitHub.
 
+### `axiom dev`
+Ejecuta un comando en el Modo de Laboratorio para Desarrolladores (Decision Tracing).
+- **Args**: El comando a ejecutar (ej., `axiom dev npm install`).
+
 ### `axiom last`
 Muestra la salida cruda del último comando ejecutado.
 - **Banderas**:

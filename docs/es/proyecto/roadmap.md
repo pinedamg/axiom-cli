@@ -84,7 +84,8 @@ Esta sección define la expansión de esquemas predeterminados y modos inteligen
 
 ### 🟡 Nivel 2: Ecosistemas de Construcción y Desarrollo (Contexto)
 *Objetivo: Filtrar boilerplate de éxito y enfocarse en advertencias/errores.*
-- [x] **npm / pnpm / yarn**: Reducción básica de ruido del instalador.
+- [x] **apt**: Reducir el ruido en la instalación de paquetes.
+- [x] **npm / pnpm / yarn**:  Reducción básica de ruido del instalador.
 - [x] **cargo (Rust)**: Colapsar la descarga/compilación de dependencias. Mostrar forzosamente advertencias de crates locales.
 - [x] **go build / test**: Resumir resultados de pruebas.
 - [ ] **pip / poetry / conda**: Limpiar registros de configuración de virtualenv e instalación de paquetes.

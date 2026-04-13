@@ -49,6 +49,10 @@ Run system health check and diagnostics.
 ### `axiom self-update`
 Update Axiom to the latest version from GitHub.
 
+### `axiom dev`
+Run a command in Developer Laboratory Mode (Decision Tracing).
+- **Args**: The command to execute (e.g., `axiom dev npm install`).
+
 ### `axiom last`
 Show the raw output of the last executed command.
 - **Flags**:

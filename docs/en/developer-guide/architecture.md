@@ -29,7 +29,7 @@ Axiom follows a **Layered Clean Architecture** adapted for Rust's performance ne
 - **Responsibility**: The orchestrator. It coordinates:
     - **Discovery**: Automatically identifies the tool and its intent.
     - **Intelligence**: Uses keyword, fuzzy, and neural (BERT-based) matching to determine relevance.
-    - **Transformer**: Applies the transformation rules (Collapse, Drop, Pass).
+    - **Transformer**: Applies the transformation rules (`keep`, `collapse`, `redact`, `hidden`, and `synthesize`).
 
 ### 📊 5. Persistence (Analytics Layer)
 - **Location**: `src/persistence/`
