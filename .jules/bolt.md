@@ -18,3 +18,19 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+## Gateway Filter Buffer Retention
+Date: $(date -I)
+
+**Discovery:**
+The `StreamPipeline` filter in `src/gateway/filters.rs` was using `std::mem::take(&mut self.buffer)` when extracting a static line string from a string buffer pre-allocated with `String::with_capacity(1024)`.
+
+**Problem:**
+`std::mem::take()` replaces the targeted buffer with a default, zero-capacity String (i.e. `String::new()`). Since this runs inside a high-frequency loop parsing process streams, the pre-allocated capacity was immediately lost after the first line. Subsequent `.push(c)` calls for every character on subsequent lines triggered heap reallocations.
+
+**Fix:**
+Replaced `std::mem::take` with:
+```rust
+let line = self.buffer.clone();
+self.buffer.clear();
+```
+`.clear()` truncates the string to 0 length without freeing the underlying heap memory or changing the capacity, meaning the 1024 bytes allocated for `self.buffer` are retained across line processing events, avoiding continuous reallocations during stream processing.
