@@ -22,3 +22,14 @@ Axiom asegura que los datos sensibles nunca salgan de tu máquina.
 - **Redacción de PII**: Un motor integrado enmascara correos electrónicos, IPs y patrones sensibles antes de que lleguen a la ventana de contexto del agente de IA.
 
 Todo esto ocurre localmente en tu máquina con una latencia de menos de 10ms. No se envían logs en bruto a los servidores de Axiom.
+
+## Niveles de Profundidad de Inteligencia
+
+Axiom proporciona cuatro niveles de profundidad de filtrado para equilibrar el ahorro de tokens y la precisión de los metadatos.
+
+| Nivel | Comando / Bandera | Procesamiento | Mejor para... |
+| :--- | :--- | :--- | :--- |
+| **RAW** | `axiom --raw <cmd>` | Ninguno (Bypass) | Depuración de precisión, análisis forense o marcas de tiempo. |
+| **OFF** | `axiom intent disable` | Estructura + Privacidad | Tareas rutinarias donde deseas resúmenes pero sin filtrado de IA. |
+| **FUZZY** | `axiom intent enable fuzzy` | Palabras clave + Contexto Git | Desarrollo estándar. Filtra el ruido basándose en la relevancia. |
+| **NEURAL** | `axiom intent enable neural` | Embeddings Semánticos | Depuración compleja donde el significado importa más que las palabras clave. |

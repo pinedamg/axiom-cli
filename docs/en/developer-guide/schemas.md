@@ -10,38 +10,42 @@ A typical schema file (e.g., `npm.yaml`) looks like this:
 
 ```yaml
 name: npm
-description: "Node Package Manager"
-binary_names:
-  - npm
-  - npx
-
+command_pattern: "^(npm|npx)"
 rules:
-  - id: npm_download_progress
+  - name: DownloadProgress
     pattern: "^(?:npm WARN deprecated|npm notice|fetch|downloading)"
     action: collapse
-    summary: "[AXIOM] Collapsed {count} package fetching/warning logs."
+    priority: 5
     
-  - id: npm_success_install
+  - name: SuccessInstall
     pattern: "^added \\d+ packages"
-    action: pass # Pass this through but maybe format it
+    action: keep
+    priority: 1
+
+  - name: SensitiveToken
+    pattern: "^.*token=.*"
+    action: redact
+    priority: 10
 ```
 
 ### Fields
 
 - `name`: A human-readable name for the tool.
-- `binary_names`: A list of CLI executables that trigger this schema. If you type `axiom npm install`, Axiom matches `npm` against this list.
+- `command_pattern`: A regular expression used to match the executed command.
 - `rules`: A list of matching rules applied sequentially to each line of output.
 
 ### Rule Actions
 
-- `collapse`: Hides the matching line. If multiple consecutive lines match, they are replaced by a single `summary` line. The `{count}` variable can be used in the summary.
-- `pass`: Allows the line to print normally. Used to explicitly whitelist important lines.
-- `drop`: Completely removes the line from the stream without any summary.
+- `keep`: Allows the line to print normally. Used to explicitly whitelist important lines.
+- `collapse`: Hides the matching line. If multiple consecutive lines match, they are replaced by a single summary line.
+- `redact`: Masks sensitive information in the line before further processing.
+- `hidden`: Completely removes the line from the stream without any summary.
+- `synthesize`: Groups multiple matching lines into a condensed, intelligent summary.
 
 ## How to Contribute a Schema
 
 1. Create a new `.yaml` file in `config/schemas/`.
 2. Identify the common "noise" patterns for the tool using regex.
-3. Define `collapse` or `drop` rules for the noise.
+3. Define `collapse` or `hidden` rules for the noise.
 4. Test locally using `cargo run -- <your-command>`.
 5. Submit a Pull Request!
