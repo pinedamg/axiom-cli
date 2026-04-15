@@ -18,3 +18,10 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+## Memory Pattern Discovered: Preserving String Buffer Capacity in Loops
+
+**Context:** When managing string buffers in high-frequency loops (like Axiom's gateway stream pipeline filtering ANSI codes and chunking lines), extracting the text dynamically is needed continually.
+
+**Observation:** Using `std::mem::take(&mut self.buffer)` will extract the string, but replaces the internal buffer with `String::default()`, effectively setting its capacity back to 0. When processing subsequent lines, new heap allocations are continually triggered as the buffer expands again.
+
+**Optimization:** We refactored this to use `.clone()` followed by `.clear()`. While `clone()` does allocate memory for the *extracted* string (which `std::mem::take` also implicitly does by transferring ownership), using `.clear()` on the *buffer* retains its pre-allocated capacity (e.g., `String::with_capacity(1024)`). This eliminates re-allocation overhead for the buffer itself on every new line processed during stream filtering.
