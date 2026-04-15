@@ -26,7 +26,10 @@ impl StreamFilter for StreamPipeline {
         for c in stripped.chars() {
             if c == '\n' {
                 // Line feed: emit what we have as a static line
-                let line = std::mem::take(&mut self.buffer);
+                // ⚡ Bolt: Usamos .clone() + .clear() en vez de std::mem::take() para
+                // preservar la capacidad pre-asignada (1024) y evitar re-asignaciones continuas en el heap.
+                let line = self.buffer.clone();
+                self.buffer.clear();
                 events.push(TerminalEvent::StaticLine(line));
                 self.last_was_cr = false;
             } else if c == '\r' {
