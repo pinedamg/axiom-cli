@@ -18,3 +18,8 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+
+## Gateway Buffer Re-allocation Penalty
+* **Discovery:** In `src/gateway/filters.rs`, `StreamPipeline::process` was using `std::mem::take(&mut self.buffer)` to extract the completed line string for emission. This operation replaces the current buffer with a default, zero-capacity String, discarding the 1024-byte pre-allocated capacity defined in `StreamPipeline::default`.
+* **Impact:** For every log line processed in the stream pipeline (the high-frequency hot path), a new allocation of memory was required to append the next character, defeating the purpose of the initial `with_capacity(1024)`. This increases allocator pressure, garbage collection overhead (if memory fragmentation is considered), and latency.
+* **Resolution:** Replaced `std::mem::take` with `.clone()` followed by `.clear()`. This extracts the value while retaining the pre-allocated buffer for subsequent lines, effectively eliminating heap re-allocations for lines under 1024 bytes.
