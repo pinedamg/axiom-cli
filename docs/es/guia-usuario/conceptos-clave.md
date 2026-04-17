@@ -5,7 +5,7 @@ Axiom se basa en dos conceptos principales: **Compresión Semántica** y **Priva
 ## Compresión Semántica
 
 Los agentes de IA actuales están "hambrientos de contexto". Cuando ejecutas un comando, el 90% de la salida es ruido repetitivo que:
-1.  **Drena tu billetera:** Pagas por miles de tokens innecesarios.
+1.  **Te seca el bolsillo:** Pagas por miles de tokens innecesarios.
 2.  **Pierde el contexto:** Los errores críticos quedan enterrados bajo miles de líneas de logs de éxito.
 
 Axiom soluciona esto actuando como un **Firewall Semántico**.

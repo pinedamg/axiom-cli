@@ -10,33 +10,33 @@ Un archivo de esquema típico (ej. `npm.yaml`) se ve así:
 
 ```yaml
 name: npm
-description: "Node Package Manager"
-binary_names:
-  - npm
-  - npx
+command_pattern: "^npm|^npx"
 
 rules:
-  - id: npm_download_progress
+  - name: DownloadProgress
     pattern: "^(?:npm WARN deprecated|npm notice|fetch|downloading)"
     action: collapse
-    summary: "[AXIOM] Se colapsaron {count} logs de descarga/avisos de paquetes."
+    priority: 10
     
-  - id: npm_success_install
+  - name: SuccessInstall
     pattern: "^added \\d+ packages"
-    action: pass # Deja pasar esto pero quizás dale formato
+    action: keep
+    priority: 5
 ```
 
 ### Campos
 
 - `name`: Un nombre legible para la herramienta.
-- `binary_names`: Una lista de ejecutables CLI que activan este esquema. Si escribes `axiom npm install`, Axiom busca `npm` en esta lista.
-- `rules`: Una lista de reglas de coincidencia aplicadas secuencialmente a cada línea de salida.
+- `command_pattern`: Un patrón regex para coincidir con el comando que activa este esquema.
+- `rules`: Una lista de reglas de coincidencia aplicadas a cada línea de salida. Gana la regla con la prioridad más alta que coincida.
 
 ### Acciones de las Reglas
 
-- `collapse`: Oculta la línea que coincide. Si varias líneas consecutivas coinciden, se reemplazan por una única línea de `summary`. La variable `{count}` puede usarse en el resumen.
-- `pass`: Permite que la línea se imprima normalmente. Se usa para añadir líneas importantes a una "lista blanca".
-- `drop`: Elimina completamente la línea del flujo sin ningún resumen.
+- `keep`: Permite que la línea se imprima normalmente. Se usa para añadir líneas importantes a una "lista blanca".
+- `collapse`: Oculta la línea que coincide. Si varias líneas consecutivas coinciden, se reemplazan por una única línea de resumen.
+- `redact`: Redacta información sensible de la línea.
+- `hidden`: Elimina completamente la línea del flujo sin ningún resumen.
+- `synthesize`: Reemplaza las líneas con un resumen inteligente usando el agregador inteligente.
 
 ## Cómo Contribuir con un Schema
 
