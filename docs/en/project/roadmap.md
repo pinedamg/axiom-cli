@@ -131,6 +131,8 @@ This section defines the expansion of default schemas and intelligent modes for 
 - [x] **cat / tail / head**: "Guardian Mode" for files > 50 lines (auto-summary).
 - [x] **grep / rg (ripgrep)**: Aggregate matches per file and provide density summaries.
 - [x] **curl / wget**: Hide progress bars and redundant HTTP headers.
+- [x] **apt**: Collapse package reading/unpacking progress.
+- [x] **git**: Synthesize git log and status. Hide boilerplate.
 
 ### 🟡 Tier 2: Build & Dev Ecosytems (Context-Aware)
 *Goal: Filter successful boilerplate and focus on warnings/errors.*

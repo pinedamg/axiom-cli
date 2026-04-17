@@ -1,6 +1,6 @@
 # Documentación de Axiom
 
-Bienvenido a la documentación oficial de **Axiom**, el transmisor de tokens semánticos para agentes de IA.
+¡Che, bienvenido a la documentación oficial de **Axiom**, el transmisor de tokens semánticos para agentes de IA!
 
 ---
 
@@ -41,7 +41,7 @@ graph TD
 
     style E fill:#ff9999,stroke:#333,stroke-width:2px,color:#000
     style G fill:#99ccff,stroke:#333,stroke-width:2px,color:#000
-    style I fill:#99ff99,stroke:#333,stroke-width:4px,color:#000
+    style I fill:#99ff99,stroke:#00FFFF,stroke-width:4px,color:#000
 ```
 
 ---

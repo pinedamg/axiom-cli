@@ -81,6 +81,8 @@ Esta sección define la expansión de esquemas predeterminados y modos inteligen
 - [x] **cat / tail / head**: "Modo Guardián" para archivos > 50 líneas (auto-resumen).
 - [x] **grep / rg (ripgrep)**: Agregar coincidencias por archivo y proporcionar resúmenes de densidad.
 - [x] **curl / wget**: Ocultar barras de progreso y cabeceras HTTP redundantes.
+- [x] **apt**: Colapsar progreso de lectura/desempaquetado de paquetes.
+- [x] **git**: Sintetizar git log y status. Ocultar boilerplate.
 
 ### 🟡 Nivel 2: Ecosistemas de Construcción y Desarrollo (Contexto)
 *Objetivo: Filtrar boilerplate de éxito y enfocarse en advertencias/errores.*
