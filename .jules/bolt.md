@@ -18,3 +18,9 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+
+### 🚀 Runtime Flow String Buffer Optmizations (2026-04-17)
+*   **Terminal Event Loop `Buffer` Reallocation (`src/gateway/filters.rs`)**: Inside `StreamPipeline::process`, the logic emitted lines by calling `std::mem::take(&mut self.buffer)`. This was inherently destructive to the capacity we set previously, as it reset the buffer to an empty, zero-capacity String, forcing subsequent characters to immediately reallocate memory on the heap. Replaced this pattern strictly with `.clone()` and `.clear()`, keeping the original pre-allocated capacity (1024 bytes) alive throughout the stream.
+*   **Deduplicate Stage Reallocation (`src/engine/mod.rs`)**: Inside `stage_deduplicate`, the engine historically executed `self.discovery.last_line = Some(line.to_string());` for every new line. This continuously allocated new Strings on the heap. Refactored this loop to `take()` the `String` from the `Option`, empty it using `.clear()`, and repopulate it using `.push_str()`, bypassing the operating system's allocator loop entirely for new strings in the hot path.
+
+**Impact**: Effectively removed constant String allocations in two heavily trafficked hot-paths (terminal stream rendering & line deduplication logic). Both loops now reuse their memory footprints safely.
