@@ -18,3 +18,13 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+
+---
+
+## Memory Profiling & Optimization - String Buffer Re-use
+
+### 🧩 Data Structure Audit & Optimization
+*   **Terminal Line Handling (`src/gateway/filters.rs`)**: In `StreamPipeline::process`, lines are separated and emitted. Previously, `std::mem::take` was used on the line buffer when a newline was encountered. This caused the buffer to be replaced with a zero-capacity string, forcing reallocation on the next line. Optimized this by cloning the buffer and then calling `.clear()`, retaining the 1024-byte capacity pre-allocation.
+*   **Line Deduplication Buffer (`src/engine/mod.rs`)**: `stage_deduplicate` conditionally stored the last seen line in `self.discovery.last_line`. Previously, this unconditionally invoked `line.to_string()`, allocating a new string. Changed this to take the existing `Option<String>`, `.clear()` it, and `.push_str()` the new line. This prevents cyclic allocations during stream processing for every new line.
+
+**Impact**: Retained capacity on string buffers avoids constant memory reallocation and fragmentation during high-throughput line processing in the hot-path.
