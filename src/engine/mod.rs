@@ -241,7 +241,14 @@ impl AxiomEngine {
             let prefix = if self.discovery.repeat_count > 0 {
                 Some(format!("... (previous line repeated {} more times)", self.discovery.repeat_count))
             } else { None };
-            self.discovery.last_line = Some(line.to_string());
+            // ⚡ Bolt: Reuse the existing Option<String> buffer to avoid allocating a new String for every distinct line.
+            if let Some(mut prev) = self.discovery.last_line.take() {
+                prev.clear();
+                prev.push_str(line);
+                self.discovery.last_line = Some(prev);
+            } else {
+                self.discovery.last_line = Some(line.to_string());
+            }
             self.discovery.repeat_count = 0;
             (prefix, PipelineAction::Continue(Cow::Borrowed(line)), "New line".to_string())
         }
