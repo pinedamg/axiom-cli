@@ -45,6 +45,27 @@ Axiom follows a **Layered Clean Architecture** adapted for Rust's performance ne
 
 ## 3. Data Flow (The Stream Pipeline)
 
+```mermaid
+graph TD
+    A[Terminal Command] -->|Intercept| B{AXIOM PROXY}
+
+    subgraph "LOCAL EXECUTION (Sub-10ms)"
+    B --> C[Deduplicate]
+    C --> D[Transform]
+    D --> E[Guard]
+    E --> F[Redact]
+    F --> G[Analyze]
+    G --> H[Plugins]
+    end
+
+    H --> I[⚡ HIGH-SIGNAL STREAM]
+    I --> J[🤖 AI AGENT / CURSOR / CLAUDE]
+
+    style E fill:#ff9999,stroke:#333,stroke-width:2px,color:#000
+    style G fill:#00FFFF,stroke:#333,stroke-width:2px,color:#000
+    style I fill:#99ff99,stroke:#333,stroke-width:4px,color:#000
+```
+
 1.  **Command Execution**: `axiom npm install` starts.
 2.  **Process Detective**: Identifies `npm` and the current project context.
 3.  **Stream Capture**: Raw bytes are read from the sub-process.

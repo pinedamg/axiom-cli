@@ -45,6 +45,27 @@ Axiom sigue una **Arquitectura Limpia por Capas (Layered Clean Architecture)** a
 
 ## 3. Flujo de Datos (El Pipeline de Flujo)
 
+```mermaid
+graph TD
+    A[Comando de Terminal] -->|Intercepción| B{AXIOM PROXY}
+
+    subgraph "EJECUCIÓN LOCAL (Sub-10ms)"
+    B --> C[Deduplicar]
+    C --> D[Transformar]
+    D --> E[Guardia]
+    E --> F[Redactar]
+    F --> G[Analizar]
+    G --> H[Plugins]
+    end
+
+    H --> I[⚡ FLUJO DE ALTA SEÑAL]
+    I --> J[🤖 AGENTE DE IA / CURSOR / CLAUDE]
+
+    style E fill:#ff9999,stroke:#333,stroke-width:2px,color:#000
+    style G fill:#00FFFF,stroke:#333,stroke-width:2px,color:#000
+    style I fill:#99ff99,stroke:#333,stroke-width:4px,color:#000
+```
+
 1.  **Ejecución de Comando**: Inicia `axiom npm install`.
 2.  **Detective de Procesos**: Identifica `npm` y el contexto actual del proyecto.
 3.  **Captura de Flujo**: Se leen bytes en bruto del subproceso.
