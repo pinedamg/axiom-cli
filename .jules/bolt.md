@@ -18,3 +18,10 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+## Memory Optimization Patterns
+
+### String Buffer Re-use in Hot Paths
+When managing string buffers in high-frequency loops (e.g. `StreamPipeline::process` in `src/gateway/filters.rs` or `stage_deduplicate` in `src/engine/mod.rs`), avoid continuous heap allocations.
+
+*   **Avoid `std::mem::take()` on pre-allocated strings:** Replacing a buffer with a zero-capacity string via `std::mem::take()` negates the benefits of `String::with_capacity()`. Instead, strictly use `.clone()` followed by `.clear()` to extract the value while retaining the original pre-allocated capacity.
+*   **Reuse `Option<String>` buffers:** To avoid allocations when updating an `Option<String>` in a hot path, reuse existing buffers by extracting them with `.take()`, clearing them with `.clear()`, and appending new data with `.push_str()` instead of allocating a new `String` per loop.
