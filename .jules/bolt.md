@@ -18,3 +18,10 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+
+### 🧩 Data Structure Audit & Optimization (Hot-Paths & Gateway)
+*   **Deduplication Buffer Reuse (`src/engine/mod.rs`)**: In `stage_deduplicate`, the logic allocated a new `String` using `line.to_string()` for every processed line. Refactored to extract the existing `Option<String>` using `.take()`, `.clear()` its contents, and append the new line via `.push_str()`. This aggressively curtails heap churn and GC pressure in the main execution hot-path.
+*   **Insight Iteration Tracking (`src/engine/commands/ps.rs`)**: Inside `PsHandler::generate_insight`, tracking the most resource-intensive process (`top_proc`) used `.clone()` on `item.name` during each reassignment. This was migrated to use `Option<&str>` referencing the already-allocated string inside the buffer, eliminating redundant heap duplications inside the search loop.
+*   **Gateway Stream Buffer Preservation (`src/gateway/filters.rs`)**: `StreamPipeline::process` previously relied on `std::mem::take(&mut self.buffer)` to extract line data. This action inherently swaps the buffer with an empty, zero-capacity `String`, immediately destroying the value of the pre-allocated 1024-byte capacity on the next iteration. Replaced with an explicit `.clone()` and `.clear()` pairing to safely extract the string while meticulously preserving the memory capacity of the source buffer.
+
+**Impact**: Expected visible reduction in raw memory allocation velocity and OS-level memory locks across all sustained streaming operations and command iterations.
