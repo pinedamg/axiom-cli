@@ -47,7 +47,8 @@ impl CommandHandler for PsHandler {
 
     fn generate_insight(&self, _command: &str, buffer: &DiscoveryBuffer) -> Option<String> {
         let mut max_cpu = 0.0;
-        let mut top_proc = String::new();
+        // ⚡ Bolt: Track top process using Option<&str> to avoid redundant String clones inside the loop
+        let mut top_proc: Option<&str> = None;
         let mut total_procs = 0;
 
         for (key, items) in buffer {
@@ -57,7 +58,7 @@ impl CommandHandler for PsHandler {
                     if let Ok(cpu) = item.size.parse::<f64>() {
                         if cpu > max_cpu {
                             max_cpu = cpu;
-                            top_proc = item.name.clone();
+                            top_proc = Some(&item.name);
                         }
                     }
                 }
@@ -66,7 +67,7 @@ impl CommandHandler for PsHandler {
 
         if total_procs > 0 {
             if max_cpu > 10.0 {
-                Some(format!("High CPU load detected: {} is using {}% CPU. Total active processes: {}.", top_proc, max_cpu, total_procs))
+                Some(format!("High CPU load detected: {} is using {}% CPU. Total active processes: {}.", top_proc.unwrap_or("unknown"), max_cpu, total_procs))
             } else {
                 Some(format!("System health stable. Total active processes: {}. No single process exceeding 10% CPU.", total_procs))
             }

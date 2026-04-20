@@ -26,8 +26,10 @@ impl StreamFilter for StreamPipeline {
         for c in stripped.chars() {
             if c == '\n' {
                 // Line feed: emit what we have as a static line
-                let line = std::mem::take(&mut self.buffer);
+                // ⚡ Bolt: Extract value with clone and clear to avoid replacing the pre-allocated buffer with a zero-capacity String.
+                let line = self.buffer.clone();
                 events.push(TerminalEvent::StaticLine(line));
+                self.buffer.clear();
                 self.last_was_cr = false;
             } else if c == '\r' {
                 // Carriage return: emit current buffer as progress, then clear buffer
