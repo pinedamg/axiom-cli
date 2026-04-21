@@ -18,3 +18,8 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+## Memory Profiling Patterns & Optimizations
+
+* **DiscoveryEngine Deduplication (`src/engine/mod.rs`):** We observed a high frequency of string allocations during line-by-line deduplication (`stage_deduplicate`). By reusing the existing `Option<String>` capacity (extracting with `.take()`, clearing it, and using `.push_str()`), we eliminate redundant heap allocations in the hot path.
+* **StreamPipeline Buffer (`src/gateway/filters.rs`):** The string buffer allocated with a fixed capacity of 1024 bytes was inadvertently dropped on every newline character because `std::mem::take()` replaces it with an empty String (0 capacity). Swapping this to `.clone()` followed by `.clear()` preserves the allocated capacity across multiple lines, reducing fragmentation and reallocation overhead.
+* **PsHandler Insights (`src/engine/commands/ps.rs`):** In command insight generators like `PsHandler::generate_insight`, tracking the top process name with a `String` clone on each reassignment in loops scales poorly for long outputs. We switched to an `Option<&str>` that borrows directly from the `DiscoveryBuffer` to prevent these redundant allocations.
