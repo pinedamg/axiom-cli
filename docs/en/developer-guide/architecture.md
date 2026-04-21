@@ -36,6 +36,11 @@ Axiom follows a **Layered Clean Architecture** adapted for Rust's performance ne
 - **Responsibility**: Local storage for token savings analytics and command history.
 - **Tech**: SQLite for local, fast structured storage.
 
+### 🔬 6. Developer Laboratory (Dev Layer)
+- **Location**: `src/engine/mod.rs`
+- **Responsibility**: When running `axiom dev <command>`, this layer records a `LineTrace` at each of the 6 core pipeline stages (Deduplicate, Transform, Guard, Redact, Analyze, Plugins) to provide a "Decision Tracing" report.
+- **Styling**: Rendered using Electric Cyan (`#00FFFF`) accents for technical clarity.
+
 ## 2. Technical Guidelines
 
 - **Language**: Rust (Edition 2021).
@@ -56,6 +61,7 @@ Axiom follows a **Layered Clean Architecture** adapted for Rust's performance ne
 9.  **Plugins**: Any WebAssembly plugins perform final manipulations.
 10. **Final Output**: High-signal output is printed to the terminal for the AI agent to consume.
 11. **Analytics**: Savings are calculated and stored in the local SQLite DB.
+12. **Dev Tracing**: If run in dev mode, records events across stages 4-9 and renders a debug report.
 
 ## 4. Security Standards
 

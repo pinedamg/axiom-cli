@@ -36,6 +36,11 @@ Axiom sigue una **Arquitectura Limpia por Capas (Layered Clean Architecture)** a
 - **Responsabilidad**: Almacenamiento local para las analíticas de ahorro de tokens e historial de comandos.
 - **Tecnología**: SQLite para almacenamiento estructurado local y rápido.
 
+### 🔬 6. Laboratorio para Desarrolladores (Capa Dev)
+- **Ubicación**: `src/engine/mod.rs`
+- **Responsabilidad**: Al ejecutar `axiom dev <comando>`, esta capa registra un `LineTrace` en cada una de las 6 etapas principales del pipeline (Deduplicar, Transformar, Guardia, Redactar, Analizar, Plugins) para proporcionar un reporte de "Rastreo de Decisiones".
+- **Estilo**: Renderizado usando acentos Electric Cyan (`#00FFFF`) para claridad técnica.
+
 ## 2. Pautas Técnicas
 
 - **Lenguaje**: Rust (Edición 2021).
@@ -56,6 +61,7 @@ Axiom sigue una **Arquitectura Limpia por Capas (Layered Clean Architecture)** a
 9.  **Plugins**: Cualquier plugin de WebAssembly realiza manipulaciones finales.
 10. **Salida Final**: La salida de alta señal se imprime en la terminal para que el agente de IA la consuma.
 11. **Analíticas**: Se calculan los ahorros y se almacenan en la BD local SQLite.
+12. **Dev Tracing**: Si se ejecuta en modo dev, registra eventos en las etapas 4-9 y renderiza un reporte de depuración.
 
 ## 4. Estándares de Seguridad
 
