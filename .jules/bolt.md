@@ -18,3 +18,8 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+## Bolt Memory Optimization Log
+
+*   **Gateway Stream Buffering (src/gateway/filters.rs):** Noticed that using `std::mem::take()` on `String` buffers replaces them with a zero-capacity default `String`, destroying pre-allocated capacities (e.g., `String::with_capacity(1024)`). Using `.clone()` followed by `.clear()` preserves the allocation and prevents reallocation spikes on high-frequency chunk streams.
+*   **Insight Buffer Traversal (src/engine/commands/ps.rs):** In high-frequency iteration loops (e.g., mapping `top_proc`), allocating `String::new()` and cloning strings inside the loop creates unnecessary heap allocations. Using `Option<&str>` directly references the parent buffer item, keeping traversal operations zero-copy.
+*   **Pipeline Deduplication Loop (src/engine/mod.rs):** Rather than unconditionally instantiating a new `String` for the `last_line` variable during every line processing event, extracting the buffer with `.take()`, resetting it with `.clear()`, and rewriting it with `.push_str(line)` eliminates dynamic allocations from the hottest loop inside Axiom's pipeline.
