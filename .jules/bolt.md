@@ -18,3 +18,6 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+- **Buffer Allocation Overheads**: In `src/gateway/filters.rs`, using `std::mem::take` with `String` buffers creates zero-capacity strings, causing reallocations. This was optimized using `.clone()` and `.clear()` to maintain pre-allocated capacity.
+- **Iteration Closures Overhead**: Redundant cloning inside tight loops like `generate_insight` in `ps.rs` causes memory bloat. Swapped to using references like `Option<&str>` linked to loop lifespans.
+- **Option<String> Reuse in Hot Path**: In `src/engine/mod.rs` (`stage_deduplicate`), using `Some(line.to_string())` constantly allocations heap strings for every processed line. Optimized by extracting the old string with `.take()`, clearing it, and using `.push_str()` to reuse the same memory chunk.
