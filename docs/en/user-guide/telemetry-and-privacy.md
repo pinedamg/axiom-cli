@@ -21,5 +21,5 @@ Run `axiom status` at any time to see exactly what data is being shared and your
 ## How We Protect You
 
 - **Command Sanitization**: Even in `Full` mode, we **ONLY** capture the binary name (e.g., `npm`), never the arguments (e.g., `install secret-package`).
-- **Anonymous ID**: We use a random `installation_id` to count active instances without knowing who you are.
+- **Anonymous ID**: We use a random `node_id` to count active instances without knowing who you are.
 - **Pro Privacy**: Support Axiom by upgrading to Pro to unlock the `Off` telemetry mode.

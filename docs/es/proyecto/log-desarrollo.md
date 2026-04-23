@@ -1,6 +1,6 @@
 # AXIOM: Log de Desarrollo y Registro de Contexto
 
-Este documento registra decisiones arquitectónicas, progreso actual y estrategias de validación para asegurar la continuidad del proyecto.
+Acá llevamos la bitácora posta del proyecto: decisiones arquitectónicas, en qué andamos ahora, y cómo validamos que todo funcione joya para asegurar la continuidad.
 
 ## 1. Contexto Actual (Marzo 2026)
 - **Fase**: Alpha/Beta (Fases 1, 2 y 3 completadas como prototipos).
@@ -8,7 +8,7 @@ Este documento registra decisiones arquitectónicas, progreso actual y estrategi
 - **Hito Reciente**: Validación empírica del "Auto-Descubrimiento" con feedback visual de colapso.
 
 ## 2. Estrategia de Validación (Pruebas)
-Para asegurar que Axiom sea efectivo y no "rompa" información crítica para el LLM:
+Para asegurarnos que Axiom sea un caño y no "rompa" información crítica para el LLM:
 
 ### Capa 1: Pruebas Unitarias (Lógica Atómica)
 - Validación del motor de entropía (detección de secretos).
@@ -23,7 +23,7 @@ Para asegurar que Axiom sea efectivo y no "rompa" información crítica para el 
 - Objetivo: >60% de ahorro en logs ruidosos (npm, docker, maven).
 
 ## 3. Estrategia de Integración con IA
-Axiom debe ser transparente para el agente de IA (Gemini, Claude, Cursor, etc.):
+Axiom tiene que ser transparente para el agente de IA (Gemini, Claude, Cursor, etc.), que ni se dé cuenta de que estamos ahí metidos:
 
 1.  **Intercepción por Proxy**:
     - El agente ejecuta `git status`.
@@ -38,4 +38,4 @@ Axiom debe ser transparente para el agente de IA (Gemini, Claude, Cursor, etc.):
 - **Feedback Visual (Fase 3+)**: Se implementó un contador de colapso para dar visibilidad al usuario sobre el ahorro de tokens sin perder el estado del proceso.
 
 ---
-*Última actualización: Finalización del prototipo de la Fase 3 y registro del Agregador Inteligente.*
+*Última actualización: Metiéndole pata con el prototipo de la Fase 3 y el registro del Agregador Inteligente.*
