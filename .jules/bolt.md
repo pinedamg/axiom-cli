@@ -18,3 +18,22 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+## Memory Optimizations: Bolt Initiative
+
+### Hot Path Deduplication Buffer
+**Where:** `src/engine/mod.rs` (in `stage_deduplicate`)
+**Issue:** Allocating a new `String` for every line in the hot path.
+**Solution:** Reuse the existing `Option<String>` buffer. We extract it via `.take()`, `.clear()` its contents, and then `.push_str()` to retain its allocation capacity.
+**Impact:** Avoids continuous heap allocations on high-frequency stream lines.
+
+### Stream Pipeline Filtering Buffer
+**Where:** `src/gateway/filters.rs` (in `StreamPipeline::process`)
+**Issue:** `std::mem::take(&mut self.buffer)` was replacing the buffer with a new, zero-capacity `String`, losing the pre-allocated 1024-byte capacity on every newline flush.
+**Solution:** Use `.clone()` on the buffer (reusing its internal data without recreating capacity overhead immediately) followed by `.clear()`. Actually, cloning creates a new string matching the current length, but leaving `self.buffer` via `.clear()` keeps the 1024-byte capacity intact for the *next* iterations.
+**Impact:** Prevents repeated `String` re-allocations when processing terminal streams.
+
+### Insight Generation Cloning
+**Where:** `src/engine/commands/ps.rs` (in `PsHandler::generate_insight`)
+**Issue:** Cloning a `String` inside a loop simply to keep track of the process name with the highest CPU usage.
+**Solution:** Store an `Option<&str>` referencing the underlying data within the `DiscoveryBuffer`.
+**Impact:** Avoids transient cloning allocations in tight iteration loops.
