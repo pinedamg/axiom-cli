@@ -18,3 +18,4 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+*   **Top Process Tracking (`src/engine/commands/ps.rs`)**: Replaced `let mut top_proc = String::new();` with `Option<&str>` and updated assignment to avoid redundant `String` clones (`item.name.clone()`) inside the iteration loop in `PsHandler::generate_insight`.
