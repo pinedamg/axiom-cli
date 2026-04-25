@@ -10,6 +10,7 @@ When running in proxy mode (e.g., `axiom npm install`), you can use the followin
 
 - `--raw`: Bypasses all Axiom processing and synthesis. Outputs the exact stream from the child process.
 - `--markdown`: Enables automatic transformation of terminal tables into Markdown format.
+- `--dev`: Enable Developer Laboratory Mode (Decision Tracing).
 - `--yes`: Automatically answer "yes" to all prompts.
 
 ## Core Commands
@@ -54,6 +55,11 @@ Show the raw output of the last executed command.
 - **Flags**:
   - `-t, --tail <LINES>`: Number of lines to show from the end.
   - `-g, --grep <KEYWORD>`: Filter lines by a keyword.
+
+### `axiom dev`
+Run a command in Developer Laboratory Mode (Decision Tracing).
+- **Flags**:
+  - `args...`: The command to execute
 
 ### `axiom gain`
 Show token savings analytics.

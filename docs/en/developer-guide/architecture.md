@@ -61,3 +61,9 @@ Axiom follows a **Layered Clean Architecture** adapted for Rust's performance ne
 
 - **Zero-Log Policy**: Raw captured data is **never** written to Axiom's own logs or telemetry.
 - **Local-First**: All heavy lifting (Redaction, BERT embeddings, transformation) happens locally on the user's CPU.
+
+## 5. Developer Laboratory Mode (Decision Tracing)
+
+Axiom includes a built-in Developer Laboratory Mode (`axiom dev <args>...` or `--dev`), designed to expose the internal decision-making process of the pipeline.
+
+When Developer Laboratory Mode is enabled, Axiom intercepts the existing six pipeline stages (Deduplicate, Transform, Guard, Redact, Analyze, Plugins) and records every mutation or decision made to the terminal output. It generates a comprehensive trace report, explaining why a line was kept, collapsed, or redacted, directly in the terminal, allowing schema creators to easily debug their rules.
