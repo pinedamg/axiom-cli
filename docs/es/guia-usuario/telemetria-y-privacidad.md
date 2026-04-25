@@ -9,9 +9,9 @@ Axiom ofrece cuatro niveles de transparencia, configurables mediante:
 axiom config telemetry <level>
 ```
 
-1. **`Full` (Por defecto)**: Comparte métricas de ahorro anónimas + Nombres de los binarios utilizados + Métricas internas (IDs de coincidencia de reglas).
+1. **`Full`**: Comparte métricas de ahorro anónimas + Nombres de los binarios utilizados + Métricas internas (IDs de coincidencia de reglas).
 2. **`Discovery`**: Comparte métricas de ahorro anónimas + Nombres de binarios (ej. `git`, `npm`). Esto nos ayuda a priorizar qué nuevos esquemas de herramientas debemos construir a continuación.
-3. **`Anonymous`**: Solo envía ahorros de tokens agregados, tu SO y la versión de Axiom. No se envían nombres de comandos.
+3. **`Basic` (Por defecto)**: Solo envía ahorros de tokens agregados, tu SO y la versión de Axiom. No se envían nombres de comandos.
 4. **`Off`**: **FUNCIÓN PRO**. Apagón total. No se envía ningún dato desde tu máquina.
 
 ## Transparencia Ante Todo
