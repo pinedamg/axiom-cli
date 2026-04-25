@@ -72,8 +72,8 @@ impl CommandHandler for CargoHandler {
         Some(format!("• Cargo {}: {} crates ({}{})", status, count, names.join(", "), suffix))
     }
 
-    fn get_category(&self, perms: &str) -> String {
-        if ["Checking", "Compiling", "Downloading", "Downloaded", "Finished", "Processing"].contains(&perms) {
+    fn get_category(&self, meta: &LineMetadata) -> String {
+        if ["Checking", "Compiling", "Downloading", "Downloaded", "Finished", "Processing"].contains(&meta.perms.as_str()) {
             "CARGO".to_string()
         } else {
             "FILE".to_string()
