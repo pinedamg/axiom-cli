@@ -34,9 +34,11 @@ rules:
 
 ### Acciones de las Reglas
 
-- `collapse`: Oculta la línea que coincide. Si varias líneas consecutivas coinciden, se reemplazan por una única línea de `summary`. La variable `{count}` puede usarse en el resumen.
-- `pass`: Permite que la línea se imprima normalmente. Se usa para añadir líneas importantes a una "lista blanca".
-- `drop`: Elimina completamente la línea del flujo sin ningún resumen.
+- `keep`: Permite que la línea se imprima normalmente. Se usa para añadir líneas importantes a una "lista blanca".
+- `collapse`: Oculta la línea que coincide. Si varias líneas consecutivas coinciden, se reemplazan por una única línea de `summary`.
+- `redact`: Enmascara PII o secretos en la línea.
+- `hidden`: Elimina completamente la línea del flujo sin ningún resumen.
+- `synthesize`: Agrupa las líneas coincidentes en un resumen sintetizado al final.
 
 ## Cómo Contribuir con un Schema
 

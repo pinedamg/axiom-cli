@@ -55,6 +55,9 @@ Show the raw output of the last executed command.
   - `-t, --tail <LINES>`: Number of lines to show from the end.
   - `-g, --grep <KEYWORD>`: Filter lines by a keyword.
 
+### `axiom dev`
+Run a command in Developer Laboratory Mode (Decision Tracing).
+
 ### `axiom gain`
 Show token savings analytics.
 - **Flags**:

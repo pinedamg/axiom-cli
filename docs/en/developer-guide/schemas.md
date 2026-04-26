@@ -34,9 +34,11 @@ rules:
 
 ### Rule Actions
 
-- `collapse`: Hides the matching line. If multiple consecutive lines match, they are replaced by a single `summary` line. The `{count}` variable can be used in the summary.
-- `pass`: Allows the line to print normally. Used to explicitly whitelist important lines.
-- `drop`: Completely removes the line from the stream without any summary.
+- `keep`: Allows the line to print normally. Used to explicitly whitelist important lines.
+- `collapse`: Hides the matching line. If multiple consecutive lines match, they are replaced by a single `summary` line.
+- `redact`: Masks PII or secrets in the line.
+- `hidden`: Completely removes the line from the stream without any summary.
+- `synthesize`: Groups matching lines into a synthesized summary at the end.
 
 ## How to Contribute a Schema
 
