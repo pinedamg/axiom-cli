@@ -18,3 +18,10 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+
+### 🧩 Data Structure Audit & Optimization
+*   **Buffer String Capacity Retention (`src/gateway/filters.rs`)**: Replaced `std::mem::take` with `.clone()` and `.clear()` for String extraction, retaining the String's pre-allocated memory capacity on the hot path.
+*   **Deduplication Stage Allocation (`src/engine/mod.rs`)**: Modified `stage_deduplicate` to reuse the existing `String` in `self.discovery.last_line` via `.take()`, `.clear()`, and `.push_str()` instead of allocating a new string on the heap per iteration.
+*   **PS Command Handler String Overhead (`src/engine/commands/ps.rs`)**: Avoided redundant cloning of string for `top_proc` in `generate_insight` by switching to `Option<&str>`. Eliminated panic points using `.unwrap_or("")` over `.unwrap()` in string parsing loops.
+
+**Impact**: Avoided redundant memory allocation and panic faults during continuous real-time command processing inside Axiom pipeline components.
