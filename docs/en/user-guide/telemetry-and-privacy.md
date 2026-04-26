@@ -11,7 +11,7 @@ axiom config telemetry <level>
 
 1. **`Full` (Default)**: Shares anonymous savings metrics + Binary names used + Internal metrics (rule match IDs).
 2. **`Discovery`**: Shares anonymous savings metrics + Binary names (e.g., `git`, `npm`). This helps us prioritize which new tool schemas to build next.
-3. **`Anonymous`**: Only aggregates token savings, your OS, and Axiom version. No command names are sent.
+3. **`Basic`**: Only aggregates token savings, your OS, and Axiom version. No command names are sent.
 4. **`Off`**: **PRO FEATURE**. Total blackout. No data is ever sent from your machine.
 
 ## Transparency First

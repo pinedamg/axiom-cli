@@ -82,6 +82,8 @@ Esta sección define la expansión de esquemas predeterminados y modos inteligen
 - [x] **grep / rg (ripgrep)**: Agregar coincidencias por archivo y proporcionar resúmenes de densidad.
 - [x] **curl / wget**: Ocultar barras de progreso y cabeceras HTTP redundantes.
 
+- [x] **apt / apt-get**: Limpiar listas de paquetes y ruido de instalación.
+
 ### 🟡 Nivel 2: Ecosistemas de Construcción y Desarrollo (Contexto)
 *Objetivo: Filtrar boilerplate de éxito y enfocarse en advertencias/errores.*
 - [x] **npm / pnpm / yarn**: Reducción básica de ruido del instalador.
