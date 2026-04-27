@@ -63,6 +63,9 @@ Show token savings analytics.
 ### `axiom check-ai`
 Check if the current process was called by an AI agent. Exits with 0 if detected, 1 otherwise.
 
+### `axiom dev <args>...`
+Run a command in Developer Laboratory Mode (Decision Tracing).
+
 ## Configuration & Discovery Commands
 
 ### `axiom intent <action>`
