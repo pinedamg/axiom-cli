@@ -61,3 +61,7 @@ Axiom follows a **Layered Clean Architecture** adapted for Rust's performance ne
 
 - **Zero-Log Policy**: Raw captured data is **never** written to Axiom's own logs or telemetry.
 - **Local-First**: All heavy lifting (Redaction, BERT embeddings, transformation) happens locally on the user's CPU.
+
+## 5. Developer Laboratory Mode
+
+The Developer Laboratory Mode (Decision Tracing), executed via the `--dev` flag or `axiom dev` command, intercepts the existing six pipeline stages (Deduplicate, Transform, Guard, Redact, Analyze, Plugins) without inventing new ones. It stores execution insights in `AxiomEngine::traces` for post-execution rendering to help debug the <span style="color: #00FFFF;">Semantic Firewall</span>.

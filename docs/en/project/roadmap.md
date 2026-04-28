@@ -137,6 +137,7 @@ This section defines the expansion of default schemas and intelligent modes for 
 - [x] **npm / pnpm / yarn**: Basic installer noise reduction.
 - [x] **cargo (Rust)**: Collapse dependency downloading/compiling. Force-show local crate warnings.
 - [x] **go build / test**: Summarize test results.
+- [x] **apt**: Basic progress and info noise reduction.
 - [ ] **pip / poetry / conda**: Clean virtualenv setup and logs.
 
 ### 🟠 Tier 3: Infrastructure & Cloud (Volume Control)
