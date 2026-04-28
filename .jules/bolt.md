@@ -18,3 +18,6 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+- Avoid std::mem::take() for string buffers in high-frequency loops; prefer .clone() + .clear() to retain capacity.
+- Reuse Option<String> buffers using .take(), .clear(), and .push_str() instead of allocating new strings.
+- Use Option<&str> for referencing variables in DiscoveryBuffer over creating Strings when possible.
