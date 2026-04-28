@@ -61,3 +61,7 @@ Axiom sigue una **Arquitectura Limpia por Capas (Layered Clean Architecture)** a
 
 - **Política de Cero Logs**: Los datos capturados en bruto **nunca** se escriben en los logs propios de Axiom ni en la telemetría.
 - **Local-First (Local Primero)**: Todo el trabajo pesado (Redacción, embeddings BERT, transformación) ocurre localmente en la CPU del usuario.
+
+## 5. Developer Laboratory Mode
+
+El Developer Laboratory Mode (Decision Tracing), ejecutado vía la bandera `--dev` o el comando `axiom dev`, intercepta las seis etapas existentes del pipeline (Deduplicar, Transformar, Guardia, Redactar, Analizar, Plugins) sin inventar nuevas. Almacena detalles de ejecución en `AxiomEngine::traces` para su renderizado post-ejecución, ayudando a depurar el <span style="color: #00FFFF;">Semantic Firewall</span>.

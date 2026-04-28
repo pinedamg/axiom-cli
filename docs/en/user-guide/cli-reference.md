@@ -9,6 +9,7 @@ When you run `axiom` followed by any command not listed below, it acts as a **Se
 When running in proxy mode (e.g., `axiom npm install`), you can use the following global flags:
 
 - `--raw`: Bypasses all Axiom processing and synthesis. Outputs the exact stream from the child process.
+- `--dev`: Enable Developer Laboratory Mode (Decision Tracing).
 - `--markdown`: Enables automatic transformation of terminal tables into Markdown format.
 - `--yes`: Automatically answer "yes" to all prompts.
 
@@ -62,6 +63,11 @@ Show token savings analytics.
 
 ### `axiom check-ai`
 Check if the current process was called by an AI agent. Exits with 0 if detected, 1 otherwise.
+
+### `axiom dev`
+Run a command in Developer Laboratory Mode (Decision Tracing).
+- **Flags**:
+  - `<args>...`: The command to execute.
 
 ## Configuration & Discovery Commands
 

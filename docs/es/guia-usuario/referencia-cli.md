@@ -9,6 +9,7 @@ Cuando ejecutas `axiom` seguido de cualquier comando que no esté en la lista de
 Cuando se ejecuta en modo proxy (ej., `axiom npm install`), puedes usar las siguientes banderas (flags) globales:
 
 - `--raw`: Omite todo el procesamiento y síntesis de Axiom. Muestra el flujo exacto del proceso hijo.
+- `--dev`: Habilita el Developer Laboratory Mode (Decision Tracing).
 - `--markdown`: Habilita la transformación automática de tablas de la terminal a formato Markdown.
 - `--yes`: Responde automáticamente "sí" a todas las preguntas.
 
@@ -62,6 +63,11 @@ Muestra análisis sobre el ahorro de tokens.
 
 ### `axiom check-ai`
 Verifica si el proceso actual fue llamado por un agente de IA. Sale con código 0 si es detectado, 1 en caso contrario.
+
+### `axiom dev`
+Ejecuta un comando en Developer Laboratory Mode (Decision Tracing).
+- **Banderas**:
+  - `<args>...`: El comando a ejecutar.
 
 ## Comandos de Configuración y Descubrimiento
 
