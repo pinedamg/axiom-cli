@@ -18,3 +18,8 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+
+## Memory Optimizations
+- Avoided replacing pre-allocated Strings with zero-capacity buffers in gateway filters.
+- Eliminated redundant `String` clones in command insight handlers (`ps`) by utilizing `Option<&str>`.
+- Reused the `Option<String>` buffer in the `stage_deduplicate` hot path to minimize new heap allocations.
