@@ -18,3 +18,10 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+
+### ⚡ Hot-Path Optimizations
+*   **Buffer Re-use (`src/engine/mod.rs`)**: Replaced `self.discovery.last_line = Some(line.to_string())` with a strategy that extracts the buffer using `.take()`, clears it, and appends via `.push_str()` to reuse allocations.
+*   **Capacity Retention (`src/gateway/filters.rs`)**: Replaced `std::mem::take()` with `.clone()` followed by `.clear()` in the `StreamPipeline::process` loop to preserve pre-allocated buffer capacities.
+*   **Pointer Tracking (`src/engine/commands/ps.rs`)**: Switched from `String` cloning to tracking an `Option<&str>` referencing discovery buffers to avoid unnecessary string copies in insight generation.
+
+**Impact**: Significant reductions in memory allocations and reallocations in the gateway event stream and the deduplication hot-path.
