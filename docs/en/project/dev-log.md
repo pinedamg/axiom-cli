@@ -46,3 +46,8 @@ During Phase 3 validation, a critical improvement opportunity was identified ("M
 
 ---
 *Last update: Completion of Phase 3 prototype and recording of Smart Aggregator.*
+
+## 6. Developer Laboratory Mode (April 2026)
+- **Feature**: `axiom dev` command and `--dev` flag.
+- **Purpose**: Allow developers to introspect Axiom's decision-making pipeline line-by-line (intent matching, threshold drops, redactions).
+- **Implementation**: Utilizes `std::env` flags to configure tracing at session setup.

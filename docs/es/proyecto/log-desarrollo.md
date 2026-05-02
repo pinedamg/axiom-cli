@@ -39,3 +39,8 @@ Axiom debe ser transparente para el agente de IA (Gemini, Claude, Cursor, etc.):
 
 ---
 *Última actualización: Finalización del prototipo de la Fase 3 y registro del Agregador Inteligente.*
+
+## 6. Modo de Laboratorio para Desarrolladores (Abril 2026)
+- **Característica**: Comando `axiom dev` y bandera `--dev`.
+- **Propósito**: Permitir a los desarrolladores introspeccionar el pipeline de toma de decisiones de Axiom línea por línea (coincidencia de intenciones, caídas de umbral, redacciones).
+- **Implementación**: Utiliza banderas de `std::env` para configurar el rastreo en la configuración de la sesión.
