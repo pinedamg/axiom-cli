@@ -104,7 +104,7 @@ impl DiscoveryEngine {
         if let Some(h) = handler {
             if let Some(meta) = h.parse_line(line) {
                 let is_outlier = h.is_outlier(line, &meta);
-                let prefix = h.get_category(&meta.perms);
+                let prefix = h.get_category(&meta);
                 let key = h.get_key(&prefix, &meta);
 
                 self.synthesis_buffer.entry(key).or_default().push(meta);

@@ -18,3 +18,7 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+## Bolt Memory Discoveries
+* **PsHandler Loop**: Discovered string cloning inside the iteration loop in `PsHandler::generate_insight` (`src/engine/commands/ps.rs`) when finding the top process name. This allocation is unnecessary because the buffer data is available. Replaced it with `Option<&str>` (referencing the data in the `DiscoveryBuffer`).
+* **Line Deduplication**: Discovered continuous heap allocations in the `stage_deduplicate` hot path due to replacing the `last_line` with a newly allocated string on each new line. Optimized to reuse existing `Option<String>` buffer by using `.clear()` and `.push_str()` when possible.
+* **Get Category**: Found that `CommandHandler` trait was passing raw `&str` instead of `&LineMetadata` for `get_category`, which limits context and causes inefficiencies (like not knowing `is_dir` without extra computation). Refactored `CommandHandler::get_category` to accept `&LineMetadata`.
