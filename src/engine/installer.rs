@@ -147,8 +147,7 @@ impl AxiomInstaller {
         if !content.ends_with('\n') { new_block.push('\n'); }
         new_block.push_str(end_marker);
 
-        let updated_content = if file_content.contains(start_marker) {
-            let start_idx = file_content.find(start_marker).unwrap();
+        let updated_content = if let Some(start_idx) = file_content.find(start_marker) {
             let end_idx = file_content.find(end_marker).map(|i| i + end_marker.len()).unwrap_or(file_content.len());
             let mut result = file_content[..start_idx].to_string();
             result.push_str(&new_block);
@@ -175,8 +174,7 @@ impl AxiomInstaller {
         if !path.exists() || path.is_dir() { return Ok(()); }
         let content = fs::read_to_string(path)?;
 
-        if content.contains(start_marker) {
-            let start_idx = content.find(start_marker).unwrap();
+        if let Some(start_idx) = content.find(start_marker) {
             let end_idx = content.find(end_marker).map(|i| i + end_marker.len()).unwrap_or(content.len());
             
             let mut updated = content[..start_idx].to_string();
