@@ -43,7 +43,7 @@ impl CommandHandler for KubectlHandler {
         None
     }
 
-    fn get_category(&self, _perms: &str) -> String {
+    fn get_category(&self, _meta: &LineMetadata) -> String {
         "K8S".to_string()
     }
 

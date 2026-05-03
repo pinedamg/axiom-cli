@@ -38,7 +38,7 @@ impl CommandHandler for JournalHandler {
         })
     }
 
-    fn get_category(&self, _perms: &str) -> String {
+    fn get_category(&self, _meta: &LineMetadata) -> String {
         "SYS".to_string()
     }
 
