@@ -54,8 +54,9 @@ Axiom sigue una **Arquitectura Limpia por Capas (Layered Clean Architecture)** a
 7.  **Redactar**: Las líneas se escanean y los secretos/PII se redactan.
 8.  **Analizar**: La lógica del esquema y las coincidencias semánticas procesan la línea limpia.
 9.  **Plugins**: Cualquier plugin de WebAssembly realiza manipulaciones finales.
-10. **Salida Final**: La salida de alta señal se imprime en la terminal para que el agente de IA la consuma.
-11. **Analíticas**: Se calculan los ahorros y se almacenan en la BD local SQLite.
+10. **Rastreo de Desarrollador** (`dev_mode`): Intercepta las etapas existentes (Deduplicar, Transformar, Guardia, Redactar, Analizar, Plugins) para rastrear eventos de decisión para depuración.
+11. **Salida Final**: La salida de alta señal se imprime en la terminal para que el agente de IA la consuma.
+12. **Analíticas**: Se calculan los ahorros y se almacenan en la BD local SQLite.
 
 ## 4. Estándares de Seguridad
 

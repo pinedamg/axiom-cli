@@ -54,8 +54,9 @@ Axiom follows a **Layered Clean Architecture** adapted for Rust's performance ne
 7.  **Redact**: Lines are scanned and secrets/PII are redacted.
 8.  **Analyze**: Schema logic and Semantic matches process the cleaned line.
 9.  **Plugins**: Any WebAssembly plugins perform final manipulations.
-10. **Final Output**: High-signal output is printed to the terminal for the AI agent to consume.
-11. **Analytics**: Savings are calculated and stored in the local SQLite DB.
+10. **Developer Tracing** (`dev_mode`): Intercepts the existing stages (Deduplicate, Transform, Guard, Redact, Analyze, Plugins) to trace decision events for debugging.
+11. **Final Output**: High-signal output is printed to the terminal for the AI agent to consume.
+12. **Analytics**: Savings are calculated and stored in the local SQLite DB.
 
 ## 4. Security Standards
 

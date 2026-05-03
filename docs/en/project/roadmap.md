@@ -135,6 +135,7 @@ This section defines the expansion of default schemas and intelligent modes for 
 ### 🟡 Tier 2: Build & Dev Ecosytems (Context-Aware)
 *Goal: Filter successful boilerplate and focus on warnings/errors.*
 - [x] **npm / pnpm / yarn**: Basic installer noise reduction.
+- [x] **apt**: Linux package manager noise reduction.
 - [x] **cargo (Rust)**: Collapse dependency downloading/compiling. Force-show local crate warnings.
 - [x] **go build / test**: Summarize test results.
 - [ ] **pip / poetry / conda**: Clean virtualenv setup and logs.
