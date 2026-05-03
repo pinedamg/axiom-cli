@@ -114,8 +114,8 @@ impl CommandHandler for GitHandler {
         line.contains("both modified:") || line.contains("<<<<<<<") || line.contains("=======")
     }
 
-    fn get_category(&self, perms: &str) -> String {
-        if ["LOG_COMMIT", "MODIFIED", "UNTRACKED", "DELETED", "NEW", "RENAMED", "STAGED"].contains(&perms) { 
+    fn get_category(&self, meta: &LineMetadata) -> String {
+        if ["LOG_COMMIT", "MODIFIED", "UNTRACKED", "DELETED", "NEW", "RENAMED", "STAGED"].contains(&meta.perms.as_str()) {
             "GIT".to_string() 
         } else {
             "FILE".to_string()
