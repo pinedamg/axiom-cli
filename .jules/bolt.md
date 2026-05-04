@@ -18,3 +18,7 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+Bolt Memory Optimization Findings:
+- Reused Option<String> buffer in stage_deduplicate to avoid continuous heap allocations in the line-processing hot path.
+- Tracked top_proc using Option<&str> instead of String in PsHandler::generate_insight to avoid redundant String clones inside the loop.
+- Used idiomatic 'if let Some(idx) = content.find(marker)' in installer.rs to avoid double-scanning strings.
