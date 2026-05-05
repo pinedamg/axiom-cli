@@ -99,3 +99,21 @@ fn test_adversarial_secrets() {
     let result_docker = session.engine.redactor.redact(&format!("container {}", docker_id));
     assert!(result_docker.contains(docker_id), "Docker ID falsely redacted");
 }
+
+#[test]
+fn test_new_secrets() {
+    let (session, _tmp) = common::setup_test_session();
+
+    let fake_keys = vec![
+        "xoxb-123456789012-123456789012-DUMMY_REDACTED_KEYS", // Slack Bot // axiom-scan:ignore
+        "xoxp-123456789012-123456789012-123456789012-DUMMY_REDACTED_KEYS", // Slack User // axiom-scan:ignore
+        "SG.ABCDEF1234567890abcdef.DUMMY_REDACTED_KEYS_1234567890abcdef", // Sendgrid // axiom-scan:ignore
+        "AIzaSyA_DUMMY_REDACTED_KEYS", // Google API Key // axiom-scan:ignore
+    ];
+
+    for key in fake_keys {
+        let line = format!("Found key: {}", key);
+        let result = session.engine.redactor.redact(&line);
+        assert!(!result.contains(key), "Secret leaked in output: {}", key);
+    }
+}
