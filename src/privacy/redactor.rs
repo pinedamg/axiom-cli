@@ -21,6 +21,9 @@ impl PrivacyRedactor {
             Regex::new(r"gh[pousr]_[A-Za-z0-9_]{36,255}").unwrap(), // GitHub Tokens // axiom-scan:ignore
             Regex::new(r"eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+").unwrap(), // JWT // axiom-scan:ignore
             Regex::new(r"\bsk-ant-api03-[a-zA-Z0-9_-]{20,}\b").unwrap(), // Anthropic // axiom-scan:ignore
+            Regex::new(r"\bxox[baprs]-[0-9]+-[0-9]+(?:-[0-9]+)?-[a-zA-Z0-9_]+\b").unwrap(), // Slack // axiom-scan:ignore
+            Regex::new(r"\bSG\.[a-zA-Z0-9_-]{22}\.[a-zA-Z0-9_-]+\b").unwrap(), // Sendgrid // axiom-scan:ignore
+            Regex::new(r"\bAIza[0-9A-Za-z_-]+\b").unwrap(), // Google // axiom-scan:ignore
             Regex::new(r"\bgsk_[a-zA-Z0-9]{32,}\b").unwrap(), // Groq // axiom-scan:ignore
             Regex::new(r"\b(?:sk|pk)_(?:test|live)_[0-9a-zA-Z]{10,}\b").unwrap(), // Stripe // axiom-scan:ignore
             Regex::new(r"\bya29\.[a-zA-Z0-9_-]{20,}\b").unwrap(), // Google OAuth // axiom-scan:ignore
