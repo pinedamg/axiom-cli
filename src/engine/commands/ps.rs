@@ -27,9 +27,9 @@ impl CommandHandler for PsHandler {
         
         let clean_cmd = if is_kernel {
             let base = command_full.trim_matches(|c| c == '[' || c == ']');
-            let normalized = base.split('/').next().unwrap()
-                .split(':').next().unwrap()
-                .split('-').next().unwrap();
+            let normalized = base.split('/').next().unwrap_or(base)
+                .split(':').next().unwrap_or(base)
+                .split('-').next().unwrap_or(base);
             format!("[{}]", normalized)
         } else {
             // Take the first part of the command (the executable)
@@ -47,7 +47,10 @@ impl CommandHandler for PsHandler {
 
     fn generate_insight(&self, _command: &str, buffer: &DiscoveryBuffer) -> Option<String> {
         let mut max_cpu = 0.0;
-        let mut top_proc = String::new();
+        // ⚡ Bolt: Usamos Option<&str> en lugar de String para top_proc.
+        // Esto permite referenciar los datos del DiscoveryBuffer directamente,
+        // evitando múltiples clones del String dentro de la iteración.
+        let mut top_proc: Option<&str> = None;
         let mut total_procs = 0;
 
         for (key, items) in buffer {
@@ -57,7 +60,7 @@ impl CommandHandler for PsHandler {
                     if let Ok(cpu) = item.size.parse::<f64>() {
                         if cpu > max_cpu {
                             max_cpu = cpu;
-                            top_proc = item.name.clone();
+                            top_proc = Some(item.name.as_str());
                         }
                     }
                 }
@@ -66,7 +69,7 @@ impl CommandHandler for PsHandler {
 
         if total_procs > 0 {
             if max_cpu > 10.0 {
-                Some(format!("High CPU load detected: {} is using {}% CPU. Total active processes: {}.", top_proc, max_cpu, total_procs))
+                Some(format!("High CPU load detected: {} is using {}% CPU. Total active processes: {}.", top_proc.unwrap_or("unknown"), max_cpu, total_procs))
             } else {
                 Some(format!("System health stable. Total active processes: {}. No single process exceeding 10% CPU.", total_procs))
             }
