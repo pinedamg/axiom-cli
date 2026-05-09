@@ -138,6 +138,7 @@ This section defines the expansion of default schemas and intelligent modes for 
 - [x] **cargo (Rust)**: Collapse dependency downloading/compiling. Force-show local crate warnings.
 - [x] **go build / test**: Summarize test results.
 - [ ] **pip / poetry / conda**: Clean virtualenv setup and logs.
+- [x] **apt**: Ubuntu/Debian installer noise reduction.
 
 ### 🟠 Tier 3: Infrastructure & Cloud (Volume Control)
 *Goal: Prevent context window saturation from massive infrastructure outputs.*

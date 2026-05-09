@@ -88,6 +88,7 @@ Esta sección define la expansión de esquemas predeterminados y modos inteligen
 - [x] **cargo (Rust)**: Colapsar la descarga/compilación de dependencias. Mostrar forzosamente advertencias de crates locales.
 - [x] **go build / test**: Resumir resultados de pruebas.
 - [ ] **pip / poetry / conda**: Limpiar registros de configuración de virtualenv e instalación de paquetes.
+- [x] **apt**: Reducción de ruido del instalador de Ubuntu/Debian.
 
 ### 🟠 Nivel 3: Infraestructura y Nube (Control de Volumen)
 *Objetivo: Prevenir la saturación de la ventana de contexto por salidas masivas.*
