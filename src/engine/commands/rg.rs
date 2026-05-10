@@ -58,7 +58,7 @@ impl CommandHandler for RgHandler {
         None
     }
 
-    fn get_category(&self, _perms: &str) -> String {
+    fn get_category(&self, _meta: &LineMetadata) -> String {
         "SEARCH".to_string()
     }
 

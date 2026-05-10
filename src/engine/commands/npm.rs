@@ -91,8 +91,8 @@ impl CommandHandler for NpmHandler {
         }
     }
 
-    fn get_category(&self, perms: &str) -> String {
-        if ["WARN", "ADD", "AUDIT"].contains(&perms) {
+    fn get_category(&self, meta: &LineMetadata) -> String {
+        if ["WARN", "ADD", "AUDIT"].contains(&meta.perms.as_str()) {
             "NPM".to_string()
         } else {
             "FILE".to_string()

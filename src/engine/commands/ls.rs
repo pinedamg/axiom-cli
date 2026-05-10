@@ -104,8 +104,8 @@ impl CommandHandler for LsHandler {
         false
     }
 
-    fn get_category(&self, perms: &str) -> String {
-        if perms.contains('x') || perms == "rwx" { "DIR".to_string() }
+    fn get_category(&self, meta: &LineMetadata) -> String {
+        if meta.perms.contains('x') || meta.perms == "rwx" { "DIR".to_string() }
         else { "FILE".to_string() }
     }
 

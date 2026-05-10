@@ -36,7 +36,7 @@ impl CommandHandler for JqHandler {
         None
     }
 
-    fn get_category(&self, _perms: &str) -> String {
+    fn get_category(&self, _meta: &LineMetadata) -> String {
         "DATA".to_string()
     }
 

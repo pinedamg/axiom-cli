@@ -32,7 +32,7 @@ pub trait CommandHandler: Send + Sync {
     }
 
     /// Returns the semantic category for this line (e.g. GIT, DOCKER, CARGO)
-    fn get_category(&self, _perms: &str) -> String {
+    fn get_category(&self, _meta: &LineMetadata) -> String {
         "FILE".to_string()
     }
 
