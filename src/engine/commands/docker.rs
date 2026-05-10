@@ -125,8 +125,8 @@ impl CommandHandler for DockerHandler {
         }
     }
 
-    fn get_category(&self, perms: &str) -> String {
-        if ["Running", "Stopped", "Created", "LAYER", "BUILD", "COMPOSE"].contains(&perms) {
+    fn get_category(&self, meta: &LineMetadata) -> String {
+        if ["Running", "Stopped", "Created", "LAYER", "BUILD", "COMPOSE"].contains(&meta.perms.as_str()) {
             "DOCKER".to_string()
         } else {
             "FILE".to_string()
