@@ -29,7 +29,7 @@ Este Roadmap combinado define la ruta de implementación de **AXIOM**, priorizan
 
 ### Fase 3: Aprendizaje y Ecosistema (Gamma) - [EN PROGRESO]
 **Objetivo**: Automatización total y escalabilidad comunitaria.
-- [ ] **Toolset para Desarrolladores**: Expansión de esquemas por defecto para Linux (Ver sección Toolset abajo).
+- [x] **Toolset para Desarrolladores**: Expansión de esquemas por defecto para Linux (Ver sección Toolset abajo).
 - [x] Agregador Inteligente: Buffer variable y Resumen Sintético.
 
 #### 3.2 Sistema de Plugins WASM - [COMPLETADO]

@@ -29,7 +29,7 @@ This combined Roadmap defines the implementation path for **AXIOM**, prioritizin
 
 ### Phase 3: Learning & Ecosystem (Gamma) - [IN PROGRESS]
 **Goal**: Total automation and community scalability.
-- [ ] **Developer Toolset**: Expanding default schemas for Linux (See Toolset section below).
+- [x] **Developer Toolset**: Expanding default schemas for Linux (See Toolset section below).
 - [x] Smart Aggregator: Variable Buffer and Synthetic Summary.
 
 #### 3.2 WASM Plugin System - [COMPLETED]
