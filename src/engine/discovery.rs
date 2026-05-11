@@ -15,7 +15,7 @@ pub struct DiscoveryEngine {
     // and leverage native sorting without extra allocation steps during flush_variable_summary.
     pub templates: BTreeMap<String, usize>,
     pub synthesis_buffer: BTreeMap<String, Vec<LineMetadata>>,
-    pub variable_buffer: BTreeMap<String, Vec<Vec<String>>>,
+    pub variable_buffer: BTreeMap<String, usize>,
     pub threshold: usize,
     pub last_line: Option<String>,
     pub repeat_count: usize,
@@ -57,8 +57,8 @@ impl DiscoveryEngine {
                 total += item.name.len() + 20; // Plus overhead
             }
         }
-        for (template, var_sets) in &self.variable_buffer {
-            total += template.len() * var_sets.len();
+        for (template, count) in &self.variable_buffer {
+            total += template.len() * count;
         }
         total
     }
@@ -125,20 +125,20 @@ impl DiscoveryEngine {
 
     pub fn process_and_check_noise(&mut self, line: &str, handler: Option<&dyn CommandHandler>, command: &str) -> bool {
         if self.synthesize_line(line, handler, command) { return true; }
-        let (template, vars) = self.extract_parts(line);
+        let (template, _vars) = self.extract_parts(line);
         
         let count = self.templates.entry(template.clone()).or_insert(0);
         
         // If we already have high confidence in this pattern (e.g. loaded from DB with high frequency),
         // collapse it immediately. Otherwise, wait for the threshold.
         if *count > self.threshold {
-            self.variable_buffer.entry(template).or_default().push(vars);
+            *self.variable_buffer.entry(template).or_insert(0) += 1;
             return true;
         }
 
         *count += 1;
         if *count > self.threshold {
-            self.variable_buffer.entry(template).or_default().push(vars);
+            *self.variable_buffer.entry(template).or_insert(0) += 1;
             true
         } else {
             false
@@ -207,9 +207,9 @@ impl DiscoveryEngine {
             }
         }
 
-        for (template, var_sets) in std::mem::take(&mut self.variable_buffer) {
-            if var_sets.len() > 1 {
-                summaries.push(format!("Line matched {} more times: {}", var_sets.len(), template));
+        for (template, count) in std::mem::take(&mut self.variable_buffer) {
+            if count > 1 {
+                summaries.push(format!("Line matched {} more times: {}", count, template));
             }
         }
         summaries
