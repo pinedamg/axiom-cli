@@ -78,7 +78,7 @@ Esta sección define la expansión de esquemas predeterminados y modos inteligen
 ### 🟢 Nivel 1: Los Fundamentos (Alta Frecuencia)
 *Objetivo: Eliminar el ruido estructural de los comandos diarios.*
 - [x] **ls / tree**: Colapsar archivos ocultos, metadatos y directorios basura.
-- [x] **cat / tail / head**: "Modo Guardián" para archivos > 50 líneas (auto-resumen).
+- [x] **cat / tail / head**: "Modo Guardián" para archivos > 100 líneas (auto-resumen).
 - [x] **grep / rg (ripgrep)**: Agregar coincidencias por archivo y proporcionar resúmenes de densidad.
 - [x] **curl / wget**: Ocultar barras de progreso y cabeceras HTTP redundantes.
 
