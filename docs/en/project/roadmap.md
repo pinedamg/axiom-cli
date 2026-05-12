@@ -128,7 +128,7 @@ This section defines the expansion of default schemas and intelligent modes for 
 ### 🟢 Tier 1: The Core Fundamentals (High Frequency)
 *Goal: Remove structural noise from everyday commands.*
 - [x] **ls / tree**: Collapse hidden files, metadata, and junk directories.
-- [x] **cat / tail / head**: "Guardian Mode" for files > 50 lines (auto-summary).
+- [x] **cat / tail / head**: "Guardian Mode" for files > 100 lines (auto-summary).
 - [x] **grep / rg (ripgrep)**: Aggregate matches per file and provide density summaries.
 - [x] **curl / wget**: Hide progress bars and redundant HTTP headers.
 
