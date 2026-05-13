@@ -1,14 +1,14 @@
 pub mod core;
+pub mod detective;
+pub mod filters;
 pub mod process;
 pub mod render;
 pub mod stream;
-pub mod detective;
-pub mod filters;
 
-use crate::IntentContext;
-use crate::session::AxiomSession;
 use crate::gateway::core::OutputRenderer;
 use crate::gateway::render::TtyRenderer;
+use crate::session::AxiomSession;
+use crate::IntentContext;
 
 /// Executes a command under Axiom's supervision.
 pub async fn execute_command(
@@ -23,13 +23,14 @@ pub async fn execute_command(
     let mut renderer = TtyRenderer;
 
     let (total_original, total_compressed) = stream::stream_io(
-        &mut child, 
-        &command_str, 
-        context, 
-        session, 
+        &mut child,
+        &command_str,
+        context,
+        session,
         &mut renderer,
-        raw_mode
-    ).await?;
+        raw_mode,
+    )
+    .await?;
 
     if !raw_mode {
         let summaries = session.engine.flush_summaries();

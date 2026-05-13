@@ -31,7 +31,11 @@ mod tests {
         let text = "this is a normal sentence with low randomness";
         let entropy = calculate_entropy(text);
         // Normal text usually falls between 3.0 and 4.2
-        assert!(entropy < 4.5, "Expected low entropy for normal text, got {}", entropy);
+        assert!(
+            entropy < 4.5,
+            "Expected low entropy for normal text, got {}",
+            entropy
+        );
     }
 
     #[test]
@@ -39,6 +43,10 @@ mod tests {
         let secret = "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6";
         let entropy = calculate_entropy(secret);
         // A random secret has high entropy (> 4.5)
-        assert!(entropy > 4.5, "Expected high entropy for secret key, got {}", entropy);
+        assert!(
+            entropy > 4.5,
+            "Expected high entropy for secret key, got {}",
+            entropy
+        );
     }
 }

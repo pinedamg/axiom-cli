@@ -1,5 +1,5 @@
-use sha2::{Sha256, Digest};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -42,7 +42,9 @@ impl Handshake {
             }
             nonce += 1;
             // Safety break to prevent infinite loops in extreme cases
-            if nonce > 10_000_000 { return 0; }
+            if nonce > 10_000_000 {
+                return 0;
+            }
         }
     }
 
@@ -50,7 +52,9 @@ impl Handshake {
     pub fn register_node() -> anyhow::Result<(String, String)> {
         let hash = Self::get_hardware_hash();
         let nonce = Self::solve_pow(&hash);
-        let funnel_id = std::env::var("AXIOM_FUNNEL_ID").ok().and_then(|s| Uuid::parse_str(&s).ok());
+        let funnel_id = std::env::var("AXIOM_FUNNEL_ID")
+            .ok()
+            .and_then(|s| Uuid::parse_str(&s).ok());
 
         let req = NodeRegisterReq {
             hardware_hash: hash,

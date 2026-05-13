@@ -1,12 +1,12 @@
-use serde::{Deserialize, Serialize};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ToolSchema {
     pub name: String,
     pub command_pattern: String,
     pub rules: Vec<TransformationRule>,
-    
+
     #[serde(skip)]
     pub(crate) compiled_command_re: Option<Regex>,
 }
@@ -43,13 +43,16 @@ impl ToolSchema {
     }
 
     pub fn matches(&self, command: &str) -> bool {
-        self.compiled_command_re.as_ref().map_or(false, |re| re.is_match(command))
+        self.compiled_command_re
+            .as_ref()
+            .map_or(false, |re| re.is_match(command))
     }
 
     /// Applies rules to a line and returns the action to take
     pub fn apply_rules(&self, line: &str) -> Option<Action> {
         // Find the matching rule with the highest priority
-        self.rules.iter()
+        self.rules
+            .iter()
             .filter(|r| r.compiled_re.as_ref().map_or(false, |re| re.is_match(line)))
             .max_by_key(|r| r.priority)
             .map(|r| r.action)

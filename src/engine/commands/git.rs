@@ -1,5 +1,5 @@
-use crate::engine::discovery::LineMetadata;
 use super::{CommandHandler, DiscoveryBuffer};
+use crate::engine::discovery::LineMetadata;
 
 pub struct GitHandler;
 
@@ -16,27 +16,29 @@ impl CommandHandler for GitHandler {
 
     fn parse_line(&self, line: &str) -> Option<LineMetadata> {
         let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with('(') || trimmed.contains("files:") { return None; }
-        
+        if trimmed.is_empty() || trimmed.starts_with('(') || trimmed.contains("files:") {
+            return None;
+        }
+
         // 1. Detect standard commit log (commit <hash>)
         if line.starts_with("commit ") {
             let hash = trimmed.split_whitespace().nth(1).unwrap_or("unknown");
-            return Some(LineMetadata { 
-                perms: "LOG_COMMIT".to_string(), 
-                size: hash[..7.min(hash.len())].to_string(), 
-                name: "commit".to_string(), 
-                is_dir: false 
+            return Some(LineMetadata {
+                perms: "LOG_COMMIT".to_string(),
+                size: hash[..7.min(hash.len())].to_string(),
+                name: "commit".to_string(),
+                is_dir: false,
             });
         }
 
         // 2. Detect git log --oneline (hash at start)
         let first_word = trimmed.split_whitespace().next().unwrap_or("");
         if Self::is_oneline_hash(first_word) {
-            return Some(LineMetadata { 
-                perms: "LOG_COMMIT".to_string(), 
-                size: first_word.to_string(), 
-                name: "commit".to_string(), 
-                is_dir: false 
+            return Some(LineMetadata {
+                perms: "LOG_COMMIT".to_string(),
+                size: first_word.to_string(),
+                name: "commit".to_string(),
+                is_dir: false,
             });
         }
 
@@ -53,19 +55,21 @@ impl CommandHandler for GitHandler {
             return None;
         };
 
-        if path.is_empty() || path.contains("nothing to commit") { return None; }
-        
-        let folder = if path.contains('/') { 
-            path.split('/').next().unwrap_or("root").to_string() 
-        } else { 
-            "root".to_string() 
+        if path.is_empty() || path.contains("nothing to commit") {
+            return None;
+        }
+
+        let folder = if path.contains('/') {
+            path.split('/').next().unwrap_or("root").to_string()
+        } else {
+            "root".to_string()
         };
 
-        Some(LineMetadata { 
-            perms: state.to_string(), 
-            size: folder, 
-            name: path.to_string(), 
-            is_dir: path.contains('/') 
+        Some(LineMetadata {
+            perms: state.to_string(),
+            size: folder,
+            name: path.to_string(),
+            is_dir: path.contains('/'),
         })
     }
 
@@ -75,9 +79,13 @@ impl CommandHandler for GitHandler {
         let mut log_commits = 0;
 
         for (key, items) in buffer {
-            if key.contains("MODIFIED") { modified += items.len(); }
-            else if key.contains("UNTRACKED") { untracked += items.len(); }
-            else if key.contains("LOG_COMMIT") { log_commits += items.len(); }
+            if key.contains("MODIFIED") {
+                modified += items.len();
+            } else if key.contains("UNTRACKED") {
+                untracked += items.len();
+            } else if key.contains("LOG_COMMIT") {
+                log_commits += items.len();
+            }
         }
 
         if command.contains("status") {
@@ -87,7 +95,10 @@ impl CommandHandler for GitHandler {
                 Some("Repository clean. No pending changes detected.".to_string())
             }
         } else if command.contains("log") {
-            Some(format!("Detected active history with {} commits in this view. Use 'git show' for details.", log_commits))
+            Some(format!(
+                "Detected active history with {} commits in this view. Use 'git show' for details.",
+                log_commits
+            ))
         } else {
             None
         }
@@ -95,17 +106,29 @@ impl CommandHandler for GitHandler {
 
     fn format_summary(&self, key: &str, items: &[LineMetadata]) -> Option<String> {
         let parts: Vec<&str> = key.split(':').collect();
-        if parts[0] != "GIT" { return None; }
-        
+        if parts[0] != "GIT" {
+            return None;
+        }
+
         let state = parts.get(1).unwrap_or(&"UNKNOWN");
-        
+
         if *state == "LOG_COMMIT" {
             let hashes: Vec<String> = items.iter().map(|m| m.size.clone()).collect();
-            return Some(format!("Git History: {} recent commits | Hashes: {}...", items.len(), hashes.join(", ")));
+            return Some(format!(
+                "Git History: {} recent commits | Hashes: {}...",
+                items.len(),
+                hashes.join(", ")
+            ));
         } else {
             let folder = parts.get(2).unwrap_or(&"root");
             let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-            return Some(format!("Git {}: {} files in [{}] | {}", state, items.len(), folder, names.join(", ")));
+            return Some(format!(
+                "Git {}: {} files in [{}] | {}",
+                state,
+                items.len(),
+                folder,
+                names.join(", ")
+            ));
         }
     }
 
@@ -114,16 +137,29 @@ impl CommandHandler for GitHandler {
         line.contains("both modified:") || line.contains("<<<<<<<") || line.contains("=======")
     }
 
-    fn get_category(&self, perms: &str) -> String {
-        if ["LOG_COMMIT", "MODIFIED", "UNTRACKED", "DELETED", "NEW", "RENAMED", "STAGED"].contains(&perms) { 
-            "GIT".to_string() 
+    fn get_category(&self, meta: &LineMetadata) -> String {
+        if [
+            "LOG_COMMIT",
+            "MODIFIED",
+            "UNTRACKED",
+            "DELETED",
+            "NEW",
+            "RENAMED",
+            "STAGED",
+        ]
+        .contains(&meta.perms.as_str())
+        {
+            "GIT".to_string()
         } else {
             "FILE".to_string()
         }
     }
 
     fn get_key(&self, prefix: &str, meta: &LineMetadata) -> String {
-        if meta.perms == "LOG_COMMIT" { format!("{}:{}:ALL", prefix, meta.perms) }
-        else { format!("{}:{}:{}", prefix, meta.perms, meta.size) }
+        if meta.perms == "LOG_COMMIT" {
+            format!("{}:{}:ALL", prefix, meta.perms)
+        } else {
+            format!("{}:{}:{}", prefix, meta.perms, meta.size)
+        }
     }
 }

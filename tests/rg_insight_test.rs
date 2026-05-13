@@ -1,8 +1,8 @@
-use axiom::engine::AxiomEngine;
-use axiom::privacy::PrivacyRedactor;
 use axiom::engine::intelligence::FuzzyIntelligence;
-use axiom::IntentContext;
+use axiom::engine::AxiomEngine;
 use axiom::gateway::core::TerminalEvent;
+use axiom::privacy::PrivacyRedactor;
+use axiom::IntentContext;
 
 #[test]
 fn test_rg_aggregation() {
@@ -22,16 +22,26 @@ fn test_rg_aggregation() {
     ];
 
     for line in lines {
-        engine.process_line(TerminalEvent::StaticLine(line.to_string()), "rg Axiom", &context);
+        engine.process_line(
+            TerminalEvent::StaticLine(line.to_string()),
+            "rg Axiom",
+            &context,
+        );
     }
 
     let summaries = engine.flush_summaries();
-    
+
     // Check for insight
-    assert!(summaries.iter().any(|s| s.contains("Search found 4 matches across 3 unique files")));
-    
+    assert!(summaries
+        .iter()
+        .any(|s| s.contains("Search found 4 matches across 3 unique files")));
+
     // Check for file-specific summaries
-    assert!(summaries.iter().any(|s| s.contains("src/main.rs: 2 matches")));
-    assert!(summaries.iter().any(|s| s.contains("src/lib.rs: 1 matches")));
+    assert!(summaries
+        .iter()
+        .any(|s| s.contains("src/main.rs: 2 matches")));
+    assert!(summaries
+        .iter()
+        .any(|s| s.contains("src/lib.rs: 1 matches")));
     assert!(summaries.iter().any(|s| s.contains("README.md: 1 matches")));
 }

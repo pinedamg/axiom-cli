@@ -1,5 +1,5 @@
-use axiom::persistence::PersistenceManager;
 use axiom::config::AxiomConfig;
+use axiom::persistence::PersistenceManager;
 use tempfile::NamedTempFile;
 
 #[test]
@@ -40,7 +40,7 @@ fn test_persistence_bypass_countdown() {
     p.decrement_bypass_count().unwrap();
     let last = p.decrement_bypass_count().unwrap();
     assert_eq!(last, 0);
-    
+
     // Should stay at 0
     let below_zero = p.decrement_bypass_count().unwrap();
     assert_eq!(below_zero, 0);
@@ -49,43 +49,51 @@ fn test_persistence_bypass_countdown() {
 #[test]
 fn test_config_blacklist_persistence() {
     let mut config = AxiomConfig::default();
-    
+
     // Check defaults
     assert!(config.blacklist.contains(&"vi".to_string()));
     assert!(config.blacklist.contains(&"ssh".to_string()));
 
     // Add new
     config.blacklist.push("my-custom-tool".to_string());
-    
-    // Note: save_global uses HOME, so we don't test actual file write here 
+
+    // Note: save_global uses HOME, so we don't test actual file write here
     // to avoid polluting the runner's home, but we validate the struct logic.
     assert!(config.blacklist.contains(&"my-custom-tool".to_string()));
 }
 
 #[test]
 fn test_discovery_threshold_logic() {
-    use axiom::engine::AxiomEngine;
-    use axiom::privacy::PrivacyRedactor;
     use axiom::engine::intelligence::FuzzyIntelligence;
-    use axiom::IntentContext;
+    use axiom::engine::AxiomEngine;
     use axiom::gateway::core::TerminalEvent;
+    use axiom::privacy::PrivacyRedactor;
+    use axiom::IntentContext;
 
     let redactor = PrivacyRedactor::default();
     let intelligence = Box::new(FuzzyIntelligence);
-    
+
     // Create engine with a VERY low threshold (1)
     // This means after 1 repeat, it should start collapsing.
     let mut engine = AxiomEngine::new(redactor, vec![], intelligence, 1);
-    
+
     let context = IntentContext::default();
 
     let line = "Generating noise...";
-    
+
     // Line 1: Normal
-    engine.process_line(TerminalEvent::StaticLine(line.to_string()), "unknown", &context);
+    engine.process_line(
+        TerminalEvent::StaticLine(line.to_string()),
+        "unknown",
+        &context,
+    );
     // Line 2: Should trigger threshold
-    let res2 = engine.process_line(TerminalEvent::StaticLine(line.to_string()), "unknown", &context);
-    
+    let res2 = engine.process_line(
+        TerminalEvent::StaticLine(line.to_string()),
+        "unknown",
+        &context,
+    );
+
     // res2 should be None (swallowed) because threshold is 1
     assert_eq!(res2, None);
 }

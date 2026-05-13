@@ -1,5 +1,5 @@
-use std::io::Write;
 use crate::gateway::core::OutputRenderer;
+use std::io::Write;
 
 pub struct TtyRenderer;
 
@@ -21,7 +21,9 @@ impl OutputRenderer for TtyRenderer {
     }
 
     fn render_summary(&mut self, summaries: &[String], is_stderr: bool) {
-        if summaries.is_empty() { return; }
+        if summaries.is_empty() {
+            return;
+        }
 
         let header = "\x1b[1;33m[AXIOM]\x1b[0m";
         self.render_line(header, is_stderr);

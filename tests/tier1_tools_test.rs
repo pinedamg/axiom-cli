@@ -1,6 +1,6 @@
 mod common;
-use axiom::IntentContext;
 use axiom::gateway::core::TerminalEvent;
+use axiom::IntentContext;
 
 #[test]
 fn test_ls_efficiency() {
@@ -23,7 +23,11 @@ drwxr-xr-x 20 user group  4096 Mar 22 10:00 ..
 
     let mut compressed_output = String::new();
     for line in raw_output.lines() {
-        if let Some(processed) = session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context) {
+        if let Some(processed) = session.engine.process_line(
+            TerminalEvent::StaticLine(line.to_string()),
+            command,
+            &context,
+        ) {
             let p: String = processed;
             compressed_output.push_str(&p);
             compressed_output.push('\n');
@@ -56,11 +60,18 @@ fn test_ripgrep_aggregation() {
     }
 
     for line in raw_output.lines() {
-        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
+        session.engine.process_line(
+            TerminalEvent::StaticLine(line.to_string()),
+            command,
+            &context,
+        );
     }
-    
+
     let summaries = session.engine.flush_summaries();
-    assert!(!summaries.is_empty(), "Summaries should be generated for repetitive rg output");
+    assert!(
+        !summaries.is_empty(),
+        "Summaries should be generated for repetitive rg output"
+    );
 }
 
 #[test]
@@ -82,7 +93,11 @@ fn test_cat_guardian_mode() {
     let mut guardian_triggered = false;
 
     for line in raw_output.lines() {
-        if let Some(processed) = session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context) {
+        if let Some(processed) = session.engine.process_line(
+            TerminalEvent::StaticLine(line.to_string()),
+            command,
+            &context,
+        ) {
             lines_printed += 1;
             if processed.contains("Guardian Mode") {
                 guardian_triggered = true;
@@ -90,8 +105,14 @@ fn test_cat_guardian_mode() {
         }
     }
 
-    assert!(guardian_triggered, "Guardian mode should trigger after 100 lines");
-    assert!(lines_printed <= 101, "Should not print more than 101 lines including warning");
+    assert!(
+        guardian_triggered,
+        "Guardian mode should trigger after 100 lines"
+    );
+    assert!(
+        lines_printed <= 101,
+        "Should not print more than 101 lines including warning"
+    );
 }
 
 #[test]
@@ -116,11 +137,24 @@ fn test_curl_io_handling() {
     ";
 
     for line in raw_output.lines() {
-        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
+        session.engine.process_line(
+            TerminalEvent::StaticLine(line.to_string()),
+            command,
+            &context,
+        );
     }
-    
+
     let summaries = session.engine.flush_summaries();
-    assert!(summaries.iter().any(|s| s.contains("Network I/O")), "Should contain network summary");
-    assert!(summaries.iter().any(|s| s.contains("progress")), "Should mention progress updates");
-    assert!(summaries.iter().any(|s| s.contains("TLS")), "Should mention TLS handshakes");
+    assert!(
+        summaries.iter().any(|s| s.contains("Network I/O")),
+        "Should contain network summary"
+    );
+    assert!(
+        summaries.iter().any(|s| s.contains("progress")),
+        "Should mention progress updates"
+    );
+    assert!(
+        summaries.iter().any(|s| s.contains("TLS")),
+        "Should mention TLS handshakes"
+    );
 }

@@ -1,5 +1,5 @@
-use crate::engine::discovery::LineMetadata;
 use super::{CommandHandler, DiscoveryBuffer};
+use crate::engine::discovery::LineMetadata;
 
 pub struct RgHandler;
 
@@ -10,7 +10,9 @@ impl CommandHandler for RgHandler {
 
     fn parse_line(&self, line: &str) -> Option<LineMetadata> {
         let trimmed = line.trim();
-        if trimmed.is_empty() { return None; }
+        if trimmed.is_empty() {
+            return None;
+        }
 
         // Standard grep/rg output usually has a colon.
         // Formats:
@@ -18,7 +20,7 @@ impl CommandHandler for RgHandler {
         // 2. file:content (without -n)
         // 3. line:content (single file with -n)
         let parts: Vec<&str> = trimmed.splitn(3, ':').collect();
-        
+
         if parts.len() == 3 {
             let file = parts[0];
             let line_num = parts[1];
@@ -43,7 +45,7 @@ impl CommandHandler for RgHandler {
                     is_dir: false,
                 });
             }
-            
+
             // If it's a valid looking filename (no spaces, has extensions or paths), it's format #2
             if !first.contains(' ') && (first.contains('.') || first.contains('/')) {
                 return Some(LineMetadata {
@@ -58,7 +60,7 @@ impl CommandHandler for RgHandler {
         None
     }
 
-    fn get_category(&self, _perms: &str) -> String {
+    fn get_category(&self, _meta: &LineMetadata) -> String {
         "SEARCH".to_string()
     }
 
@@ -76,7 +78,11 @@ impl CommandHandler for RgHandler {
         }
 
         if total_matches > 0 {
-            Some(format!("Search found {} matches across {} unique files/locations.", total_matches, files.len()))
+            Some(format!(
+                "Search found {} matches across {} unique files/locations.",
+                total_matches,
+                files.len()
+            ))
         } else {
             None
         }
@@ -84,20 +90,41 @@ impl CommandHandler for RgHandler {
 
     fn format_summary(&self, key: &str, items: &[LineMetadata]) -> Option<String> {
         let parts: Vec<&str> = key.split(':').collect();
-        if parts[0] != "SEARCH" { return None; }
+        if parts[0] != "SEARCH" {
+            return None;
+        }
 
         let location = parts.get(2).unwrap_or(&"unknown");
         let count = items.len();
-        
+
         if *location == "current" || *location == "local" {
             let lines: Vec<String> = items.iter().take(3).map(|m| m.name.clone()).collect();
-            let suffix = if count > 3 { format!(" and {} more...", count - 3) } else { "".to_string() };
-            Some(format!("• {} matches in current context (lines: {}{})", count, lines.join(", "), suffix))
+            let suffix = if count > 3 {
+                format!(" and {} more...", count - 3)
+            } else {
+                "".to_string()
+            };
+            Some(format!(
+                "• {} matches in current context (lines: {}{})",
+                count,
+                lines.join(", "),
+                suffix
+            ))
         } else {
             // Group by file
             let lines: Vec<String> = items.iter().take(3).map(|m| m.name.clone()).collect();
-            let suffix = if count > 3 { format!(" and {} more...", count - 3) } else { "".to_string() };
-            Some(format!("• {}: {} matches (lines: {}{})", location, count, lines.join(", "), suffix))
+            let suffix = if count > 3 {
+                format!(" and {} more...", count - 3)
+            } else {
+                "".to_string()
+            };
+            Some(format!(
+                "• {}: {} matches (lines: {}{})",
+                location,
+                count,
+                lines.join(", "),
+                suffix
+            ))
         }
     }
 

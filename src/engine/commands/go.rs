@@ -1,5 +1,5 @@
-use crate::engine::discovery::LineMetadata;
 use super::{CommandHandler, DiscoveryBuffer};
+use crate::engine::discovery::LineMetadata;
 
 pub struct GoHandler;
 
@@ -10,14 +10,16 @@ impl CommandHandler for GoHandler {
 
     fn parse_line(&self, line: &str) -> Option<LineMetadata> {
         let trimmed = line.trim();
-        if trimmed.is_empty() { return None; }
+        if trimmed.is_empty() {
+            return None;
+        }
 
         // 1. Detect test status
         if line.starts_with("ok  ") || line.starts_with("FAIL ") || line.starts_with("?   ") {
             let parts: Vec<&str> = trimmed.split_whitespace().collect();
             let status = parts[0];
             let package = parts.get(1).unwrap_or(&"unknown");
-            
+
             return Some(LineMetadata {
                 perms: "TEST_RESULT".to_string(),
                 size: status.to_string(),
@@ -46,9 +48,13 @@ impl CommandHandler for GoHandler {
 
         for (key, items) in buffer {
             if key.starts_with("GO:") {
-                if key.contains("ok") { ok += items.len(); }
-                else if key.contains("FAIL") { fail += items.len(); }
-                else if key.contains("COMPILING") { compiling += items.len(); }
+                if key.contains("ok") {
+                    ok += items.len();
+                } else if key.contains("FAIL") {
+                    fail += items.len();
+                } else if key.contains("COMPILING") {
+                    compiling += items.len();
+                }
             }
         }
 
@@ -63,18 +69,26 @@ impl CommandHandler for GoHandler {
 
     fn format_summary(&self, key: &str, items: &[LineMetadata]) -> Option<String> {
         let parts: Vec<&str> = key.split(':').collect();
-        if parts[0] != "GO" { return None; }
+        if parts[0] != "GO" {
+            return None;
+        }
 
         let type_label = parts.get(1).unwrap_or(&"Unknown");
         let count = items.len();
-        
+
         match *type_label {
             "TEST_RESULT" => {
                 let status = parts.get(2).unwrap_or(&"ok");
-                Some(format!("• Go Tests ({}): {} packages processed.", status, count))
-            },
-            "COMPILING" => Some(format!("• Go Build: {} packages compiled into memory.", count)),
-            _ => None
+                Some(format!(
+                    "• Go Tests ({}): {} packages processed.",
+                    status, count
+                ))
+            }
+            "COMPILING" => Some(format!(
+                "• Go Build: {} packages compiled into memory.",
+                count
+            )),
+            _ => None,
         }
     }
 }

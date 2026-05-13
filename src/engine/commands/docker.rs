@@ -1,5 +1,5 @@
-use crate::engine::discovery::LineMetadata;
 use super::{CommandHandler, DiscoveryBuffer};
+use crate::engine::discovery::LineMetadata;
 
 pub struct DockerHandler;
 
@@ -10,7 +10,9 @@ impl CommandHandler for DockerHandler {
 
     fn parse_line(&self, line: &str) -> Option<LineMetadata> {
         let trimmed = line.trim();
-        if trimmed.is_empty() { return None; }
+        if trimmed.is_empty() {
+            return None;
+        }
 
         // 1. Detect Standard Container Listing (docker ps)
         let parts: Vec<&str> = trimmed.split_whitespace().collect();
@@ -18,7 +20,13 @@ impl CommandHandler for DockerHandler {
             let id = parts[0];
             if id.len() == 12 && id.chars().all(|c| c.is_ascii_hexdigit()) {
                 let image = parts[1];
-                let status = if line.contains("Up ") { "Running" } else if line.contains("Exited") { "Stopped" } else { "Created" };
+                let status = if line.contains("Up ") {
+                    "Running"
+                } else if line.contains("Exited") {
+                    "Stopped"
+                } else {
+                    "Created"
+                };
                 return Some(LineMetadata {
                     perms: status.to_string(),
                     size: image.to_string(),
@@ -29,7 +37,12 @@ impl CommandHandler for DockerHandler {
         }
 
         // 2. Detect Layer Progress (docker pull/push)
-        if line.contains(':') && (line.contains("Pulling") || line.contains("Waiting") || line.contains("Download") || line.contains("Extracting")) {
+        if line.contains(':')
+            && (line.contains("Pulling")
+                || line.contains("Waiting")
+                || line.contains("Download")
+                || line.contains("Extracting"))
+        {
             let parts: Vec<&str> = trimmed.split(':').collect();
             let layer_id = parts[0];
             let status = parts.get(1).unwrap_or(&"Processing").trim();
@@ -76,22 +89,33 @@ impl CommandHandler for DockerHandler {
 
         for (key, items) in buffer {
             if key.starts_with("DOCKER:") {
-                if key.contains("Running") { running += items.len(); }
-                else if key.contains("Stopped") { stopped += items.len(); }
-                else if key.contains("LAYER") { layers += items.len(); }
-                else if key.contains("BUILD") { build_steps += items.len(); }
+                if key.contains("Running") {
+                    running += items.len();
+                } else if key.contains("Stopped") {
+                    stopped += items.len();
+                } else if key.contains("LAYER") {
+                    layers += items.len();
+                } else if key.contains("BUILD") {
+                    build_steps += items.len();
+                }
             }
         }
 
         if layers > 0 {
             Some(format!("Docker Transfer: Processing {} image layers. Stream is compressed for token efficiency.", layers))
         } else if build_steps > 0 {
-            Some(format!("Docker Build: Executing {} build steps. Analyzing environment layers.", build_steps))
+            Some(format!(
+                "Docker Build: Executing {} build steps. Analyzing environment layers.",
+                build_steps
+            ))
         } else if running > 0 || stopped > 0 {
             if stopped > 5 {
                 Some(format!("Detected {} stopped containers. Suggesting 'docker system prune' to recover space.", stopped))
             } else {
-                Some(format!("Docker environment: {} running, {} stopped containers.", running, stopped))
+                Some(format!(
+                    "Docker environment: {} running, {} stopped containers.",
+                    running, stopped
+                ))
             }
         } else {
             None
@@ -100,8 +124,10 @@ impl CommandHandler for DockerHandler {
 
     fn format_summary(&self, key: &str, items: &[LineMetadata]) -> Option<String> {
         let parts: Vec<&str> = key.split(':').collect();
-        if parts[0] != "DOCKER" { return None; }
-        
+        if parts[0] != "DOCKER" {
+            return None;
+        }
+
         let type_label = parts.get(1).unwrap_or(&"Unknown");
         let count = items.len();
 
@@ -109,24 +135,44 @@ impl CommandHandler for DockerHandler {
             "Running" | "Stopped" | "Created" => {
                 let image = parts.get(2).unwrap_or(&"unknown-image");
                 let names: Vec<String> = items.iter().take(5).map(|m| m.name.clone()).collect();
-                let suffix = if count > 5 { format!(" and {} more...", count - 5) } else { "".to_string() };
-                Some(format!("Docker {}: {} containers from [{}] | {}{}", type_label, count, image, names.join(", "), suffix))
-            },
+                let suffix = if count > 5 {
+                    format!(" and {} more...", count - 5)
+                } else {
+                    "".to_string()
+                };
+                Some(format!(
+                    "Docker {}: {} containers from [{}] | {}{}",
+                    type_label,
+                    count,
+                    image,
+                    names.join(", "),
+                    suffix
+                ))
+            }
             "LAYER" => {
                 let examples: Vec<String> = items.iter().take(3).map(|m| m.name.clone()).collect();
-                Some(format!("• Hidden {} layer progress updates (e.g. {})", count, examples.join(", ")))
-            },
+                Some(format!(
+                    "• Hidden {} layer progress updates (e.g. {})",
+                    count,
+                    examples.join(", ")
+                ))
+            }
             "BUILD" => Some(format!("• Collapsed {} build steps.", count)),
             "COMPOSE" => {
                 let service = parts.get(2).unwrap_or(&"service");
-                Some(format!("• {} service logs: {} lines synthesized.", service, count))
-            },
-            _ => None
+                Some(format!(
+                    "• {} service logs: {} lines synthesized.",
+                    service, count
+                ))
+            }
+            _ => None,
         }
     }
 
-    fn get_category(&self, perms: &str) -> String {
-        if ["Running", "Stopped", "Created", "LAYER", "BUILD", "COMPOSE"].contains(&perms) {
+    fn get_category(&self, meta: &LineMetadata) -> String {
+        if ["Running", "Stopped", "Created", "LAYER", "BUILD", "COMPOSE"]
+            .contains(&meta.perms.as_str())
+        {
             "DOCKER".to_string()
         } else {
             "FILE".to_string()
@@ -134,7 +180,10 @@ impl CommandHandler for DockerHandler {
     }
 
     fn get_key(&self, prefix: &str, meta: &LineMetadata) -> String {
-        if meta.perms == "LAYER" || meta.perms == "BUILD" { format!("{}:{}", prefix, meta.perms) }
-        else { format!("{}:{}:{}", prefix, meta.perms, meta.size) }
+        if meta.perms == "LAYER" || meta.perms == "BUILD" {
+            format!("{}:{}", prefix, meta.perms)
+        } else {
+            format!("{}:{}:{}", prefix, meta.perms, meta.size)
+        }
     }
 }

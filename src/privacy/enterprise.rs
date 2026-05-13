@@ -1,5 +1,5 @@
 /// Enterprise-grade Privacy Features for Axiom.
-/// 
+///
 /// This module provides the interface for advanced redaction and security guardrails.
 /// In the Open Source version, these features are placeholders or basic implementations.
 /// The full "Axiom Shield" functionality is provided via external WASM plugins

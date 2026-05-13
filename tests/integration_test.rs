@@ -1,4 +1,4 @@
-use axiom::{IntentContext};
+use axiom::IntentContext;
 
 #[test]
 fn test_error_prioritization() {
@@ -15,12 +15,14 @@ fn test_error_prioritization() {
         [SUCCESS] Cleaning up...
     ";
 
-    let result = if context.last_message.contains("fail") || context.last_message.contains("error") {
-        "[ERROR] Failed to compile: 'src/main.rs' not found.\n(3 success lines collapsed)".to_string()
+    let result = if context.last_message.contains("fail") || context.last_message.contains("error")
+    {
+        "[ERROR] Failed to compile: 'src/main.rs' not found.\n(3 success lines collapsed)"
+            .to_string()
     } else {
         raw_output.to_string()
     };
 
     assert!(result.contains("[ERROR]"));
-    assert!(!result.contains("[SUCCESS] Loading assets...")); 
+    assert!(!result.contains("[SUCCESS] Loading assets..."));
 }

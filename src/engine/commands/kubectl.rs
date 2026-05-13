@@ -1,5 +1,5 @@
-use crate::engine::discovery::LineMetadata;
 use super::{CommandHandler, DiscoveryBuffer};
+use crate::engine::discovery::LineMetadata;
 
 pub struct KubectlHandler;
 
@@ -10,14 +10,25 @@ impl CommandHandler for KubectlHandler {
 
     fn parse_line(&self, line: &str) -> Option<LineMetadata> {
         let trimmed = line.trim();
-        if trimmed.is_empty() { return None; }
+        if trimmed.is_empty() {
+            return None;
+        }
 
         // 1. Detect Resource Listing (get pods, etc.)
         let parts: Vec<&str> = trimmed.split_whitespace().collect();
         if parts.len() >= 3 {
-            let status = parts.iter().find(|&&s| 
-                matches!(s, "Running" | "Completed" | "Terminating" | "Pending" | "CrashLoopBackOff" | "Error" | "Bound")
-            );
+            let status = parts.iter().find(|&&s| {
+                matches!(
+                    s,
+                    "Running"
+                        | "Completed"
+                        | "Terminating"
+                        | "Pending"
+                        | "CrashLoopBackOff"
+                        | "Error"
+                        | "Bound"
+                )
+            });
 
             if let Some(&s) = status {
                 return Some(LineMetadata {
@@ -30,7 +41,10 @@ impl CommandHandler for KubectlHandler {
         }
 
         // 2. Detect Metadata (Labels, Annotations)
-        if line.starts_with("Labels:") || line.starts_with("Annotations:") || line.starts_with("Selector:") {
+        if line.starts_with("Labels:")
+            || line.starts_with("Annotations:")
+            || line.starts_with("Selector:")
+        {
             let parts: Vec<&str> = trimmed.split(':').collect();
             return Some(LineMetadata {
                 perms: "METADATA".to_string(),
@@ -43,7 +57,7 @@ impl CommandHandler for KubectlHandler {
         None
     }
 
-    fn get_category(&self, _perms: &str) -> String {
+    fn get_category(&self, _meta: &LineMetadata) -> String {
         "K8S".to_string()
     }
 
@@ -55,8 +69,11 @@ impl CommandHandler for KubectlHandler {
         for (key, items) in buffer {
             if key.starts_with("K8S:RESOURCE") {
                 total += items.len();
-                if key.contains("Running") || key.contains("Completed") { running += items.len(); }
-                else if key.contains("Error") || key.contains("CrashLoopBackOff") { critical += items.len(); }
+                if key.contains("Running") || key.contains("Completed") {
+                    running += items.len();
+                } else if key.contains("Error") || key.contains("CrashLoopBackOff") {
+                    critical += items.len();
+                }
             }
         }
 
@@ -71,7 +88,9 @@ impl CommandHandler for KubectlHandler {
 
     fn format_summary(&self, key: &str, items: &[LineMetadata]) -> Option<String> {
         let parts: Vec<&str> = key.split(':').collect();
-        if parts[0] != "K8S" { return None; }
+        if parts[0] != "K8S" {
+            return None;
+        }
 
         let type_label = parts.get(1).unwrap_or(&"Unknown");
         let count = items.len();
@@ -80,15 +99,34 @@ impl CommandHandler for KubectlHandler {
             "RESOURCE" => {
                 let status = parts.get(2).unwrap_or(&"Stable");
                 let names: Vec<String> = items.iter().take(5).map(|m| m.name.clone()).collect();
-                let suffix = if count > 5 { format!(" and {} more...", count - 5) } else { "".to_string() };
-                Some(format!("• {} [{}]: {}{}", status, count, names.join(", "), suffix))
-            },
+                let suffix = if count > 5 {
+                    format!(" and {} more...", count - 5)
+                } else {
+                    "".to_string()
+                };
+                Some(format!(
+                    "• {} [{}]: {}{}",
+                    status,
+                    count,
+                    names.join(", "),
+                    suffix
+                ))
+            }
             "METADATA" => {
                 let fields: Vec<String> = items.iter().take(3).map(|m| m.size.clone()).collect();
-                let suffix = if count > 3 { format!(" and {} more...", count - 3) } else { "".to_string() };
-                Some(format!("• Collapsed {} metadata fields ({}{})", count, fields.join(", "), suffix))
-            },
-            _ => None
+                let suffix = if count > 3 {
+                    format!(" and {} more...", count - 3)
+                } else {
+                    "".to_string()
+                };
+                Some(format!(
+                    "• Collapsed {} metadata fields ({}{})",
+                    count,
+                    fields.join(", "),
+                    suffix
+                ))
+            }
+            _ => None,
         }
     }
 
@@ -98,12 +136,14 @@ impl CommandHandler for KubectlHandler {
             if meta.size != "Running" && meta.size != "Completed" {
                 return true;
             }
-            
+
             // Check for restarts in the line (usually column 4 in kubectl get pods)
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() >= 4 {
                 if let Ok(restarts) = parts[3].parse::<u32>() {
-                    if restarts > 0 { return true; }
+                    if restarts > 0 {
+                        return true;
+                    }
                 }
             }
         }

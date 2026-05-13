@@ -1,7 +1,7 @@
+use crate::engine::installer::AxiomInstaller;
 use std::env;
 use std::fs;
 use std::path::Path;
-use crate::engine::installer::AxiomInstaller;
 
 pub struct AxiomDoctor;
 
@@ -46,7 +46,7 @@ impl AxiomDoctor {
         if env_path.exists() {
             println!("✅ [Config] .env file found for local environment overrides.");
         }
-        
+
         // We can check for core Axiom configuration here if needed
         // For now, we just ensure the environment is clean of hardcoded legacy keys
         Ok(())
@@ -60,9 +60,12 @@ impl AxiomDoctor {
                     if meta.permissions().readonly() {
                         println!("❌ [Database] \x1b[31maxiom.db is READ-ONLY.\x1b[0m");
                     } else {
-                        println!("✅ [Database] axiom.db is healthy and writable ({} bytes).", meta.len());
+                        println!(
+                            "✅ [Database] axiom.db is healthy and writable ({} bytes).",
+                            meta.len()
+                        );
                     }
-                },
+                }
                 Err(e) => println!("❌ [Database] Could not read metadata: {}", e),
             }
         } else {
@@ -76,11 +79,11 @@ impl AxiomDoctor {
             Ok(exe) => println!("✅ [Binary] Located at: {}", exe.display()),
             Err(e) => println!("❌ [Binary] Could not locate own binary: {}", e),
         }
-        
+
         let home = env::var("HOME").unwrap_or_default();
         let shim_dir = Path::new(&home).join(".axiom/bin");
         let path_var = env::var("PATH").unwrap_or_default();
-        
+
         if path_var.contains(shim_dir.to_str().unwrap_or("")) {
             println!("✅ [PATH] Axiom shims directory is correctly configured.");
         } else {
@@ -93,7 +96,7 @@ impl AxiomDoctor {
     fn check_shims(fix: bool) -> anyhow::Result<()> {
         let home = env::var("HOME").unwrap_or_default();
         let shim_dir = Path::new(&home).join(".axiom/bin");
-        
+
         if !shim_dir.exists() {
             println!("⚠️ [Shims] Directory not found.");
             if fix {
@@ -107,7 +110,9 @@ impl AxiomDoctor {
         match fs::read_dir(&shim_dir) {
             Ok(entries) => {
                 let mut count = 0;
-                for _ in entries { count += 1; }
+                for _ in entries {
+                    count += 1;
+                }
                 println!("✅ [Shims] {} shims verified.", count);
             }
             Err(e) => println!("❌ [Shims] Error: {}", e),
@@ -118,7 +123,9 @@ impl AxiomDoctor {
     fn check_shell_integration(fix: bool) -> anyhow::Result<()> {
         let configs = AxiomInstaller::get_shell_configs();
         for path in configs {
-            if !path.exists() { continue; }
+            if !path.exists() {
+                continue;
+            }
             let content = fs::read_to_string(&path)?;
             if content.contains("axiom initialize") {
                 println!("✅ [Shell] Integration found in {}.", path.display());
@@ -138,7 +145,7 @@ impl AxiomDoctor {
     fn check_persistence(fix: bool) -> anyhow::Result<()> {
         let home = env::var("HOME").unwrap_or_default();
         let axiom_dir = Path::new(&home).join(".axiom");
-        
+
         if !axiom_dir.exists() {
             println!("❌ [Persistence] ~/.axiom directory not found.");
             if fix {

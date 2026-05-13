@@ -1,6 +1,6 @@
 mod common;
-use axiom::IntentContext;
 use axiom::gateway::core::TerminalEvent;
+use axiom::IntentContext;
 use std::fs;
 
 fn test_ls_insight_for_fixture(fixture_path: &str, expected_insight: &str) {
@@ -16,11 +16,15 @@ fn test_ls_insight_for_fixture(fixture_path: &str, expected_insight: &str) {
         .expect(&format!("Failed to load fixture: {}", fixture_path));
 
     for line in raw_output.lines() {
-        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
+        session.engine.process_line(
+            TerminalEvent::StaticLine(line.to_string()),
+            command,
+            &context,
+        );
     }
 
     let summaries = session.engine.flush_summaries();
-    
+
     let mut found_insight = false;
     for summary in summaries {
         if summary.contains("Insight:") && summary.contains(expected_insight) {
@@ -28,13 +32,20 @@ fn test_ls_insight_for_fixture(fixture_path: &str, expected_insight: &str) {
             break;
         }
     }
-    
-    assert!(found_insight, "Should detect '{}' project insight from fixture {}", expected_insight, fixture_path);
+
+    assert!(
+        found_insight,
+        "Should detect '{}' project insight from fixture {}",
+        expected_insight, fixture_path
+    );
 }
 
 #[test]
 fn test_ls_rust_insight() {
-    test_ls_insight_for_fixture("tests/fixtures/ls_rust_project.txt", "Rust Project Workspace");
+    test_ls_insight_for_fixture(
+        "tests/fixtures/ls_rust_project.txt",
+        "Rust Project Workspace",
+    );
 }
 
 #[test]

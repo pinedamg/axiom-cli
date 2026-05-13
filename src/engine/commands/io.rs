@@ -1,5 +1,5 @@
-use crate::engine::discovery::LineMetadata;
 use super::{CommandHandler, DiscoveryBuffer};
+use crate::engine::discovery::LineMetadata;
 
 pub struct IoHandler;
 
@@ -10,7 +10,9 @@ impl CommandHandler for IoHandler {
 
     fn parse_line(&self, line: &str) -> Option<LineMetadata> {
         let trimmed = line.trim();
-        if trimmed.is_empty() { return None; }
+        if trimmed.is_empty() {
+            return None;
+        }
 
         // 1. Detect curl progress bar headers
         if line.contains("% Total") && line.contains("% Received") {
@@ -24,8 +26,13 @@ impl CommandHandler for IoHandler {
 
         // 2. Detect curl progress data lines (usually space-separated numbers)
         let parts: Vec<&str> = trimmed.split_whitespace().collect();
-        if parts.len() >= 10 && parts.iter().take(10).all(|s| s.chars().all(|c| c.is_ascii_digit() || c == ':' || c == '-' || c == '.' || c == '*')) {
-             return Some(LineMetadata {
+        if parts.len() >= 10
+            && parts.iter().take(10).all(|s| {
+                s.chars()
+                    .all(|c| c.is_ascii_digit() || c == ':' || c == '-' || c == '.' || c == '*')
+            })
+        {
+            return Some(LineMetadata {
                 perms: "PROGRESS".to_string(),
                 size: parts.get(1).unwrap_or(&"0").to_string(), // Received
                 name: "curl".to_string(),
@@ -44,7 +51,11 @@ impl CommandHandler for IoHandler {
         }
 
         // 4. Detect informational network lines or TLS Handshake noise
-        if line.trim_start().starts_with('*') || line.contains("TLS handshake") || line.contains("TLS header") || line.contains("bytes data") {
+        if line.trim_start().starts_with('*')
+            || line.contains("TLS handshake")
+            || line.contains("TLS header")
+            || line.contains("bytes data")
+        {
             return Some(LineMetadata {
                 perms: "NETWORK_NOISE".to_string(),
                 size: "tls".to_string(),
@@ -61,12 +72,19 @@ impl CommandHandler for IoHandler {
         let mut noise_count = 0;
 
         for (key, items) in buffer {
-            if key.contains("PROGRESS") { progress_count += items.len(); }
-            if key.contains("NETWORK_NOISE") { noise_count += items.len(); }
+            if key.contains("PROGRESS") {
+                progress_count += items.len();
+            }
+            if key.contains("NETWORK_NOISE") {
+                noise_count += items.len();
+            }
         }
 
         if progress_count > 0 || noise_count > 0 {
-            Some(format!("Network I/O: Collapsed {} progress updates and {} TLS handshake logs.", progress_count, noise_count))
+            Some(format!(
+                "Network I/O: Collapsed {} progress updates and {} TLS handshake logs.",
+                progress_count, noise_count
+            ))
         } else {
             None
         }
@@ -74,14 +92,22 @@ impl CommandHandler for IoHandler {
 
     fn format_summary(&self, key: &str, items: &[LineMetadata]) -> Option<String> {
         let parts: Vec<&str> = key.split(':').collect();
-        if parts[0] != "IO" { return None; }
+        if parts[0] != "IO" {
+            return None;
+        }
 
         let type_label = parts.get(1).unwrap_or(&"Unknown");
-        
+
         match *type_label {
-            "PROGRESS" => Some(format!("• Hidden {} download progress updates.", items.len())),
-            "NETWORK_NOISE" => Some(format!("• Collapsed {} lines of network protocol handshakes.", items.len())),
-            _ => None
+            "PROGRESS" => Some(format!(
+                "• Hidden {} download progress updates.",
+                items.len()
+            )),
+            "NETWORK_NOISE" => Some(format!(
+                "• Collapsed {} lines of network protocol handshakes.",
+                items.len()
+            )),
+            _ => None,
         }
     }
 }

@@ -1,11 +1,11 @@
+pub mod config;
+pub mod engine;
+pub mod error;
 pub mod gateway;
+pub mod persistence;
 pub mod privacy;
 pub mod schema;
-pub mod engine;
-pub mod persistence;
-pub mod config;
 pub mod session;
-pub mod error;
 
 pub use error::{AxiomError, Result};
 use serde::{Deserialize, Serialize};
@@ -40,7 +40,7 @@ impl IntentContext {
                 return true;
             }
         }
-        
+
         // If the user's message contains specific words from the text
         for word in msg.split_whitespace() {
             if word.len() > 3 && target.contains(word) {

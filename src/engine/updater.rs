@@ -28,14 +28,14 @@ impl AxiomUpdater {
             .build();
 
         let response: Release = client.get(GITHUB_API_URL).call()?.into_json()?;
-        
+
         // Compare tag_name (e.g., "v0.2.0") with CURRENT_VERSION (e.g., "0.1.0")
         let latest_tag = response.tag_name.trim_start_matches('v');
         if latest_tag != CURRENT_VERSION {
             // Find the correct asset for the current OS/Arch
             let os = env::consts::OS;
             let arch = env::consts::ARCH;
-            
+
             // Format example: axiom-x86_64-apple-darwin
             let target_os = match os {
                 "linux" => "unknown-linux-gnu",
@@ -43,7 +43,7 @@ impl AxiomUpdater {
                 "windows" => "pc-windows-msvc",
                 _ => return Ok(None),
             };
-            
+
             let target_arch = match arch {
                 "x86_64" => "x86_64",
                 "aarch64" => "aarch64",
@@ -51,8 +51,15 @@ impl AxiomUpdater {
             };
 
             let asset_pattern = format!("{}-{}", target_arch, target_os);
-            if let Some(asset) = response.assets.iter().find(|a| a.name.contains(&asset_pattern)) {
-                return Ok(Some((response.tag_name, asset.browser_download_url.clone())));
+            if let Some(asset) = response
+                .assets
+                .iter()
+                .find(|a| a.name.contains(&asset_pattern))
+            {
+                return Ok(Some((
+                    response.tag_name,
+                    asset.browser_download_url.clone(),
+                )));
             }
         }
 
@@ -66,7 +73,7 @@ impl AxiomUpdater {
         let backup_path = current_exe.with_extension("old");
 
         println!("Downloading update from {}...", url);
-        
+
         let client = ureq::AgentBuilder::new()
             .user_agent("axiom-cli-updater")
             .build();
@@ -77,7 +84,7 @@ impl AxiomUpdater {
 
         // Write the new binary to a temporary file
         fs::write(&tmp_path, buffer)?;
-        
+
         // Give execution permissions (Unix only)
         #[cfg(unix)]
         {
@@ -91,7 +98,7 @@ impl AxiomUpdater {
         if current_exe.exists() {
             fs::rename(&current_exe, &backup_path)?;
         }
-        
+
         if let Err(e) = fs::rename(&tmp_path, &current_exe) {
             // If renaming the new one failed, try to restore the old one
             let _ = fs::rename(&backup_path, &current_exe);
@@ -100,7 +107,7 @@ impl AxiomUpdater {
 
         // Clean up backup if possible (might fail if exe is busy, which is fine)
         let _ = fs::remove_file(backup_path);
-        
+
         println!("✅ Update successful! Please run 'axiom --version' to verify.");
         Ok(())
     }

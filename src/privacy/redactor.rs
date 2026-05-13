@@ -1,5 +1,5 @@
-use regex::Regex;
 use crate::privacy::entropy::calculate_entropy;
+use regex::Regex;
 
 pub struct PrivacyRedactor {
     entropy_threshold: f64,
@@ -40,10 +40,13 @@ impl PrivacyRedactor {
 
 impl Default for PrivacyRedactor {
     fn default() -> Self {
-        Self::new(4.5, vec![
-            r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}".to_string(), // Email
-            r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b".to_string(), // IP Address
-        ])
+        Self::new(
+            4.5,
+            vec![
+                r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}".to_string(), // Email
+                r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b".to_string(),         // IP Address
+            ],
+        )
     }
 }
 
@@ -53,7 +56,9 @@ impl PrivacyRedactor {
 
         // 1. Exact Pattern Redaction (High Confidence Secrets)
         for pattern in &self.secret_patterns {
-            output = pattern.replace_all(&output, "[REDACTED_SECRET]").to_string();
+            output = pattern
+                .replace_all(&output, "[REDACTED_SECRET]")
+                .to_string();
         }
 
         // 2. Regex Redaction (PII)
@@ -62,22 +67,24 @@ impl PrivacyRedactor {
         }
 
         // 3. Entropy Redaction (Generic Secrets fallback)
-        self.word_regex.replace_all(&output, |caps: &regex::Captures| {
-            let word = &caps[0];
-            
-            // Skip entropy redaction for common hex strings (like Git SHAs or Docker IDs)
-            // to reduce false positives. Git SHAs are 40 chars, Docker IDs are 64 chars.
-            let is_hex_hash = (word.len() == 40 || word.len() == 64)
-                && word.chars().all(|c| c.is_ascii_hexdigit());
+        self.word_regex
+            .replace_all(&output, |caps: &regex::Captures| {
+                let word = &caps[0];
 
-            // Only check entropy for words longer than 15 chars that aren't already redacted or hex hashes
-            if !is_hex_hash && word.len() > 15 && !word.starts_with("REDACTED") {
-                if calculate_entropy(word) > self.entropy_threshold {
-                    return "[REDACTED_SECRET]".to_string();
+                // Skip entropy redaction for common hex strings (like Git SHAs or Docker IDs)
+                // to reduce false positives. Git SHAs are 40 chars, Docker IDs are 64 chars.
+                let is_hex_hash = (word.len() == 40 || word.len() == 64)
+                    && word.chars().all(|c| c.is_ascii_hexdigit());
+
+                // Only check entropy for words longer than 15 chars that aren't already redacted or hex hashes
+                if !is_hex_hash && word.len() > 15 && !word.starts_with("REDACTED") {
+                    if calculate_entropy(word) > self.entropy_threshold {
+                        return "[REDACTED_SECRET]".to_string();
+                    }
                 }
-            }
-            word.to_string()
-        }).to_string()
+                word.to_string()
+            })
+            .to_string()
     }
 }
 
@@ -90,7 +97,7 @@ mod tests {
         let redactor = PrivacyRedactor::default();
         let input = "Contact me at dev@axiom.ai or visit 192.168.1.1";
         let redacted = redactor.redact(input);
-        
+
         assert!(redacted.contains("[REDACTED_PII]"));
         assert!(!redacted.contains("dev@axiom.ai"));
         assert!(!redacted.contains("192.168.1.1"));
@@ -101,7 +108,7 @@ mod tests {
         let redactor = PrivacyRedactor::default();
         let input = "The AWS key is A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6";
         let redacted = redactor.redact(input);
-        
+
         assert!(redacted.contains("[REDACTED_SECRET]"));
         assert!(!redacted.contains("A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6"));
     }
