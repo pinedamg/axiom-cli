@@ -1,6 +1,6 @@
 mod common;
-use axiom::IntentContext;
 use axiom::gateway::core::TerminalEvent;
+use axiom::IntentContext;
 
 #[test]
 fn test_jq_structural_synthesis() {
@@ -28,13 +28,28 @@ fn test_jq_structural_synthesis() {
     ";
 
     for line in raw_output.lines() {
-        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
+        session.engine.process_line(
+            TerminalEvent::StaticLine(line.to_string()),
+            command,
+            &context,
+        );
     }
-    
+
     let summaries = session.engine.flush_summaries();
-    assert!(summaries.iter().any(|s| s.contains("Synthesized 2 JSON/YAML objects")), "Should contain structural insight");
-    assert!(summaries.iter().any(|s| s.contains("key [id]")), "Should mention id key");
-    assert!(summaries.iter().any(|s| s.contains("key [name]")), "Should mention name key");
+    assert!(
+        summaries
+            .iter()
+            .any(|s| s.contains("Synthesized 2 JSON/YAML objects")),
+        "Should contain structural insight"
+    );
+    assert!(
+        summaries.iter().any(|s| s.contains("key [id]")),
+        "Should mention id key"
+    );
+    assert!(
+        summaries.iter().any(|s| s.contains("key [name]")),
+        "Should mention name key"
+    );
 }
 
 #[test]
@@ -55,10 +70,22 @@ Mar 27 18:53 machine systemd[1]: Started User Manager for UID 1000.
     ";
 
     for line in raw_output.lines() {
-        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
+        session.engine.process_line(
+            TerminalEvent::StaticLine(line.to_string()),
+            command,
+            &context,
+        );
     }
-    
+
     let summaries = session.engine.flush_summaries();
-    assert!(summaries.iter().any(|s| s.contains("System Logs")), "Should contain system log insight");
-    assert!(summaries.iter().any(|s| s.contains("noise lines from system service [systemd-logind]")), "Should mention logind noise");
+    assert!(
+        summaries.iter().any(|s| s.contains("System Logs")),
+        "Should contain system log insight"
+    );
+    assert!(
+        summaries
+            .iter()
+            .any(|s| s.contains("noise lines from system service [systemd-logind]")),
+        "Should mention logind noise"
+    );
 }

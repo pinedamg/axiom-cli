@@ -1,5 +1,5 @@
-use axiom::IntentContext;
 use axiom::gateway::core::TerminalEvent;
+use axiom::IntentContext;
 mod common;
 
 #[test]
@@ -19,13 +19,27 @@ fn test_ls_v1_long_listing_synthesis() {
 ";
 
     for line in raw_output.lines().filter(|l| !l.is_empty()) {
-        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
+        session.engine.process_line(
+            TerminalEvent::StaticLine(line.to_string()),
+            command,
+            &context,
+        );
     }
 
     let summaries = session.engine.flush_summaries();
-    for s in &summaries { println!("DEBUG: {}", s); }
-    assert!(summaries.iter().any(|s| s.contains("FILE [rw-]")), "Should synthesize files by permissions");
-    assert!(summaries.iter().any(|s| s.contains(" (3) | file1.rs, file2.rs, file3.rs")), "Should list all files in summary");
+    for s in &summaries {
+        println!("DEBUG: {}", s);
+    }
+    assert!(
+        summaries.iter().any(|s| s.contains("FILE [rw-]")),
+        "Should synthesize files by permissions"
+    );
+    assert!(
+        summaries
+            .iter()
+            .any(|s| s.contains(" (3) | file1.rs, file2.rs, file3.rs")),
+        "Should list all files in summary"
+    );
 }
 
 #[test]
@@ -41,10 +55,19 @@ fn test_ls_v1_standard_extension_synthesis() {
     // Standard ls output with multiple columns
     let raw_output = "Cargo.toml  README.md  src  target  test.rs  another.rs";
 
-    session.engine.process_line(TerminalEvent::StaticLine(raw_output.to_string()), command, &context);
+    session.engine.process_line(
+        TerminalEvent::StaticLine(raw_output.to_string()),
+        command,
+        &context,
+    );
 
     let summaries = session.engine.flush_summaries();
-    assert!(summaries.iter().any(|s| s.contains("Grouped 2 files by extension [RS]")), "Should synthesize standard ls by extension");
+    assert!(
+        summaries
+            .iter()
+            .any(|s| s.contains("Grouped 2 files by extension [RS]")),
+        "Should synthesize standard ls by extension"
+    );
 }
 
 #[test]
@@ -58,10 +81,19 @@ fn test_ls_v2_semantic_insight() {
     };
 
     // Process a line that includes Cargo.toml
-    session.engine.process_line(TerminalEvent::StaticLine("Cargo.toml README.md src".to_string()), command, &context);
+    session.engine.process_line(
+        TerminalEvent::StaticLine("Cargo.toml README.md src".to_string()),
+        command,
+        &context,
+    );
 
     let summaries = session.engine.flush_summaries();
-    assert!(summaries.iter().any(|s| s.contains("Insight: Detected Rust Project Workspace")), "Should provide semantic insight for Rust project");
+    assert!(
+        summaries
+            .iter()
+            .any(|s| s.contains("Insight: Detected Rust Project Workspace")),
+        "Should provide semantic insight for Rust project"
+    );
 }
 
 #[test]
@@ -75,10 +107,17 @@ fn test_ls_v3_privacy_redaction() {
     };
 
     let hidden_line = ".env secret_key=12345";
-    let result = session.engine.process_line(TerminalEvent::StaticLine(hidden_line.to_string()), command, &context);
-    
+    let result = session.engine.process_line(
+        TerminalEvent::StaticLine(hidden_line.to_string()),
+        command,
+        &context,
+    );
+
     // Result should be None because it's synthesized/redacted OR it should contain REDACTED_BY_SCHEMA
     if let Some(processed) = result {
-        assert!(processed.contains("[REDACTED_BY_SCHEMA]"), "Hidden files should be redacted by default");
+        assert!(
+            processed.contains("[REDACTED_BY_SCHEMA]"),
+            "Hidden files should be redacted by default"
+        );
     }
 }

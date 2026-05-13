@@ -1,9 +1,9 @@
+use crate::gateway::core::{OutputRenderer, StreamFilter, TerminalEvent};
+use crate::gateway::filters::StreamPipeline;
+use crate::session::AxiomSession;
+use crate::IntentContext;
 use tokio::io::AsyncReadExt;
 use tokio::process::Child;
-use crate::IntentContext;
-use crate::session::AxiomSession;
-use crate::gateway::core::{TerminalEvent, OutputRenderer, StreamFilter};
-use crate::gateway::filters::StreamPipeline;
 
 pub async fn stream_io(
     child: &mut Child,
@@ -13,8 +13,14 @@ pub async fn stream_io(
     renderer: &mut dyn OutputRenderer,
     raw_mode: bool,
 ) -> anyhow::Result<(usize, usize)> {
-    let mut stdout = child.stdout.take().ok_or_else(|| anyhow::anyhow!("Failed to capture stdout"))?;
-    let mut stderr = child.stderr.take().ok_or_else(|| anyhow::anyhow!("Failed to capture stderr"))?;
+    let mut stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| anyhow::anyhow!("Failed to capture stdout"))?;
+    let mut stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| anyhow::anyhow!("Failed to capture stderr"))?;
 
     let mut total_original = 0;
     let mut total_compressed = 0;
@@ -53,7 +59,7 @@ pub async fn stream_io(
                     0 => {
                         let events = stderr_pipeline.process(&[]);
                         process_events(events, command_str, context, session, renderer, &mut total_original, &mut total_compressed, true, raw_mode);
-                        break; 
+                        break;
                     },
                     n => {
                         total_original += n;

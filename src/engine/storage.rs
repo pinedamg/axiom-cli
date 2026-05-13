@@ -43,7 +43,11 @@ impl LogManager {
     }
 
     /// Retrieves lines with optional tail and grep filtering (KISS logic)
-    pub fn get_last_logs(&self, tail: Option<usize>, grep: Option<&str>) -> anyhow::Result<Vec<String>> {
+    pub fn get_last_logs(
+        &self,
+        tail: Option<usize>,
+        grep: Option<&str>,
+    ) -> anyhow::Result<Vec<String>> {
         if !self.log_path.exists() {
             anyhow::bail!("Log file not found at {}", self.log_path.display());
         }
@@ -67,7 +71,9 @@ impl LogManager {
     }
 
     pub fn get_total_bytes(&self) -> usize {
-        fs::metadata(&self.log_path).map(|m| m.len() as usize).unwrap_or(0)
+        fs::metadata(&self.log_path)
+            .map(|m| m.len() as usize)
+            .unwrap_or(0)
     }
 }
 

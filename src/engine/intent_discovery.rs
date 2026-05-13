@@ -1,15 +1,13 @@
+use crate::config::{IntentSource, IntentStrategy};
 use std::fs;
 use std::process::Command;
-use crate::config::{IntentSource, IntentStrategy};
 
 pub struct IntentDiscoverer;
 
 impl IntentDiscoverer {
     /// Discovers modified files from Git to enrich the context
     pub fn get_git_context() -> Vec<String> {
-        let output = Command::new("git")
-            .args(["diff", "--name-only"])
-            .output();
+        let output = Command::new("git").args(["diff", "--name-only"]).output();
 
         if let Ok(out) = output {
             String::from_utf8_lossy(&out.stdout)
@@ -54,23 +52,23 @@ impl IntentDiscoverer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
-    use tempfile::NamedTempFile;
     use crate::config::IntentStrategy;
+    use std::io::Write;
     use std::path::PathBuf;
+    use tempfile::NamedTempFile;
 
     #[test]
     fn test_discover_last_line() {
         let mut file = NamedTempFile::new().unwrap();
         writeln!(file, "First prompt").unwrap();
         writeln!(file, "  Second prompt with spaces  ").unwrap();
-        
+
         let source = IntentSource {
             name: "Test AI".to_string(),
             path: file.path().to_path_buf(),
             strategy: IntentStrategy::LastLine,
         };
-        
+
         let discovered = IntentDiscoverer::discover(&[source]);
         assert_eq!(discovered, Some("Second prompt with spaces".to_string()));
     }
@@ -82,7 +80,7 @@ mod tests {
             path: PathBuf::from("/tmp/should_not_exist_12345"),
             strategy: IntentStrategy::LastLine,
         };
-        
+
         let discovered = IntentDiscoverer::discover(&[source]);
         assert_eq!(discovered, None);
     }

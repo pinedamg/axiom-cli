@@ -1,24 +1,25 @@
 use axiom::config::{AxiomConfig, TelemetryLevel};
-use tempfile::tempdir;
 use std::fs;
+use tempfile::tempdir;
 
 #[test]
 fn test_config_serialization_deserialization() {
     let tmp_dir = tempdir().unwrap();
     let config_path = tmp_dir.path().join("config.yaml");
-    
+
     let mut config = AxiomConfig::default();
     // In our refactored config, variants are Discovery, etc.
     config.telemetry_level = TelemetryLevel::Discovery;
-    
+
     // Test direct serialization
     let yaml = serde_yaml::to_string(&config).expect("Failed to serialize config");
     fs::write(&config_path, yaml).expect("Failed to write test config");
-    
+
     // Test direct deserialization
     let content = fs::read_to_string(&config_path).expect("Failed to read test config");
-    let decoded: AxiomConfig = serde_yaml::from_str(&content).expect("Failed to deserialize config");
-    
+    let decoded: AxiomConfig =
+        serde_yaml::from_str(&content).expect("Failed to deserialize config");
+
     assert_eq!(decoded.node_id, config.node_id);
     assert_eq!(decoded.telemetry_level, TelemetryLevel::Discovery);
 }

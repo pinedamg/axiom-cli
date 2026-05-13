@@ -1,20 +1,20 @@
 use crate::engine::discovery::LineMetadata;
 use std::collections::BTreeMap;
 
-pub mod git;
-pub mod docker;
-pub mod ls;
-pub mod ps;
-pub mod rg;
 pub mod cargo;
+pub mod cloud;
+pub mod docker;
+pub mod git;
 pub mod go;
 pub mod io;
-pub mod npm;
-pub mod kubectl;
-pub mod terraform;
-pub mod cloud;
-pub mod jq;
 pub mod journalctl;
+pub mod jq;
+pub mod kubectl;
+pub mod ls;
+pub mod npm;
+pub mod ps;
+pub mod rg;
+pub mod terraform;
 
 pub type DiscoveryBuffer = BTreeMap<String, Vec<LineMetadata>>;
 
@@ -23,16 +23,16 @@ pub trait CommandHandler: Send + Sync {
     fn parse_line(&self, line: &str) -> Option<LineMetadata>;
     fn generate_insight(&self, command: &str, buffer: &DiscoveryBuffer) -> Option<String>;
     fn format_summary(&self, _key: &str, _items: &[LineMetadata]) -> Option<String> {
-        None 
+        None
     }
-    
+
     /// Detects if a line contains critical information that should NOT be synthesized
     fn is_outlier(&self, _line: &str, _meta: &LineMetadata) -> bool {
         false
     }
 
     /// Returns the semantic category for this line (e.g. GIT, DOCKER, CARGO)
-    fn get_category(&self, _perms: &str) -> String {
+    fn get_category(&self, _meta: &LineMetadata) -> String {
         "FILE".to_string()
     }
 

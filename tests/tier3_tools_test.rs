@@ -1,6 +1,6 @@
 mod common;
-use axiom::IntentContext;
 use axiom::gateway::core::TerminalEvent;
+use axiom::IntentContext;
 
 #[test]
 fn test_docker_pull_synthesis() {
@@ -20,12 +20,26 @@ e17133b79956: Downloading [=========>                                         ] 
     ";
 
     for line in raw_output.lines() {
-        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
+        session.engine.process_line(
+            TerminalEvent::StaticLine(line.to_string()),
+            command,
+            &context,
+        );
     }
-    
+
     let summaries = session.engine.flush_summaries();
-    assert!(summaries.iter().any(|s| s.contains("Processing 4 image layers")), "Should contain transfer insight");
-    assert!(summaries.iter().any(|s| s.contains("Hidden 4 layer progress updates")), "Should contain layer summary");
+    assert!(
+        summaries
+            .iter()
+            .any(|s| s.contains("Processing 4 image layers")),
+        "Should contain transfer insight"
+    );
+    assert!(
+        summaries
+            .iter()
+            .any(|s| s.contains("Hidden 4 layer progress updates")),
+        "Should contain layer summary"
+    );
 }
 
 #[test]
@@ -47,13 +61,28 @@ redis-master             1/1     Running            0          10d
     ";
 
     for line in raw_output.lines() {
-        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
+        session.engine.process_line(
+            TerminalEvent::StaticLine(line.to_string()),
+            command,
+            &context,
+        );
     }
-    
+
     let summaries = session.engine.flush_summaries();
-    assert!(summaries.iter().any(|s| s.contains("Detected 1 unhealthy resources")), "Should contain health warning");
-    assert!(summaries.iter().any(|s| s.contains("Running [3]")), "Should group running pods");
-    assert!(summaries.iter().any(|s| s.contains("CrashLoopBackOff [1]")), "Should group failing pod");
+    assert!(
+        summaries
+            .iter()
+            .any(|s| s.contains("Detected 1 unhealthy resources")),
+        "Should contain health warning"
+    );
+    assert!(
+        summaries.iter().any(|s| s.contains("Running [3]")),
+        "Should group running pods"
+    );
+    assert!(
+        summaries.iter().any(|s| s.contains("CrashLoopBackOff [1]")),
+        "Should group failing pod"
+    );
 }
 
 #[test]
@@ -80,11 +109,26 @@ fn test_terraform_plan_synthesis() {
     ";
 
     for line in raw_output.lines() {
-        session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context);
+        session.engine.process_line(
+            TerminalEvent::StaticLine(line.to_string()),
+            command,
+            &context,
+        );
     }
-    
+
     let summaries = session.engine.flush_summaries();
-    assert!(summaries.iter().any(|s| s.contains("1 to add") && s.contains("1 to destroy")), "Should contain plan insight");
-    assert!(summaries.iter().any(|s| s.contains("CREATE: 1 resources")), "Should summarize creates");
-    assert!(summaries.iter().any(|s| s.contains("DESTROY: 1 resources")), "Should summarize destroys");
+    assert!(
+        summaries
+            .iter()
+            .any(|s| s.contains("1 to add") && s.contains("1 to destroy")),
+        "Should contain plan insight"
+    );
+    assert!(
+        summaries.iter().any(|s| s.contains("CREATE: 1 resources")),
+        "Should summarize creates"
+    );
+    assert!(
+        summaries.iter().any(|s| s.contains("DESTROY: 1 resources")),
+        "Should summarize destroys"
+    );
 }

@@ -1,6 +1,6 @@
 mod common;
-use axiom::IntentContext;
 use axiom::gateway::core::TerminalEvent;
+use axiom::IntentContext;
 
 #[test]
 fn test_cargo_noise_reduction() {
@@ -26,7 +26,11 @@ warning: unused variable: `x`
     let mut warning_shown = false;
 
     for line in raw_output.lines() {
-        if let Some(processed) = session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context) {
+        if let Some(processed) = session.engine.process_line(
+            TerminalEvent::StaticLine(line.to_string()),
+            command,
+            &context,
+        ) {
             lines_printed += 1;
             if processed.contains("warning: unused variable") {
                 warning_shown = true;
@@ -35,7 +39,10 @@ warning: unused variable: `x`
     }
 
     assert!(warning_shown, "Local warnings must always be shown");
-    assert!(lines_printed < 5, "Most dependency logs should be collapsed");
+    assert!(
+        lines_printed < 5,
+        "Most dependency logs should be collapsed"
+    );
 }
 
 #[test]
@@ -59,7 +66,11 @@ added 1 package in 2s
     let mut summary_shown = false;
 
     for line in raw_output.lines() {
-        if let Some(processed) = session.engine.process_line(TerminalEvent::StaticLine(line.to_string()), command, &context) {
+        if let Some(processed) = session.engine.process_line(
+            TerminalEvent::StaticLine(line.to_string()),
+            command,
+            &context,
+        ) {
             if processed.contains("deprecated") {
                 deprecation_shown = true;
             }
@@ -69,6 +80,9 @@ added 1 package in 2s
         }
     }
 
-    assert!(!deprecation_shown, "Deprecation warnings should be collapsed by default");
+    assert!(
+        !deprecation_shown,
+        "Deprecation warnings should be collapsed by default"
+    );
     assert!(summary_shown, "Final install summary must be shown");
 }

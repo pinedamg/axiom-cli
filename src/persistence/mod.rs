@@ -2,7 +2,7 @@ use rusqlite::{params, Connection};
 use std::path::Path;
 
 pub mod analytics;
-pub use analytics::{TokenSavings, AnalyticsProvider};
+pub use analytics::{AnalyticsProvider, TokenSavings};
 
 pub struct PersistenceManager {
     conn: Connection,
@@ -24,12 +24,14 @@ impl PersistenceManager {
         let conn = Connection::open(db_path)?;
 
         // Performance optimizations for CLI startup
-        conn.execute_batch("
+        conn.execute_batch(
+            "
             PRAGMA journal_mode = WAL;
             PRAGMA synchronous = NORMAL;
             PRAGMA temp_store = MEMORY;
             PRAGMA cache_size = -2000;
-        ")?;
+        ",
+        )?;
 
         // Create base tables
         conn.execute(
@@ -72,14 +74,22 @@ impl PersistenceManager {
         )?;
 
         // Initialize default global settings
-        conn.execute("INSERT OR IGNORE INTO global_settings (key, value) VALUES ('enabled', 'true')", [])?;
-        conn.execute("INSERT OR IGNORE INTO global_settings (key, value) VALUES ('bypass_count', '0')", [])?;
+        conn.execute(
+            "INSERT OR IGNORE INTO global_settings (key, value) VALUES ('enabled', 'true')",
+            [],
+        )?;
+        conn.execute(
+            "INSERT OR IGNORE INTO global_settings (key, value) VALUES ('bypass_count', '0')",
+            [],
+        )?;
 
         Ok(Self { conn })
     }
 
     pub fn get_global_enabled(&self) -> anyhow::Result<bool> {
-        let mut stmt = self.conn.prepare("SELECT value FROM global_settings WHERE key = 'enabled'")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT value FROM global_settings WHERE key = 'enabled'")?;
         let mut rows = stmt.query([])?;
         if let Some(row) = rows.next()? {
             let val: String = row.get(0)?;
@@ -99,7 +109,9 @@ impl PersistenceManager {
     }
 
     pub fn get_bypass_count(&self) -> anyhow::Result<usize> {
-        let mut stmt = self.conn.prepare("SELECT value FROM global_settings WHERE key = 'bypass_count'")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT value FROM global_settings WHERE key = 'bypass_count'")?;
         let mut rows = stmt.query([])?;
         if let Some(row) = rows.next()? {
             let val: String = row.get(0)?;
@@ -142,9 +154,11 @@ impl PersistenceManager {
     }
 
     pub fn get_session_intelligence(&self, session_id: &str) -> anyhow::Result<Option<String>> {
-        let mut stmt = self.conn.prepare("SELECT intelligence_mode FROM session_settings WHERE session_id = ?")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT intelligence_mode FROM session_settings WHERE session_id = ?")?;
         let mut rows = stmt.query(params![session_id])?;
-        
+
         if let Some(row) = rows.next()? {
             Ok(Some(row.get(0)?))
         } else {
@@ -154,7 +168,10 @@ impl PersistenceManager {
 
     /// Deletes a specific template
     pub fn delete_template(&self, template: &str) -> anyhow::Result<()> {
-        self.conn.execute("DELETE FROM learned_templates WHERE template = ?", params![template])?;
+        self.conn.execute(
+            "DELETE FROM learned_templates WHERE template = ?",
+            params![template],
+        )?;
         Ok(())
     }
 
@@ -183,10 +200,10 @@ impl PersistenceManager {
 
     /// Retrieves all known templates
     pub fn get_known_templates(&self) -> anyhow::Result<Vec<(String, usize)>> {
-        let mut stmt = self.conn.prepare("SELECT template, frequency FROM learned_templates")?;
-        let rows = stmt.query_map([], |row| {
-            Ok((row.get(0)?, row.get::<_, i64>(1)? as usize))
-        })?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT template, frequency FROM learned_templates")?;
+        let rows = stmt.query_map([], |row| Ok((row.get(0)?, row.get::<_, i64>(1)? as usize)))?;
 
         let mut results = Vec::new();
         for row in rows {
@@ -196,7 +213,12 @@ impl PersistenceManager {
     }
 
     /// Logs a saving event
-    pub fn log_saving(&self, command: &str, original: usize, compressed: usize) -> anyhow::Result<()> {
+    pub fn log_saving(
+        &self,
+        command: &str,
+        original: usize,
+        compressed: usize,
+    ) -> anyhow::Result<()> {
         self.conn.execute(
             "INSERT INTO savings_log (command, original_size, compressed_size) VALUES (?1, ?2, ?3)",
             params![command, original as i64, compressed as i64],
@@ -206,9 +228,11 @@ impl PersistenceManager {
 
     /// Returns total characters saved: (original, compressed)
     pub fn get_total_savings(&self) -> anyhow::Result<(usize, usize)> {
-        let mut stmt = self.conn.prepare("SELECT SUM(original_size), SUM(compressed_size) FROM savings_log")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT SUM(original_size), SUM(compressed_size) FROM savings_log")?;
         let mut rows = stmt.query([])?;
-        
+
         if let Some(row) = rows.next()? {
             let original: i64 = row.get(0).unwrap_or(0);
             let compressed: i64 = row.get(1).unwrap_or(0);
@@ -225,7 +249,11 @@ impl PersistenceManager {
             "SELECT command, original_size, compressed_size FROM savings_log ORDER BY id DESC LIMIT ?"
         )?;
         let rows = stmt.query_map(params![limit as i64], |row| {
-            Ok((row.get(0)?, row.get::<_, i64>(1)? as usize, row.get::<_, i64>(2)? as usize))
+            Ok((
+                row.get(0)?,
+                row.get::<_, i64>(1)? as usize,
+                row.get::<_, i64>(2)? as usize,
+            ))
         })?;
 
         let mut results = Vec::new();

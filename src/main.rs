@@ -1,15 +1,15 @@
-use clap::{Parser, Subcommand};
-use std::env;
-use std::process::exit;
-use std::path::Path;
-use std::io::{self, Write};
 use axiom::config::{AxiomConfig, IntelligenceMode};
+use axiom::engine::installer::AxiomInstaller;
+use axiom::engine::intent_discovery::IntentDiscoverer;
+use axiom::gateway::detective::ProcessDetective;
+use axiom::gateway::execute_command;
 use axiom::session::AxiomSession;
 use axiom::IntentContext;
-use axiom::gateway::execute_command;
-use axiom::gateway::detective::ProcessDetective;
-use axiom::engine::intent_discovery::IntentDiscoverer;
-use axiom::engine::installer::AxiomInstaller;
+use clap::{Parser, Subcommand};
+use std::env;
+use std::io::{self, Write};
+use std::path::Path;
+use std::process::exit;
 
 use axiom::engine::updater::AxiomUpdater;
 
@@ -125,17 +125,11 @@ enum Commands {
 #[derive(Subcommand, Debug)]
 enum BypassAction {
     /// Bypass the next N commands (e.g., bypass 3)
-    Count {
-        count: usize,
-    },
+    Count { count: usize },
     /// Permanently blacklist a command
-    Always {
-        command: String,
-    },
+    Always { command: String },
     /// Remove a command from the blacklist
-    Never {
-        command: String,
-    },
+    Never { command: String },
     /// Execute a single command without filtering
     Run {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
@@ -164,10 +158,7 @@ enum ConfigAction {
     /// Show current configuration
     Show,
     /// Set a configuration value (e.g. config set intelligence neural)
-    Set {
-        key: String,
-        value: String,
-    },
+    Set { key: String, value: String },
 }
 
 #[derive(Subcommand, Debug)]
@@ -195,7 +186,7 @@ async fn main() -> anyhow::Result<()> {
     if cli.dev {
         config.dev_mode = true;
     }
-    
+
     let mut session = AxiomSession::new(config)?;
 
     // 1.5 Override config with session-specific settings
@@ -259,15 +250,32 @@ async fn main() -> anyhow::Result<()> {
                         let program = &args[0];
                         let cmd_args = &args[1..];
                         // Execute raw
-                        execute_command(program, cmd_args, &IntentContext::default(), &mut session, true).await?;
+                        execute_command(
+                            program,
+                            cmd_args,
+                            &IntentContext::default(),
+                            &mut session,
+                            true,
+                        )
+                        .await?;
                     }
                 }
                 return Ok(());
             }
-            Commands::Install { path, context_only, funnel_id } => {
+            Commands::Install {
+                path,
+                context_only,
+                funnel_id,
+            } => {
                 let project_path = Path::new(&path);
                 if context_only {
-                    let context_files = ["GEMINI.md", "AGENTS.md", "CLAUDE.md", ".cursorrules", ".windsurfrules"];
+                    let context_files = [
+                        "GEMINI.md",
+                        "AGENTS.md",
+                        "CLAUDE.md",
+                        ".cursorrules",
+                        ".windsurfrules",
+                    ];
                     for file_name in context_files {
                         let path = project_path.join(file_name);
                         if path.exists() {
@@ -276,7 +284,11 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
                 } else {
-                    axiom::engine::ui::OnboardingManager::run_install_flow(Some(project_path), cli.yes, funnel_id)?;
+                    axiom::engine::ui::OnboardingManager::run_install_flow(
+                        Some(project_path),
+                        cli.yes,
+                        funnel_id,
+                    )?;
                 }
                 return Ok(());
             }
@@ -326,15 +338,15 @@ async fn main() -> anyhow::Result<()> {
                     println!("Error: No command provided for dev mode.");
                     exit(1);
                 }
-                
+
                 // Re-initialize session with dev_mode = true
                 let mut config = AxiomConfig::load();
                 config.dev_mode = true;
                 let mut session = AxiomSession::new(config)?;
-                
+
                 let program = &args[0];
                 let cmd_args = &args[1..];
-                
+
                 let intent = env::var("AXIOM_CONTEXT")
                     .ok()
                     .or_else(|| IntentDiscoverer::discover(&session.config.intent_sources))
@@ -348,8 +360,10 @@ async fn main() -> anyhow::Result<()> {
 
                 let _ = session.engine.prepare_session(&intent);
                 execute_command(program, cmd_args, &context, &mut session, cli.raw).await?;
-                
-                axiom::engine::ui::LaboratoryRenderer::render_trace_report(session.engine.get_traces());
+
+                axiom::engine::ui::LaboratoryRenderer::render_trace_report(
+                    session.engine.get_traces(),
+                );
                 return Ok(());
             }
             Commands::Gain { history: _ } => {
@@ -374,10 +388,16 @@ async fn main() -> anyhow::Result<()> {
             }
             Commands::CheckAi => {
                 if ProcessDetective::is_called_by_ai() {
-                    println!("DETECTED: AI Agent ({})", ProcessDetective::get_parent_name());
+                    println!(
+                        "DETECTED: AI Agent ({})",
+                        ProcessDetective::get_parent_name()
+                    );
                     exit(0);
                 } else {
-                    println!("DETECTED: Human Shell ({})", ProcessDetective::get_parent_name());
+                    println!(
+                        "DETECTED: Human Shell ({})",
+                        ProcessDetective::get_parent_name()
+                    );
                     exit(1);
                 }
             }
@@ -389,11 +409,15 @@ async fn main() -> anyhow::Result<()> {
                             println!("Error: Invalid mode '{}'. Use 'fuzzy' or 'neural'.", mode);
                             exit(1);
                         }
-                        session.persistence.set_session_intelligence(&session.id, &normalized_mode)?;
+                        session
+                            .persistence
+                            .set_session_intelligence(&session.id, &normalized_mode)?;
                         println!("Intent Discovery ENABLED (Mode: {})", normalized_mode);
                     }
                     IntentAction::Disable => {
-                        session.persistence.set_session_intelligence(&session.id, "off")?;
+                        session
+                            .persistence
+                            .set_session_intelligence(&session.id, "off")?;
                         println!("Intent Discovery DISABLED (Mode: off)");
                     }
                     IntentAction::Status => {
@@ -403,9 +427,10 @@ async fn main() -> anyhow::Result<()> {
                         println!("Session ID:        {}", session.id);
                         println!("Intelligence Mode: {:?}", mode);
                         println!("Parent Process:    {}", ProcessDetective::get_parent_name());
-                        
+
                         if mode != IntelligenceMode::Off {
-                            let intent = IntentDiscoverer::discover(&session.config.intent_sources).unwrap_or_default();
+                            let intent = IntentDiscoverer::discover(&session.config.intent_sources)
+                                .unwrap_or_default();
                             println!("Last Intent:       \"{}\"", intent);
                         }
                     }
@@ -439,7 +464,9 @@ async fn main() -> anyhow::Result<()> {
                             "markdown" => {
                                 config.markdown_enabled = value.parse::<bool>()?;
                             }
-                            _ => anyhow::bail!("Key not supported yet via CLI. Edit .axiom.yaml manually."),
+                            _ => anyhow::bail!(
+                                "Key not supported yet via CLI. Edit .axiom.yaml manually."
+                            ),
                         }
                         let yaml = serde_yaml::to_string(&config)?;
                         std::fs::write(".axiom.yaml", yaml)?;
@@ -483,11 +510,11 @@ async fn main() -> anyhow::Result<()> {
     // 5. Execute
     let program = &cli.proxy_args[0];
     let cmd_args = &cli.proxy_args[1..];
-    
+
     // Check global state
     let is_enabled = session.persistence.get_global_enabled().unwrap_or(true);
     let bypass_count = session.persistence.get_bypass_count().unwrap_or(0);
-    
+
     let mut final_raw = cli.raw;
 
     // --- Stealth Mode Logic ---
@@ -521,21 +548,30 @@ fn run_interactive_config(current: &AxiomConfig) -> anyhow::Result<()> {
     loop {
         println!("\n\x1b[1m⚙️ Axiom Interactive Configuration\x1b[0m");
         println!("--------------------------------\n");
-        
-        println!("1. Intelligence Mode (Current: {:?})", current.intelligence_mode);
-        println!("2. Markdown Table Support (Current: {})", current.markdown_enabled);
-        println!("3. Telemetry Level (Current: {:?})", current.telemetry_level);
+
+        println!(
+            "1. Intelligence Mode (Current: {:?})",
+            current.intelligence_mode
+        );
+        println!(
+            "2. Markdown Table Support (Current: {})",
+            current.markdown_enabled
+        );
+        println!(
+            "3. Telemetry Level (Current: {:?})",
+            current.telemetry_level
+        );
         println!("4. Privacy Patterns (PII)");
         println!("5. Intent Context Sources");
         println!("6. Exit");
-        
+
         print!("\nSelect an option [1-6]: ");
         io::stdout().flush()?;
         let mut choice = String::new();
         io::stdin().read_line(&mut choice)?;
-        
+
         let mut new_config = current.clone();
-        
+
         match choice.trim() {
             "1" => {
                 println!("\nSelect Intelligence Mode:");
@@ -600,7 +636,7 @@ fn run_interactive_config(current: &AxiomConfig) -> anyhow::Result<()> {
             "6" => break,
             _ => continue,
         }
-        
+
         let yaml = serde_yaml::to_string(&new_config)?;
         std::fs::write(".axiom.yaml", yaml)?;
         println!("\n✅ Configuration saved to .axiom.yaml");
@@ -613,14 +649,14 @@ use axiom::engine::reporting::{EfficiencyReport, ReportRenderer};
 
 fn show_savings(session: &AxiomSession) -> anyhow::Result<()> {
     // 1. Get raw data from persistence (unbounded for total dashboard)
-    let raw_data = session.persistence.get_recent_history(10000)?; 
-    
+    let raw_data = session.persistence.get_recent_history(10000)?;
+
     // 2. Process via SOLID reporting module
     let report = EfficiencyReport::new(raw_data);
-    
+
     // 3. Render via renderer
     ReportRenderer::render_dashboard(&report);
-    
+
     Ok(())
 }
 

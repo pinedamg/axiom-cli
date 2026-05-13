@@ -1,6 +1,6 @@
-use wasmtime::*;
-use std::path::Path;
 use std::fs;
+use std::path::Path;
+use wasmtime::*;
 
 pub struct WasmPlugin {
     pub name: String,
@@ -20,7 +20,7 @@ impl WasmPluginManager {
     pub fn new(plugins_dir: &Path) -> anyhow::Result<Self> {
         let mut plugins = Vec::new();
         let engine = Engine::default();
-        
+
         if plugins_dir.exists() {
             for entry in fs::read_dir(plugins_dir)? {
                 let entry = entry?;
@@ -33,22 +33,27 @@ impl WasmPluginManager {
             }
         }
 
-        Ok(Self { plugins, _engine: engine })
+        Ok(Self {
+            plugins,
+            _engine: engine,
+        })
     }
 
     fn load_plugin(engine: &Engine, path: &Path) -> anyhow::Result<WasmPlugin> {
         let wasm_bytes = fs::read(path)?;
         let mut store = Store::new(engine, ());
         let module = Module::new(engine, wasm_bytes)?;
-        
+
         let linker = Linker::new(engine);
         let instance = linker.instantiate(&mut store, &module)?;
 
         // Extract functions
-        let transform_fn = instance.get_typed_func::<(u32, u32), u64>(&mut store, "axiom_transform")?;
+        let transform_fn =
+            instance.get_typed_func::<(u32, u32), u64>(&mut store, "axiom_transform")?;
         let alloc_fn = instance.get_typed_func::<u32, u32>(&mut store, "axiom_alloc")?;
 
-        let name = path.file_stem()
+        let name = path
+            .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown")
             .to_string();
@@ -75,9 +80,11 @@ impl WasmPluginManager {
     }
 
     fn call_plugin_transform(plugin: &mut WasmPlugin, input: &str) -> anyhow::Result<String> {
-        let memory = plugin.instance.get_memory(&mut plugin.store, "memory")
+        let memory = plugin
+            .instance
+            .get_memory(&mut plugin.store, "memory")
             .ok_or_else(|| anyhow::anyhow!("WASM plugin missing 'memory' export"))?;
-        
+
         let input_bytes = input.as_bytes();
         let input_len = input_bytes.len() as u32;
 
@@ -88,7 +95,9 @@ impl WasmPluginManager {
         memory.write(&mut plugin.store, ptr as usize, input_bytes)?;
 
         // 3. Call transform
-        let result = plugin.transform_fn.call(&mut plugin.store, (ptr, input_len))?;
+        let result = plugin
+            .transform_fn
+            .call(&mut plugin.store, (ptr, input_len))?;
 
         // 4. Read result (High 32 bits = ptr, Low 32 bits = len)
         let output_ptr = (result >> 32) as u32;
@@ -115,7 +124,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let manager = WasmPluginManager::new(dir.path()).unwrap();
         assert_eq!(manager.plugins.len(), 0);
-        
+
         // Should return the same string if no plugins are loaded
         let output = manager.plugins.len();
         assert_eq!(output, 0);
@@ -123,7 +132,8 @@ mod tests {
 
     #[test]
     fn test_plugin_manager_no_dir() {
-        let manager = WasmPluginManager::new(Path::new("/non/existent/path/axiom/plugins")).unwrap();
+        let manager =
+            WasmPluginManager::new(Path::new("/non/existent/path/axiom/plugins")).unwrap();
         assert_eq!(manager.plugins.len(), 0);
     }
 }

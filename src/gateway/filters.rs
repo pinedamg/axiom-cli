@@ -11,7 +11,10 @@ impl Default for StreamPipeline {
     fn default() -> Self {
         Self {
             buffer: String::with_capacity(1024),
-            ansi_regex: Regex::new(r"[\u001b\u009b][\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]").unwrap(),
+            ansi_regex: Regex::new(
+                r"[\u001b\u009b][\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]",
+            )
+            .unwrap(),
             last_was_cr: false,
         }
     }

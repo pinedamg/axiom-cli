@@ -1,8 +1,8 @@
-use std::path::{Path, PathBuf};
+use crate::engine::handshake::Handshake;
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
-use serde::{Serialize, Deserialize};
-use crate::engine::handshake::Handshake;
+use std::path::{Path, PathBuf};
 
 pub const DEFAULT_DB_PATH: &str = "axiom.db";
 pub const DEFAULT_SCHEMAS_DIR: &str = "config/schemas";
@@ -84,9 +84,15 @@ impl Default for AxiomConfig {
             node_token: String::new(),
             hardware_hash: String::new(),
             intent_keywords: vec![
-                "error".to_string(), "fail".to_string(), "package".to_string(),
-                "version".to_string(), "diff".to_string(), "log".to_string(),
-                "debug".to_string(), "trace".to_string(), "crash".to_string(),
+                "error".to_string(),
+                "fail".to_string(),
+                "package".to_string(),
+                "version".to_string(),
+                "diff".to_string(),
+                "log".to_string(),
+                "debug".to_string(),
+                "trace".to_string(),
+                "crash".to_string(),
             ],
             pii_patterns: vec![
                 r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}".to_string(),
@@ -112,11 +118,21 @@ impl Default for AxiomConfig {
             enabled: true,
             dev_mode: false,
             blacklist: vec![
-                "vi".to_string(), "vim".to_string(), "nano".to_string(), 
-                "ssh".to_string(), "top".to_string(), "htop".to_string(), 
-                "man".to_string(), "less".to_string(), "more".to_string(),
-                "cat".to_string(), "sudo".to_string(), "axiom".to_string(),
-                "cd".to_string(), "clear".to_string(), "exit".to_string(),
+                "vi".to_string(),
+                "vim".to_string(),
+                "nano".to_string(),
+                "ssh".to_string(),
+                "top".to_string(),
+                "htop".to_string(),
+                "man".to_string(),
+                "less".to_string(),
+                "more".to_string(),
+                "cat".to_string(),
+                "sudo".to_string(),
+                "axiom".to_string(),
+                "cd".to_string(),
+                "clear".to_string(),
+                "exit".to_string(),
             ],
             bypass_count: 0,
         }
@@ -155,7 +171,7 @@ impl AxiomConfig {
                 let id = config.node_id.clone();
                 let token = config.node_token.clone();
                 let hash = config.hardware_hash.clone();
-                
+
                 config = local_config;
                 config.node_id = id;
                 config.node_token = token;

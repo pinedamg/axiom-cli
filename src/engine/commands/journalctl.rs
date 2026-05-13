@@ -1,5 +1,5 @@
-use crate::engine::discovery::LineMetadata;
 use super::{CommandHandler, DiscoveryBuffer};
+use crate::engine::discovery::LineMetadata;
 
 pub struct JournalHandler;
 
@@ -10,14 +10,22 @@ impl CommandHandler for JournalHandler {
 
     fn parse_line(&self, line: &str) -> Option<LineMetadata> {
         let trimmed = line.trim();
-        if trimmed.is_empty() { return None; }
+        if trimmed.is_empty() {
+            return None;
+        }
 
         // Standard journalctl line: Mar 27 18:50 machine process[pid]: message
         let parts: Vec<&str> = trimmed.split_whitespace().collect();
-        if parts.len() < 5 { return None; }
+        if parts.len() < 5 {
+            return None;
+        }
 
         let process_with_pid = parts[4];
-        let process = process_with_pid.split('[').next().unwrap_or(process_with_pid).trim_matches(':');
+        let process = process_with_pid
+            .split('[')
+            .next()
+            .unwrap_or(process_with_pid)
+            .trim_matches(':');
 
         // Noise patterns
         if line.contains("systemd") || line.contains("session opened") || line.contains("kernel:") {
@@ -38,7 +46,7 @@ impl CommandHandler for JournalHandler {
         })
     }
 
-    fn get_category(&self, _perms: &str) -> String {
+    fn get_category(&self, _meta: &LineMetadata) -> String {
         "SYS".to_string()
     }
 
@@ -48,8 +56,11 @@ impl CommandHandler for JournalHandler {
 
         for (key, items) in buffer {
             if key.starts_with("SYS:") {
-                if key.contains("NOISE") { noise += items.len(); }
-                else if key.contains("LOG") { logs += items.len(); }
+                if key.contains("NOISE") {
+                    noise += items.len();
+                } else if key.contains("LOG") {
+                    logs += items.len();
+                }
             }
         }
 
@@ -62,16 +73,24 @@ impl CommandHandler for JournalHandler {
 
     fn format_summary(&self, key: &str, items: &[LineMetadata]) -> Option<String> {
         let parts: Vec<&str> = key.split(':').collect();
-        if parts[0] != "SYS" { return None; }
+        if parts[0] != "SYS" {
+            return None;
+        }
 
         let type_label = parts.get(1).unwrap_or(&"Unknown");
         let process = parts.get(2).unwrap_or(&"unknown");
         let count = items.len();
 
         match *type_label {
-            "NOISE" => Some(format!("• Hidden {} noise lines from system service [{}].", count, process)),
-            "LOG" => Some(format!("• Synthesized {} log entries for process [{}].", count, process)),
-            _ => None
+            "NOISE" => Some(format!(
+                "• Hidden {} noise lines from system service [{}].",
+                count, process
+            )),
+            "LOG" => Some(format!(
+                "• Synthesized {} log entries for process [{}].",
+                count, process
+            )),
+            _ => None,
         }
     }
 }

@@ -1,6 +1,6 @@
-use std::env;
-use serde_json::json;
 use crate::config::{AxiomConfig, TelemetryLevel};
+use serde_json::json;
+use std::env;
 
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
@@ -15,12 +15,12 @@ impl Telemetry {
 
     /// Reports aggregate savings or errors to the Axiom Pulse backend.
     pub fn report_event(
-        config: &AxiomConfig, 
-        _event_type: &str, 
+        config: &AxiomConfig,
+        _event_type: &str,
         command: Option<&str>,
-        raw: usize, 
-        processed: usize, 
-        _error_msg: Option<String>
+        raw: usize,
+        processed: usize,
+        _error_msg: Option<String>,
     ) {
         if config.telemetry_level == TelemetryLevel::Off {
             return;
@@ -28,7 +28,11 @@ impl Telemetry {
 
         // 1. Basic Data
         let saved = raw.saturating_sub(processed);
-        let ratio = if raw > 0 { saved as f64 / raw as f64 } else { 0.0 };
+        let ratio = if raw > 0 {
+            saved as f64 / raw as f64
+        } else {
+            0.0
+        };
 
         let binary = if let Some(cmd) = command {
             cmd.split_whitespace().next().unwrap_or("unknown")
@@ -38,7 +42,7 @@ impl Telemetry {
 
         // Axiom Pulse Usage Schema (v1)
         let payload = json!({
-            "iid": config.node_id, 
+            "iid": config.node_id,
             "command_bin": binary,
             "raw_bytes": raw as i64,
             "saved_bytes": saved as i64,

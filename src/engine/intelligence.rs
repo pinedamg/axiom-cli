@@ -1,13 +1,13 @@
-use strsim::jaro_winkler;
 use candle_core::{Device, Tensor};
 use candle_transformers::models::bert::{BertModel, Config};
 use hf_hub::{api::sync::Api, Repo, RepoType};
+use strsim::jaro_winkler;
 use tokenizers::Tokenizer;
 
 /// Interface for all intelligence engines in Axiom
 pub trait IntelligenceProvider: Send + Sync {
     fn name(&self) -> &str;
-    
+
     /// Called once at session start to cache intent-related data (e.g. embeddings)
     fn pre_compute_intent(&mut self, _intent: &str) -> anyhow::Result<()> {
         Ok(())
@@ -20,8 +20,10 @@ pub trait IntelligenceProvider: Send + Sync {
 pub struct FuzzyIntelligence;
 
 impl IntelligenceProvider for FuzzyIntelligence {
-    fn name(&self) -> &str { "fuzzy" }
-    
+    fn name(&self) -> &str {
+        "fuzzy"
+    }
+
     fn is_relevant(&self, intent: &str, line: &str, threshold: f32) -> bool {
         let intent_lower = intent.to_lowercase();
         let line_lower = line.to_lowercase();
@@ -52,8 +54,11 @@ impl NeuralIntelligence {
     pub fn new() -> anyhow::Result<Self> {
         let device = Device::Cpu;
         let api = Api::new()?;
-        let repo = api.repo(Repo::new("sentence-transformers/all-MiniLM-L6-v2".to_string(), RepoType::Model));
-        
+        let repo = api.repo(Repo::new(
+            "sentence-transformers/all-MiniLM-L6-v2".to_string(),
+            RepoType::Model,
+        ));
+
         let config_filename = repo.get("config.json")?;
         let tokenizer_filename = repo.get("tokenizer.json")?;
         let weights_filename = repo.get("model.safetensors")?;
@@ -61,31 +66,38 @@ impl NeuralIntelligence {
         let config_str = std::fs::read_to_string(config_filename)?;
         let config: Config = serde_json::from_str(&config_str)?;
         let tokenizer = Tokenizer::from_file(tokenizer_filename).map_err(anyhow::Error::msg)?;
-        
+
         let vb = unsafe {
-            candle_nn::VarBuilder::from_mmaped_safetensors(&[weights_filename], candle_core::DType::F32, &device)?
+            candle_nn::VarBuilder::from_mmaped_safetensors(
+                &[weights_filename],
+                candle_core::DType::F32,
+                &device,
+            )?
         };
         let model = BertModel::load(vb, &config)?;
 
-        Ok(Self { 
-            model, 
-            tokenizer, 
+        Ok(Self {
+            model,
+            tokenizer,
             device,
             intent_embedding: None,
         })
     }
 
     fn get_embedding(&self, text: &str) -> anyhow::Result<Tensor> {
-        let tokens = self.tokenizer.encode(text, true).map_err(anyhow::Error::msg)?;
+        let tokens = self
+            .tokenizer
+            .encode(text, true)
+            .map_err(anyhow::Error::msg)?;
         let token_ids = Tensor::new(tokens.get_ids(), &self.device)?.unsqueeze(0)?;
         let token_type_ids = token_ids.zeros_like()?;
-        
+
         let embeddings = self.model.forward(&token_ids, &token_type_ids, None)?;
-        
+
         // Mean pooling
         let (_n_batch, n_tokens, _hidden_size) = embeddings.dims3()?;
         let mean_embedding = (embeddings.sum(1)? / (n_tokens as f64))?;
-        
+
         // Normalize for cosine similarity
         let norm = mean_embedding.sqr()?.sum_all()?.sqrt()?;
         Ok(mean_embedding.broadcast_div(&norm)?)
@@ -93,14 +105,16 @@ impl NeuralIntelligence {
 }
 
 impl IntelligenceProvider for NeuralIntelligence {
-    fn name(&self) -> &str { "neural" }
+    fn name(&self) -> &str {
+        "neural"
+    }
 
     fn pre_compute_intent(&mut self, intent: &str) -> anyhow::Result<()> {
         let emb = self.get_embedding(intent)?;
         self.intent_embedding = Some(emb);
         Ok(())
     }
-    
+
     fn is_relevant(&self, _intent: &str, line: &str, threshold: f32) -> bool {
         let intent_emb = match &self.intent_embedding {
             Some(e) => e,
@@ -138,7 +152,7 @@ mod tests {
         let mut engine = NeuralIntelligence::new().unwrap();
         let intent = "The website is down";
         engine.pre_compute_intent(intent).unwrap();
-        
+
         let line = "Connection refused at port 80";
         let score = engine.is_relevant(intent, line, 0.5);
         assert!(score);

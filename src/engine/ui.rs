@@ -1,9 +1,9 @@
+use crate::config::AxiomConfig;
+use crate::engine::installer::AxiomInstaller;
+use crate::gateway::detective::ProcessDetective;
+use crate::session::AxiomSession;
 use std::io::{self, Write};
 use std::path::Path;
-use crate::config::AxiomConfig;
-use crate::session::AxiomSession;
-use crate::gateway::detective::ProcessDetective;
-use crate::engine::installer::AxiomInstaller;
 
 pub struct DopamineEngine;
 
@@ -15,8 +15,10 @@ impl DopamineEngine {
 
         if let Some(stats) = session.engine.get_session_stats() {
             if stats.raw_bytes > 500 {
-                let savings = (stats.raw_bytes as f64 - stats.saved_bytes as f64) / stats.raw_bytes as f64 * 100.0;
-                
+                let savings = (stats.raw_bytes as f64 - stats.saved_bytes as f64)
+                    / stats.raw_bytes as f64
+                    * 100.0;
+
                 let message = format!(
                     "\n\x1b[32m✨ Axiom: {} bytes → {} bytes ({:.1}% reduction)\x1b[0m",
                     stats.raw_bytes, stats.saved_bytes, savings
@@ -37,7 +39,11 @@ impl DopamineEngine {
 pub struct OnboardingManager;
 
 impl OnboardingManager {
-    pub fn run_install_flow(project_path: Option<&Path>, auto_yes: bool, funnel_id: Option<String>) -> anyhow::Result<()> {
+    pub fn run_install_flow(
+        project_path: Option<&Path>,
+        auto_yes: bool,
+        funnel_id: Option<String>,
+    ) -> anyhow::Result<()> {
         println!("\x1b[1;36m🚀 AXIOM: The Semantic Token Streamer\x1b[0m");
         println!("---------------------------------------\n");
 
@@ -58,11 +64,17 @@ impl OnboardingManager {
                 println!("✅");
             }
         }
-        
+
         // 2. Sync AI Context
         if let Some(root) = project_path {
             print!("  - Syncing AI Context Rules ... ");
-            let context_files = ["GEMINI.md", "AGENTS.md", "CLAUDE.md", ".cursorrules", ".windsurfrules"];
+            let context_files = [
+                "GEMINI.md",
+                "AGENTS.md",
+                "CLAUDE.md",
+                ".cursorrules",
+                ".windsurfrules",
+            ];
             for file_name in context_files {
                 let path = root.join(file_name);
                 if path.exists() || file_name == "CLAUDE.md" || file_name == "AGENTS.md" {
@@ -77,7 +89,7 @@ impl OnboardingManager {
 
         // 3. The "Aha!" Moment Demo
         println!("\x1b[1;33m💡 Let's see Axiom in action (The Aha! Moment):\x1b[0m");
-        
+
         // Setup dummy noise for the demo
         let demo_dir = project_path.unwrap_or(Path::new(".")).join(".axiom_demo");
         let _ = std::fs::create_dir_all(&demo_dir);
@@ -134,8 +146,9 @@ impl OnboardingManager {
     pub fn report_system_status() -> anyhow::Result<()> {
         let home = std::env::var("HOME").unwrap_or_default();
         let shim_dir = Path::new(&home).join(".axiom/bin");
-        let has_shims = shim_dir.exists() && std::fs::read_dir(&shim_dir).map(|d| d.count()).unwrap_or(0) > 0;
-        
+        let has_shims =
+            shim_dir.exists() && std::fs::read_dir(&shim_dir).map(|d| d.count()).unwrap_or(0) > 0;
+
         let mut has_aliases = false;
         let configs = AxiomInstaller::get_shell_configs();
         for path in configs {
@@ -173,7 +186,10 @@ impl LaboratoryRenderer {
             return;
         }
 
-        println!("{:<6} | {:<10} | {:<25} | {:<30} | {}", "Line", "Status", "Primary Reason", "Output Preview", "Events/Stages");
+        println!(
+            "{:<6} | {:<10} | {:<25} | {:<30} | {}",
+            "Line", "Status", "Primary Reason", "Output Preview", "Events/Stages"
+        );
         println!("{}", "-".repeat(120));
 
         // Only show first 50 and last 50 if there are too many
@@ -195,7 +211,11 @@ impl LaboratoryRenderer {
             };
 
             let preview = trace.final_output.as_deref().unwrap_or("[EMPTY]");
-            let preview_clean = if preview.len() > 30 { format!("{}...", &preview[..27]) } else { preview.to_string() };
+            let preview_clean = if preview.len() > 30 {
+                format!("{}...", &preview[..27])
+            } else {
+                preview.to_string()
+            };
 
             // Find primary reason from Analyzed event or the first one available
             let mut primary_reason = "Unknown".to_string();
@@ -203,29 +223,49 @@ impl LaboratoryRenderer {
 
             for event in &trace.events {
                 match event {
-                    crate::engine::TraceEvent::Deduplicated(r) => event_summary.push(format!("Dedup({})", r)),
-                    crate::engine::TraceEvent::Transformed(r) => event_summary.push(format!("Trans({})", r)),
-                    crate::engine::TraceEvent::Guarded(r) => event_summary.push(format!("Guard({})", r)),
-                    crate::engine::TraceEvent::Redacted(r) => event_summary.push(format!("Redact({})", r)),
+                    crate::engine::TraceEvent::Deduplicated(r) => {
+                        event_summary.push(format!("Dedup({})", r))
+                    }
+                    crate::engine::TraceEvent::Transformed(r) => {
+                        event_summary.push(format!("Trans({})", r))
+                    }
+                    crate::engine::TraceEvent::Guarded(r) => {
+                        event_summary.push(format!("Guard({})", r))
+                    }
+                    crate::engine::TraceEvent::Redacted(r) => {
+                        event_summary.push(format!("Redact({})", r))
+                    }
                     crate::engine::TraceEvent::Analyzed(_, r) => {
                         primary_reason = r.clone();
                         event_summary.push("Analyzed".to_string());
                     }
-                    crate::engine::TraceEvent::Buffered(r) => event_summary.push(format!("Buffer({})", r)),
-                    crate::engine::TraceEvent::PluginTransformed(p, r) => event_summary.push(format!("Plugin:{}({})", p, r)),
+                    crate::engine::TraceEvent::Buffered(r) => {
+                        event_summary.push(format!("Buffer({})", r))
+                    }
+                    crate::engine::TraceEvent::PluginTransformed(p, r) => {
+                        event_summary.push(format!("Plugin:{}({})", p, r))
+                    }
                 }
             }
 
-            println!("{:<6} | {:<10} | {:<25} | {:<30} | {}", 
-                trace.line_number, 
+            println!(
+                "{:<6} | {:<10} | {:<25} | {:<30} | {}",
+                trace.line_number,
                 status,
-                if primary_reason.len() > 25 { format!("{}...", &primary_reason[..22]) } else { primary_reason },
+                if primary_reason.len() > 25 {
+                    format!("{}...", &primary_reason[..22])
+                } else {
+                    primary_reason
+                },
                 preview_clean,
                 event_summary.join(" -> ")
             );
         }
 
-        println!("\n\x1b[1mSummary:\x1b[0m {} total lines analyzed.", traces.len());
+        println!(
+            "\n\x1b[1mSummary:\x1b[0m {} total lines analyzed.",
+            traces.len()
+        );
         println!("\x1b[2mUse 'axiom last' to see the raw output of these lines.\x1b[0m\n");
     }
 }

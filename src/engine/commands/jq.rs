@@ -1,5 +1,5 @@
-use crate::engine::discovery::LineMetadata;
 use super::{CommandHandler, DiscoveryBuffer};
+use crate::engine::discovery::LineMetadata;
 
 pub struct JqHandler;
 
@@ -10,7 +10,9 @@ impl CommandHandler for JqHandler {
 
     fn parse_line(&self, line: &str) -> Option<LineMetadata> {
         let trimmed = line.trim();
-        if trimmed.is_empty() { return None; }
+        if trimmed.is_empty() {
+            return None;
+        }
 
         // 1. Detect JSON object start in an array
         if trimmed.starts_with('{') || trimmed.starts_with('}') {
@@ -24,7 +26,11 @@ impl CommandHandler for JqHandler {
 
         // 2. Detect JSON keys (common in large objects)
         if trimmed.starts_with('"') && trimmed.contains(':') {
-            let key = trimmed.split(':').next().unwrap_or("key").trim_matches(|c| c == '"' || c == ' ' || c == ',');
+            let key = trimmed
+                .split(':')
+                .next()
+                .unwrap_or("key")
+                .trim_matches(|c| c == '"' || c == ' ' || c == ',');
             return Some(LineMetadata {
                 perms: "KEY".to_string(),
                 size: key.to_string(),
@@ -36,7 +42,7 @@ impl CommandHandler for JqHandler {
         None
     }
 
-    fn get_category(&self, _perms: &str) -> String {
+    fn get_category(&self, _meta: &LineMetadata) -> String {
         "DATA".to_string()
     }
 
@@ -46,15 +52,21 @@ impl CommandHandler for JqHandler {
 
         for (key, items) in buffer {
             if key.starts_with("DATA:") {
-                if key.contains("STRUCT") { objects += items.len(); }
-                else if key.contains("KEY") { key_count += items.len(); }
+                if key.contains("STRUCT") {
+                    objects += items.len();
+                } else if key.contains("KEY") {
+                    key_count += items.len();
+                }
             }
         }
 
         if objects >= 4 {
             Some(format!("Data Stream: Synthesized {} JSON/YAML objects. The structure is repetitive and has been compressed.", objects / 2))
         } else if key_count > 0 {
-            Some(format!("Data Stream: Identified {} unique data keys in the stream.", key_count))
+            Some(format!(
+                "Data Stream: Identified {} unique data keys in the stream.",
+                key_count
+            ))
         } else {
             None
         }
@@ -62,18 +74,26 @@ impl CommandHandler for JqHandler {
 
     fn format_summary(&self, key: &str, items: &[LineMetadata]) -> Option<String> {
         let parts: Vec<&str> = key.split(':').collect();
-        if parts[0] != "DATA" { return None; }
+        if parts[0] != "DATA" {
+            return None;
+        }
 
         let type_label = parts.get(1).unwrap_or(&"Unknown");
         let count = items.len();
 
         match *type_label {
-            "STRUCT" => Some(format!("• Collapsed {} structural markers (JSON brackets).", count)),
+            "STRUCT" => Some(format!(
+                "• Collapsed {} structural markers (JSON brackets).",
+                count
+            )),
             "KEY" => {
                 let key_name = parts.get(2).unwrap_or(&"key");
-                Some(format!("• Synthesized {} occurrences of key [{}]", count, key_name))
-            },
-            _ => None
+                Some(format!(
+                    "• Synthesized {} occurrences of key [{}]",
+                    count, key_name
+                ))
+            }
+            _ => None,
         }
     }
 }

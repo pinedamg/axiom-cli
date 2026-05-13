@@ -1,9 +1,9 @@
-use axiom::engine::AxiomEngine;
-use axiom::privacy::PrivacyRedactor;
-use axiom::engine::intelligence::FuzzyIntelligence;
-use axiom::IntentContext;
 use axiom::engine::commands::get_all_handlers;
+use axiom::engine::intelligence::FuzzyIntelligence;
+use axiom::engine::AxiomEngine;
 use axiom::gateway::core::TerminalEvent;
+use axiom::privacy::PrivacyRedactor;
+use axiom::IntentContext;
 
 #[test]
 fn test_recipe_pipeline_full_flow() {
@@ -12,7 +12,7 @@ fn test_recipe_pipeline_full_flow() {
     let intelligence = Box::new(FuzzyIntelligence);
     let mut engine = AxiomEngine::new(redactor, vec![], intelligence, 3);
     engine.handlers = get_all_handlers();
-    
+
     // Use an intent that clearly overlaps with the line
     let context = IntentContext {
         last_message: "I want to see main.rs source code".to_string(),
@@ -22,10 +22,17 @@ fn test_recipe_pipeline_full_flow() {
 
     // Act
     let important_line = "main.rs";
-    let out = engine.process_line(TerminalEvent::StaticLine(important_line.to_string()), "ls", &context);
-    
+    let out = engine.process_line(
+        TerminalEvent::StaticLine(important_line.to_string()),
+        "ls",
+        &context,
+    );
+
     // Assert
-    assert!(out.is_some(), "Stage 5 (Semantic) should let pass lines relevant to the message");
+    assert!(
+        out.is_some(),
+        "Stage 5 (Semantic) should let pass lines relevant to the message"
+    );
     assert_eq!(out.unwrap(), "main.rs");
 }
 
@@ -34,7 +41,7 @@ fn test_recipe_pipeline_deduplication() {
     let redactor = PrivacyRedactor::default();
     let intelligence = Box::new(FuzzyIntelligence);
     let mut engine = AxiomEngine::new(redactor, vec![], intelligence, 3);
-    
+
     let context = IntentContext {
         last_message: "List files".to_string(),
         command: "ls".to_string(),
@@ -44,7 +51,9 @@ fn test_recipe_pipeline_deduplication() {
 
     let _ = engine.process_line(TerminalEvent::StaticLine(line.to_string()), "ls", &context);
     let out2 = engine.process_line(TerminalEvent::StaticLine(line.to_string()), "ls", &context);
-    
-    assert!(out2.is_none(), "Stage 1 (Dedup) should swallow repeated lines");
-}
 
+    assert!(
+        out2.is_none(),
+        "Stage 1 (Dedup) should swallow repeated lines"
+    );
+}

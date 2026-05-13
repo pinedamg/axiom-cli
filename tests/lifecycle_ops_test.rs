@@ -1,8 +1,8 @@
-use axiom::engine::AxiomEngine;
-use axiom::IntentContext;
-use axiom::privacy::PrivacyRedactor;
 use axiom::engine::intelligence::FuzzyIntelligence;
+use axiom::engine::AxiomEngine;
 use axiom::gateway::core::TerminalEvent;
+use axiom::privacy::PrivacyRedactor;
+use axiom::IntentContext;
 use std::fs;
 use tempfile::tempdir;
 
@@ -11,16 +11,24 @@ async fn test_aggressive_deduplication() {
     let redactor = PrivacyRedactor::default();
     let intelligence = Box::new(FuzzyIntelligence);
     let mut engine = AxiomEngine::new(redactor, vec![], intelligence, 1); // Threshold 1
-    
+
     let context = IntentContext::default();
 
     // First line should be processed normally
     let line1 = "Downloading package...";
-    let res1 = engine.process_line(TerminalEvent::StaticLine(line1.to_string()), "test", &context);
+    let res1 = engine.process_line(
+        TerminalEvent::StaticLine(line1.to_string()),
+        "test",
+        &context,
+    );
     assert_eq!(res1, Some(line1.to_string()));
 
     // Second identical line should be swallowed (since threshold is 1)
-    let res2 = engine.process_line(TerminalEvent::StaticLine(line1.to_string()), "test", &context);
+    let res2 = engine.process_line(
+        TerminalEvent::StaticLine(line1.to_string()),
+        "test",
+        &context,
+    );
     assert_eq!(res2, None);
 }
 
@@ -28,7 +36,7 @@ async fn test_aggressive_deduplication() {
 async fn test_installer_shell_integration() {
     let dir = tempdir().unwrap();
     let zshrc = dir.path().join(".zshrc");
-    
+
     // 1. Initial creation
     axiom::engine::installer::AxiomInstaller::install_shell_integration(&zshrc, true).unwrap();
     let content = fs::read_to_string(&zshrc).unwrap();

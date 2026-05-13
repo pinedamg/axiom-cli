@@ -1,8 +1,8 @@
-use axiom::engine::AxiomEngine;
-use axiom::privacy::PrivacyRedactor;
 use axiom::engine::intelligence::FuzzyIntelligence;
-use axiom::IntentContext;
+use axiom::engine::AxiomEngine;
 use axiom::gateway::core::TerminalEvent;
+use axiom::privacy::PrivacyRedactor;
+use axiom::IntentContext;
 
 #[test]
 fn test_cargo_aggregation() {
@@ -25,22 +25,31 @@ fn test_cargo_aggregation() {
     ];
 
     for line in lines {
-        engine.process_line(TerminalEvent::StaticLine(line.to_string()), "cargo build", &context);
+        engine.process_line(
+            TerminalEvent::StaticLine(line.to_string()),
+            "cargo build",
+            &context,
+        );
     }
 
     let summaries = engine.flush_summaries();
-    println!("DEBUG: Synthesis Buffer keys: {:?}", engine.discovery.synthesis_buffer.keys());
+    println!(
+        "DEBUG: Synthesis Buffer keys: {:?}",
+        engine.discovery.synthesis_buffer.keys()
+    );
     println!("SUMMARIES: {:?}", summaries);
-    
+
     // Check for insight
-    assert!(summaries.iter().any(|s| s.contains("Checking") || s.contains("Compiling")));
-    
+    assert!(summaries
+        .iter()
+        .any(|s| s.contains("Checking") || s.contains("Compiling")));
+
     // Check that we see the aggregated crates
     let joined = summaries.join("\n");
     assert!(joined.contains("serde"));
     assert!(joined.contains("tokio"));
     assert!(joined.contains("regex"));
-    
+
     // Axiom itself should NOT be aggregated because it's an outlier (contains path)
     // and should have been printed as a normal line by the engine.
     // In this unit test of 'engine.flush_summaries()', only the aggregated items appear.

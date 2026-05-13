@@ -1,6 +1,6 @@
-use std::collections::BTreeMap;
-use regex::Regex;
 use crate::engine::commands::CommandHandler;
+use regex::Regex;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone)]
 pub struct LineMetadata {
@@ -15,7 +15,9 @@ pub struct DiscoveryEngine {
     // and leverage native sorting without extra allocation steps during flush_variable_summary.
     pub templates: BTreeMap<String, usize>,
     pub synthesis_buffer: BTreeMap<String, Vec<LineMetadata>>,
-    pub variable_buffer: BTreeMap<String, Vec<Vec<String>>>,
+    // ⚡ Bolt: Tracking match counts (`usize`) instead of storing full vectors of extracted regex variables (`Vec<Vec<String>>`)
+    // drastically reduces memory overhead during heavily templated stream processing.
+    pub variable_buffer: BTreeMap<String, usize>,
     pub threshold: usize,
     pub last_line: Option<String>,
     pub repeat_count: usize,
@@ -46,7 +48,10 @@ impl DiscoveryEngine {
     }
 
     pub fn get_templates(&self) -> Vec<(String, usize)> {
-        self.templates.iter().map(|(k, v)| (k.clone(), *v)).collect()
+        self.templates
+            .iter()
+            .map(|(k, v)| (k.clone(), *v))
+            .collect()
     }
 
     pub fn get_saved_bytes(&self) -> usize {
@@ -57,31 +62,52 @@ impl DiscoveryEngine {
                 total += item.name.len() + 20; // Plus overhead
             }
         }
-        for (template, var_sets) in &self.variable_buffer {
-            total += template.len() * var_sets.len();
+        for (template, _) in &self.variable_buffer {
+            total += template.capacity() + std::mem::size_of::<usize>();
         }
         total
     }
 
-    fn parse_standard_ls(&self, line: &str, handler: Option<&dyn CommandHandler>, command: &str) -> Vec<LineMetadata> {
-        if !command.starts_with("ls") { return vec![]; }
-        
+    fn parse_standard_ls(
+        &self,
+        line: &str,
+        handler: Option<&dyn CommandHandler>,
+        command: &str,
+    ) -> Vec<LineMetadata> {
+        if !command.starts_with("ls") {
+            return vec![];
+        }
+
         let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with('(') || trimmed.len() > 100 { return vec![]; }
-        
+        if trimmed.is_empty() || trimmed.starts_with('(') || trimmed.len() > 100 {
+            return vec![];
+        }
+
         // Swallow metadata lines (total, current dir, parent dir) by returning a marker or just empty
         // but synthesize_line needs to know we 'handled' it.
-        if trimmed.starts_with("total") || trimmed == "." || trimmed == ".." { 
-            return vec![LineMetadata { perms: "META".to_string(), size: "0".to_string(), name: "metadata".to_string(), is_dir: false }];
+        if trimmed.starts_with("total") || trimmed == "." || trimmed == ".." {
+            return vec![LineMetadata {
+                perms: "META".to_string(),
+                size: "0".to_string(),
+                name: "metadata".to_string(),
+                is_dir: false,
+            }];
         }
 
         // Handle 'ls -la' format (permissions, links, owner, group, size, month, day, time, name)
         let parts: Vec<&str> = trimmed.split_whitespace().collect();
-        if parts.len() >= 9 && (trimmed.starts_with('d') || trimmed.starts_with('-') || trimmed.starts_with('l')) {
+        if parts.len() >= 9
+            && (trimmed.starts_with('d') || trimmed.starts_with('-') || trimmed.starts_with('l'))
+        {
             let name = parts[8..].join(" ");
             let perms = &parts[0][1..4]; // Take first 3 chars of perms after type
             let is_dir = trimmed.starts_with('d');
-            return vec![LineMetadata { perms: perms.to_string(), size: parts[4].to_string(), name, is_dir }];
+            return vec![LineMetadata {
+                perms: perms.to_string(),
+                size: parts[4].to_string(),
+                name,
+                is_dir,
+            }];
         }
 
         if trimmed.starts_with('[') || trimmed.contains(": ") || trimmed.contains(" = ") {
@@ -89,22 +115,39 @@ impl DiscoveryEngine {
         }
 
         // Anti-collision with the current handler
-        if handler.map_or(false, |h| h.parse_line(line).is_some()) { 
-            return vec![]; 
+        if handler.map_or(false, |h| h.parse_line(line).is_some()) {
+            return vec![];
         }
 
-        line.split_whitespace().filter(|&s| !s.is_empty()).map(|name| {
-            let ext = if name.contains('.') { name.split('.').last().unwrap_or("bin").to_string() } else { "dir".to_string() };
-            LineMetadata { perms: ext, size: "0".to_string(), name: name.to_string(), is_dir: !name.contains('.') }
-        }).collect()
+        line.split_whitespace()
+            .filter(|&s| !s.is_empty())
+            .map(|name| {
+                let ext = if name.contains('.') {
+                    name.split('.').last().unwrap_or("bin").to_string()
+                } else {
+                    "dir".to_string()
+                };
+                LineMetadata {
+                    perms: ext,
+                    size: "0".to_string(),
+                    name: name.to_string(),
+                    is_dir: !name.contains('.'),
+                }
+            })
+            .collect()
     }
 
-    pub fn synthesize_line(&mut self, line: &str, handler: Option<&dyn CommandHandler>, command: &str) -> bool {
+    pub fn synthesize_line(
+        &mut self,
+        line: &str,
+        handler: Option<&dyn CommandHandler>,
+        command: &str,
+    ) -> bool {
         // 1. Try command-specific handler first (SOLID: Extension)
         if let Some(h) = handler {
             if let Some(meta) = h.parse_line(line) {
                 let is_outlier = h.is_outlier(line, &meta);
-                let prefix = h.get_category(&meta.perms);
+                let prefix = h.get_category(&meta);
                 let key = h.get_key(&prefix, &meta);
 
                 self.synthesis_buffer.entry(key).or_default().push(meta);
@@ -123,29 +166,36 @@ impl DiscoveryEngine {
         false
     }
 
-    pub fn process_and_check_noise(&mut self, line: &str, handler: Option<&dyn CommandHandler>, command: &str) -> bool {
-        if self.synthesize_line(line, handler, command) { return true; }
-        let (template, vars) = self.extract_parts(line);
-        
+    pub fn process_and_check_noise(
+        &mut self,
+        line: &str,
+        handler: Option<&dyn CommandHandler>,
+        command: &str,
+    ) -> bool {
+        if self.synthesize_line(line, handler, command) {
+            return true;
+        }
+        let template = self.extract_parts(line);
+
         let count = self.templates.entry(template.clone()).or_insert(0);
-        
+
         // If we already have high confidence in this pattern (e.g. loaded from DB with high frequency),
         // collapse it immediately. Otherwise, wait for the threshold.
         if *count > self.threshold {
-            self.variable_buffer.entry(template).or_default().push(vars);
+            *self.variable_buffer.entry(template).or_insert(0) += 1;
             return true;
         }
 
         *count += 1;
         if *count > self.threshold {
-            self.variable_buffer.entry(template).or_default().push(vars);
+            *self.variable_buffer.entry(template).or_insert(0) += 1;
             true
         } else {
             false
         }
     }
 
-    pub fn extract_parts(&self, line: &str) -> (String, Vec<String>) {
+    pub fn extract_parts(&self, line: &str) -> String {
         use std::sync::OnceLock;
         static RE_UUID: OnceLock<Regex> = OnceLock::new();
         static RE_HEX: OnceLock<Regex> = OnceLock::new();
@@ -154,29 +204,34 @@ impl DiscoveryEngine {
         static RE_TIME: OnceLock<Regex> = OnceLock::new();
         static RE_NUM: OnceLock<Regex> = OnceLock::new();
 
-        let re_uuid = RE_UUID.get_or_init(|| Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").unwrap());
+        let re_uuid = RE_UUID.get_or_init(|| {
+            Regex::new(
+                r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+            )
+            .unwrap()
+        });
         let re_hex = RE_HEX.get_or_init(|| Regex::new(r"0x[0-9a-fA-F]+").unwrap());
         let re_path = RE_PATH.get_or_init(|| Regex::new(r"/[a-zA-Z0-9\._\-/]+").unwrap());
-        let re_months = RE_MONTHS.get_or_init(|| Regex::new(r"(?i)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)").unwrap());
+        let re_months = RE_MONTHS.get_or_init(|| {
+            Regex::new(r"(?i)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)").unwrap()
+        });
         let re_time = RE_TIME.get_or_init(|| Regex::new(r"\d{1,2}:\d{2}").unwrap());
         let re_num = RE_NUM.get_or_init(|| Regex::new(r"\d+").unwrap());
 
-        // Pre-allocate variable list to avoid reallocations
-        let mut variables = Vec::with_capacity(8);
-        
-        let s = re_uuid.replace_all(line, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<UUID>" });
-        let s = re_hex.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<HEX>" });
-        let s = re_path.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<PATH>" });
-        let s = re_months.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<MONTH>" });
-        let s = re_time.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<TIME>" });
-        let s = re_num.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<NUM>" });
-        
-        (s.to_string(), variables)
+        let s = re_uuid.replace_all(line, "<UUID>");
+        let s = re_hex.replace_all(&s, "<HEX>");
+        let s = re_path.replace_all(&s, "<PATH>");
+        let s = re_months.replace_all(&s, "<MONTH>");
+        let s = re_time.replace_all(&s, "<TIME>");
+        let s = re_num.replace_all(&s, "<NUM>");
+
+        s.into_owned()
     }
 
     pub fn flush_variable_summary(&mut self, handlers: &[Box<dyn CommandHandler>]) -> Vec<String> {
         // Pre-allocate Vec capacity to avoid re-allocations
-        let mut summaries = Vec::with_capacity(self.synthesis_buffer.len() + self.variable_buffer.len());
+        let mut summaries =
+            Vec::with_capacity(self.synthesis_buffer.len() + self.variable_buffer.len());
 
         // Use std::mem::take to avoid cloning and sorting keys. BTreeMap yields ordered keys inherently.
         for (key, items) in std::mem::take(&mut self.synthesis_buffer) {
@@ -197,19 +252,24 @@ impl DiscoveryEngine {
                         let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
                         let perms = parts.get(1).unwrap_or(&"---");
                         summaries.push(format!("{} [{}] | {}", label, perms, names.join(", ")));
-                    },
+                    }
                     "EXT" => {
                         let names: Vec<String> = items.iter().map(|m| m.name.clone()).collect();
-                        summaries.push(format!("Grouped {} files by extension [{}] | {}", items.len(), parts[1], names.join(", ")));
-                    },
-                    _ => summaries.push(format!("Summary for {}: {} items", label, items.len()))
+                        summaries.push(format!(
+                            "Grouped {} files by extension [{}] | {}",
+                            items.len(),
+                            parts[1],
+                            names.join(", ")
+                        ));
+                    }
+                    _ => summaries.push(format!("Summary for {}: {} items", label, items.len())),
                 }
             }
         }
 
-        for (template, var_sets) in std::mem::take(&mut self.variable_buffer) {
-            if var_sets.len() > 1 {
-                summaries.push(format!("Line matched {} more times: {}", var_sets.len(), template));
+        for (template, count) in std::mem::take(&mut self.variable_buffer) {
+            if count > 1 {
+                summaries.push(format!("Line matched {} more times: {}", count, template));
             }
         }
         summaries
