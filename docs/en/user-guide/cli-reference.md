@@ -60,6 +60,11 @@ Show token savings analytics.
 - **Flags**:
   - `-s, --history`: Show detailed savings history.
 
+### `axiom dev`
+Run a command in Developer Laboratory Mode (Decision Tracing).
+- **Arguments**:
+  - `<ARGS>...`: The command to execute.
+
 ### `axiom check-ai`
 Check if the current process was called by an AI agent. Exits with 0 if detected, 1 otherwise.
 
