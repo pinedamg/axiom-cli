@@ -1,20 +1,17 @@
-## Memory Profiling & Optimization - [Date]
+## ⚡ Bolt: Memoria en Discovery Engine
 
-### 🧩 Data Structure Audit & Optimization
-*   **DiscoveryEngine Collections**: Analyzed `src/engine/discovery.rs` and replaced `HashMap` with `BTreeMap` for string-keyed collections (`templates`, `synthesis_buffer`, `variable_buffer`). This mitigates the heavy hashing overhead for small, localized string keys and natively leverages sorting which we require downstream.
-*   **Buffer Flushing**: During summary generation `flush_variable_summary`, implemented `std::mem::take` to extract keys out of `BTreeMap` buffers. This prevents `O(N log N)` allocation overhead from cloning and manually sorting keys that were necessary with HashMaps. Additionally, pre-allocated the resulting `summaries` vector based on known lengths using `Vec::with_capacity` to prevent multi-allocation scaling inside the hot-path loop.
-*   **Regex Statically Compiled**: Optimized Regex initializations in `extract_parts` by statically caching compiled Regex instances using `std::sync::OnceLock`. This heavily alleviates cyclic heap allocations and CPU cycles executing `Regex::new()` on almost every line inside the parsing loop.
-*   **Cow Allocations in Transform**: Addressed `apply_structural_transform` returning dynamically allocated heap `String` strings on every processed line by restructuring to return `std::borrow::Cow<str>`. This safely handles string references and guarantees actual heap allocations only occur precisely when Markdown transformation is requested.
+Encontramos un patrón de consumo de memoria específico en la arquitectura de Axiom, en particular dentro de `DiscoveryEngine::process_and_check_noise`.
 
-**Impact**: Significant prevention of unnecessary heap allocation and cyclic overhead inside the per-line 'hot path'. Lowered hashing memory costs for system tracking.
+El `variable_buffer` estaba declarado como `BTreeMap<String, Vec<Vec<String>>>`. Cada línea que coincidía con un patrón extraía y almacenaba las variables usando `extract_parts`. Para flujos de datos grandes, almacenar las variables extraídas para cada línea resultaba en un consumo sustancial de memoria (`Vec` y `String` extra).
 
----
+**Optimización:**
+Se ha cambiado `variable_buffer` a `BTreeMap<String, usize>`, que ahora solo guarda la cantidad de ocurrencias de un patrón en lugar de una matriz con todas las variables extraídas.
 
-## Memory Profiling & Optimization - Gateways and Hot-Paths
+*   `extract_parts` ahora devuelve directamente el string formateado como `String` (gracias a `.into_owned()`), simplificando su retorno y evitando llenar un `Vec` pre-alocado de strings (`Vec<String>`).
+*   Esta optimización evita la reserva de `Vec::with_capacity(8)` y la memoria acumulada para los *strings* de variables en el `variable_buffer` para cada iteración en bucles largos o archivos grandes procesados.
 
-### 🧩 Data Structure Audit & Optimization
-*   **Hot-Path Allocations (`src/engine/mod.rs`)**: Discovered that passing lines down the axiom stream pipeline caused multiple `String` heap allocations on every tick. Refactored `PipelineAction` to use `Cow<'a, str>` instead of strict `String`s. This allowed zero-allocation pass-throughs when stages do not fundamentally modify the text (e.g. `stage_deduplicate`, `stage_guard`, `stage_analyze`). Because lines generally outlive the match scope, strings are bound locally and mapped appropriately to ensure lifetimes are satisfied without sacrificing borrow benefits when feasible.
-*   **Terminal Gateway Overhead (`src/gateway/filters.rs`)**: Initialized `StreamPipeline.buffer` with `String::with_capacity(1024)` based on an estimated typical dense line length. `events` vector capacity pre-allocated to 16 based on average chunk iterations.
-*   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
+La reducción estimada de memoria en flujos de datos pesados está relacionada con el tamaño y número de variables que se desechaban al momento del flush. Ahora sólo se actualiza un contador (`usize`).
 
-**Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+**Métricas Estimadas:**
+Antes de este cambio, procesar 10,000 líneas con 5 variables cada una resultaría en al menos 50,000 instancias de `String` extraídas y almacenadas en la memoria (más las cabeceras `Vec`), ocupando de varios cientos de KB a unos cuantos MB según el tamaño de la cadena.
+Con esta optimización, el uso de memoria queda fijado a la capacidad del contador (`usize`) independientemente de la cantidad de repeticiones. Por ejemplo, en 10,000 líneas, un único patrón almacenado sólo utilizará `sizeof(usize)` bytes adicionales.
