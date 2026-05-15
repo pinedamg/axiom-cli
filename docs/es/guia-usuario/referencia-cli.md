@@ -63,6 +63,12 @@ Muestra análisis sobre el ahorro de tokens.
 ### `axiom check-ai`
 Verifica si el proceso actual fue llamado por un agente de IA. Sale con código 0 si es detectado, 1 en caso contrario.
 
+
+### `axiom dev`
+Ejecuta un comando en el Modo de Laboratorio del Desarrollador (Seguimiento de Decisiones).
+- **Banderas**:
+  - `args`: El comando a ejecutar.
+
 ## Comandos de Configuración y Descubrimiento
 
 ### `axiom intent <acción>`
