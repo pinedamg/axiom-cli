@@ -18,3 +18,7 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+
+* `variable_buffer` inside `DiscoveryEngine` used to store extracted variables as `Vec<Vec<String>>`, but they were only used for counting frequencies. Changing it to `BTreeMap<String, usize>` and replacing `Regex::replace_all` logic to avoid variable extraction drastically reduced memory allocations during stream processing of heavily templated output.
+* `extract_parts` function was simplified to just format the string templates, preventing unnecessary heap allocations and Regex capture bindings.
+* Line processing deduplication `stage_deduplicate` buffer was updated to reuse the string capacity by extracting with `.take()`, clearing `.clear()` and appending `push_str()` instead of allocating strings constantly.
