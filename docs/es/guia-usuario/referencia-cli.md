@@ -60,6 +60,9 @@ Muestra análisis sobre el ahorro de tokens.
 - **Banderas**:
   - `-s, --history`: Muestra el historial detallado de ahorros.
 
+### `axiom dev <args>...`
+Ejecuta un comando en el Modo Laboratorio de Desarrollador (Rastreo de Decisiones).
+
 ### `axiom check-ai`
 Verifica si el proceso actual fue llamado por un agente de IA. Sale con código 0 si es detectado, 1 en caso contrario.
 
