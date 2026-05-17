@@ -18,3 +18,8 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+
+### 🧩 DiscoveryEngine variable_buffer Optimization
+*   **Memory Footprint Reduction**: Changed `DiscoveryEngine::variable_buffer` from `BTreeMap<String, Vec<Vec<String>>>` to `BTreeMap<String, usize>`. Instead of accumulating unconstrained vectors of regex variable extractions for every noise line matched, Axiom now simply increments a counter (`usize`).
+*   **Regex Extraction**: Simplified `extract_parts` to only return the templated string without extracting variables into a `Vec<String>`. This completely eliminates a significant source of heap allocations when processing noisy log lines.
+**Impact**: Massive reduction in memory consumption and allocation overhead during stream processing with repetitive structural noise, directly preventing out-of-memory errors on heavily templated streams.
