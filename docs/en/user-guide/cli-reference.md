@@ -49,12 +49,12 @@ Run system health check and diagnostics.
 ### `axiom self-update`
 Update Axiom to the latest version from GitHub.
 
-### `axiom last`
-Show the raw output of the last executed command.
-- **Flags**:
-  - `-t, --tail <LINES>`: Number of lines to show from the end.
-  - `-g, --grep <KEYWORD>`: Filter lines by a keyword.
 
+
+### `axiom dev`
+Run a command in Developer Laboratory Mode (Decision Tracing).
+- **Arguments**:
+  - `[ARGS]...`: The command to execute (e.g., `axiom dev npm start`).
 ### `axiom gain`
 Show token savings analytics.
 - **Flags**:

@@ -49,12 +49,12 @@ Ejecuta un chequeo de salud y diagnósticos del sistema.
 ### `axiom self-update`
 Actualiza Axiom a la última versión desde GitHub.
 
-### `axiom last`
-Muestra la salida cruda del último comando ejecutado.
-- **Banderas**:
-  - `-t, --tail <LÍNEAS>`: Número de líneas a mostrar desde el final.
-  - `-g, --grep <PALABRA_CLAVE>`: Filtra las líneas por una palabra clave.
 
+
+### `axiom dev`
+Ejecuta un comando en Modo de Laboratorio de Desarrollador (Rastreo de Decisiones).
+- **Argumentos**:
+  - `[ARGS]...`: El comando a ejecutar (ej. `axiom dev npm start`).
 ### `axiom gain`
 Muestra análisis sobre el ahorro de tokens.
 - **Banderas**:
