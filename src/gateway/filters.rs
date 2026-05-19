@@ -26,7 +26,8 @@ impl StreamFilter for StreamPipeline {
         for c in stripped.chars() {
             if c == '\n' {
                 // Line feed: emit what we have as a static line
-                let line = std::mem::take(&mut self.buffer);
+                // ⚡ Bolt: Extract and pre-allocate the next buffer to avoid dynamically growing the string from 0.
+                let line = std::mem::replace(&mut self.buffer, String::with_capacity(1024));
                 events.push(TerminalEvent::StaticLine(line));
                 self.last_was_cr = false;
             } else if c == '\r' {

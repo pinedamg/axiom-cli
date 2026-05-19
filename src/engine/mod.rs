@@ -31,7 +31,7 @@ pub struct AxiomEngine {
     pub schemas: Vec<ToolSchema>,
     pub discovery: DiscoveryEngine,
     pub storage: LogManager,
-    pub plugins: Option<WasmPluginManager>,
+    pub plugins: Option<Box<WasmPluginManager>>,
     pub intelligence: Box<dyn IntelligenceProvider>,
     pub handlers: Vec<Box<dyn CommandHandler>>,
     pub markdown_mode: bool,
@@ -241,7 +241,16 @@ impl AxiomEngine {
             let prefix = if self.discovery.repeat_count > 0 {
                 Some(format!("... (previous line repeated {} more times)", self.discovery.repeat_count))
             } else { None };
-            self.discovery.last_line = Some(line.to_string());
+
+            // ⚡ Bolt: Reuse the existing string buffer instead of allocating a new string on each different line.
+            if let Some(mut buf) = self.discovery.last_line.take() {
+                buf.clear();
+                buf.push_str(line);
+                self.discovery.last_line = Some(buf);
+            } else {
+                self.discovery.last_line = Some(line.to_string());
+            }
+
             self.discovery.repeat_count = 0;
             (prefix, PipelineAction::Continue(Cow::Borrowed(line)), "New line".to_string())
         }
@@ -347,7 +356,8 @@ impl AxiomEngine {
     }
 
     pub fn with_plugins(mut self, manager: WasmPluginManager) -> Self {
-        self.plugins = Some(manager);
+        // ⚡ Bolt: Box the plugin manager to minimize the memory footprint of AxiomEngine struct
+        self.plugins = Some(Box::new(manager));
         self
     }
 
