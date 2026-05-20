@@ -49,6 +49,9 @@ Ejecuta un chequeo de salud y diagnósticos del sistema.
 ### `axiom self-update`
 Actualiza Axiom a la última versión desde GitHub.
 
+### `axiom dev <args>...`
+Ejecuta un comando en Modo Laboratorio de Desarrollo (Rastreo de Decisiones).
+
 ### `axiom last`
 Muestra la salida cruda del último comando ejecutado.
 - **Banderas**:
