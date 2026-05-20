@@ -15,7 +15,9 @@ pub struct DiscoveryEngine {
     // and leverage native sorting without extra allocation steps during flush_variable_summary.
     pub templates: BTreeMap<String, usize>,
     pub synthesis_buffer: BTreeMap<String, Vec<LineMetadata>>,
-    pub variable_buffer: BTreeMap<String, Vec<Vec<String>>>,
+    // ⚡ Bolt: Changed variable_buffer from BTreeMap<String, Vec<Vec<String>>> to BTreeMap<String, usize>
+    // tracking template match counts instead of storing full vectors of extracted regex variables to drastically reduce memory overhead.
+    pub variable_buffer: BTreeMap<String, usize>,
     pub threshold: usize,
     pub last_line: Option<String>,
     pub repeat_count: usize,
@@ -57,8 +59,8 @@ impl DiscoveryEngine {
                 total += item.name.len() + 20; // Plus overhead
             }
         }
-        for (template, var_sets) in &self.variable_buffer {
-            total += template.len() * var_sets.len();
+        for (template, _count) in &self.variable_buffer {
+            total += template.capacity() + std::mem::size_of::<usize>();
         }
         total
     }
@@ -125,27 +127,27 @@ impl DiscoveryEngine {
 
     pub fn process_and_check_noise(&mut self, line: &str, handler: Option<&dyn CommandHandler>, command: &str) -> bool {
         if self.synthesize_line(line, handler, command) { return true; }
-        let (template, vars) = self.extract_parts(line);
+        let template = self.extract_parts(line);
         
         let count = self.templates.entry(template.clone()).or_insert(0);
         
         // If we already have high confidence in this pattern (e.g. loaded from DB with high frequency),
         // collapse it immediately. Otherwise, wait for the threshold.
         if *count > self.threshold {
-            self.variable_buffer.entry(template).or_default().push(vars);
+            *self.variable_buffer.entry(template).or_insert(0) += 1;
             return true;
         }
 
         *count += 1;
         if *count > self.threshold {
-            self.variable_buffer.entry(template).or_default().push(vars);
+            *self.variable_buffer.entry(template).or_insert(0) += 1;
             true
         } else {
             false
         }
     }
 
-    pub fn extract_parts(&self, line: &str) -> (String, Vec<String>) {
+    pub fn extract_parts(&self, line: &str) -> String {
         use std::sync::OnceLock;
         static RE_UUID: OnceLock<Regex> = OnceLock::new();
         static RE_HEX: OnceLock<Regex> = OnceLock::new();
@@ -154,24 +156,21 @@ impl DiscoveryEngine {
         static RE_TIME: OnceLock<Regex> = OnceLock::new();
         static RE_NUM: OnceLock<Regex> = OnceLock::new();
 
-        let re_uuid = RE_UUID.get_or_init(|| Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").unwrap());
-        let re_hex = RE_HEX.get_or_init(|| Regex::new(r"0x[0-9a-fA-F]+").unwrap());
-        let re_path = RE_PATH.get_or_init(|| Regex::new(r"/[a-zA-Z0-9\._\-/]+").unwrap());
-        let re_months = RE_MONTHS.get_or_init(|| Regex::new(r"(?i)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)").unwrap());
-        let re_time = RE_TIME.get_or_init(|| Regex::new(r"\d{1,2}:\d{2}").unwrap());
-        let re_num = RE_NUM.get_or_init(|| Regex::new(r"\d+").unwrap());
+        let re_uuid = RE_UUID.get_or_init(|| Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").expect("Invalid hardcoded regex"));
+        let re_hex = RE_HEX.get_or_init(|| Regex::new(r"0x[0-9a-fA-F]+").expect("Invalid hardcoded regex"));
+        let re_path = RE_PATH.get_or_init(|| Regex::new(r"/[a-zA-Z0-9\._\-/]+").expect("Invalid hardcoded regex"));
+        let re_months = RE_MONTHS.get_or_init(|| Regex::new(r"(?i)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)").expect("Invalid hardcoded regex"));
+        let re_time = RE_TIME.get_or_init(|| Regex::new(r"\d{1,2}:\d{2}").expect("Invalid hardcoded regex"));
+        let re_num = RE_NUM.get_or_init(|| Regex::new(r"\d+").expect("Invalid hardcoded regex"));
 
-        // Pre-allocate variable list to avoid reallocations
-        let mut variables = Vec::with_capacity(8);
+        let s = re_uuid.replace_all(line, "<UUID>");
+        let s = re_hex.replace_all(&s, "<HEX>");
+        let s = re_path.replace_all(&s, "<PATH>");
+        let s = re_months.replace_all(&s, "<MONTH>");
+        let s = re_time.replace_all(&s, "<TIME>");
+        let s = re_num.replace_all(&s, "<NUM>");
         
-        let s = re_uuid.replace_all(line, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<UUID>" });
-        let s = re_hex.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<HEX>" });
-        let s = re_path.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<PATH>" });
-        let s = re_months.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<MONTH>" });
-        let s = re_time.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<TIME>" });
-        let s = re_num.replace_all(&s, |caps: &regex::Captures| { variables.push(caps[0].to_string()); "<NUM>" });
-        
-        (s.to_string(), variables)
+        s.into_owned()
     }
 
     pub fn flush_variable_summary(&mut self, handlers: &[Box<dyn CommandHandler>]) -> Vec<String> {
@@ -207,9 +206,9 @@ impl DiscoveryEngine {
             }
         }
 
-        for (template, var_sets) in std::mem::take(&mut self.variable_buffer) {
-            if var_sets.len() > 1 {
-                summaries.push(format!("Line matched {} more times: {}", var_sets.len(), template));
+        for (template, count) in std::mem::take(&mut self.variable_buffer) {
+            if count > 1 {
+                summaries.push(format!("Line matched {} more times: {}", count, template));
             }
         }
         summaries
