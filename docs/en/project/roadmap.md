@@ -94,7 +94,7 @@ Basado en la auditoría técnica del proyecto, se han identificado los siguiente
 **Goal**: Maximize the Return on Investment (ROI) of every token and automate system evolution.
 
 ### 5.1 Token ROI & Prediction Engine
-- [ ] **Axiom Gain**: Advanced analytics dashboard showing cumulative savings in USD/Tokens.
+- [x] **Axiom Gain**: Advanced analytics dashboard showing cumulative savings in USD/Tokens.
 - [ ] **Predictive Warning**: Alert agents when a command (e.g., `cat` on a huge file) will exceed a "Token Budget".
 - [ ] **Economic Arbitration**: Suggest cheaper alternatives (e.g., `grep` vs `cat | grep`) before execution.
 
