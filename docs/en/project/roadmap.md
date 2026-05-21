@@ -62,31 +62,31 @@ This combined Roadmap defines the implementation path for **AXIOM**, prioritizin
 
 ## 🛠️ Critical Review & Architectural Evolution (v0.1.0)
 
-Basado en la auditoría técnica del proyecto, se han identificado los siguientes ejes de mejora crítica:
+Based on the technical audit of the project, the following critical improvement axes have been identified:
 
-### 1. Optimización del Pipeline de Inteligencia (Performance)
-*   **Problema**: El motor `NeuralIntelligence` (BERT) calcula embeddings en cada línea, inviable en CPU.
-*   **Acción**: 
-    - [ ] Implementar **Caching de Intent Embeddings**: Calcular una sola vez por sesión.
-    - [ ] **Estrategia Híbrida Agresiva**: Neural como "árbitro" final.
-    - [ ] Explorar modelos más ligeros (FastText/SLMs).
+### 1. Intelligence Pipeline Optimization (Performance)
+*   **Problem**: The `NeuralIntelligence` (BERT) engine calculates embeddings on every line, unviable on CPU.
+*   **Action**:
+    - [ ] Implement **Intent Embeddings Caching**: Calculate only once per session.
+    - [ ] **Aggressive Hybrid Strategy**: Neural as final "arbiter".
+    - [ ] Explore lighter models (FastText/SLMs).
 
-### 2. Integración con la Terminal (Fidelidad)
-*   **Problema**: Uso de Pipes rompe la interactividad y colores.
+### 2. Terminal Integration (Fidelity)
+*   **Problem**: Use of Pipes breaks interactivity and colors.
 *   **Acción**:
-    - [ ] **Migración a PTY (Pseudo-Terminales)**.
+    - [ ] **Migration to PTY (Pseudo-Terminals)**.
 
-### 3. Refinamiento de la Privacidad (Falsos Positivos)
-*   **Problema**: Entropía genera falsos positivos (Hashes, IDs).
+### 3. Privacy Refinement (False Positives)
+*   **Problem**: Entropy generates false positives (Hashes, IDs).
 *   **Acción**:
-    - [ ] **Context-Aware Redaction**: Lista blanca de patrones (SHA, SemVer).
-    - [ ] Ajustar dinámicamente umbrales según `ToolSchema`.
+    - [ ] **Context-Aware Redaction**: Whitelist of patterns (SHA, SemVer).
+    - [ ] Dynamically adjust thresholds according to `ToolSchema`.
 
-### 4. Robustez de la IA Local (Resiliencia)
-*   **Problema**: Descarga en caliente rompe promesa Local-First.
+### 4. Local AI Robustness (Resilience)
+*   **Problem**: Hot downloading breaks Local-First promise.
 *   **Acción**:
-    - [ ] Comando `axiom setup` para pre-cargar modelos.
-    - [ ] Mecanismos de *Graceful Degradation*.
+    - [ ] `axiom setup` command to pre-load models.
+    - [ ] *Graceful Degradation* mechanisms.
 
 ---
 

@@ -60,7 +60,57 @@ Este Roadmap combinado define la ruta de implementación de **AXIOM**, priorizan
 
 ---
 
-## 📡 Fase 5: Telemetría y Control Plane (Axiom Pulse) - [EN PROGRESO]
+## 🛠️ Revisión Crítica y Evolución Arquitectónica (v0.1.0)
+
+Basado en la auditoría técnica del proyecto, se han identificado los siguientes ejes de mejora crítica:
+
+### 1. Optimización del Pipeline de Inteligencia (Performance)
+*   **Problema**: El motor `NeuralIntelligence` (BERT) calcula embeddings en cada línea, inviable en CPU.
+*   **Acción**:
+    - [ ] Implementar **Caching de Intent Embeddings**: Calcular una sola vez por sesión.
+    - [ ] **Estrategia Híbrida Agresiva**: Neural como "árbitro" final.
+    - [ ] Explorar modelos más ligeros (FastText/SLMs).
+
+### 2. Integración con la Terminal (Fidelidad)
+*   **Problema**: Uso de Pipes rompe la interactividad y colores.
+*   **Acción**:
+    - [ ] **Migración a PTY (Pseudo-Terminales)**.
+
+### 3. Refinamiento de la Privacidad (Falsos Positivos)
+*   **Problema**: Entropía genera falsos positivos (Hashes, IDs).
+*   **Acción**:
+    - [ ] **Context-Aware Redaction**: Lista blanca de patrones (SHA, SemVer).
+    - [ ] Ajustar dinámicamente umbrales según `ToolSchema`.
+
+### 4. Robustez de la IA Local (Resiliencia)
+*   **Problema**: Descarga en caliente rompe promesa Local-First.
+*   **Acción**:
+    - [ ] Comando `axiom setup` para pre-cargar modelos.
+    - [ ] Mecanismos de *Graceful Degradation*.
+
+---
+
+## 💎 Fase 5: Economía de Tokens Avanzada (Inspirado en RTK)
+**Objetivo**: Maximizar el Retorno de Inversión (ROI) de cada token y automatizar la evolución del sistema.
+
+### 5.1 Token ROI y Motor de Predicción
+- [ ] **Axiom Gain**: Panel de análisis avanzado que muestra el ahorro acumulado en USD/Tokens.
+- [ ] **Aviso Predictivo**: Alerta a los agentes cuando un comando (ej., `cat` en un archivo enorme) excederá un "Presupuesto de Tokens".
+- [ ] **Arbitraje Económico**: Sugiere alternativas más económicas (ej., `grep` vs `cat | grep`) antes de la ejecución.
+
+### 5.2 Bucle de Aprendizaje Autónomo (`axiom learn`)
+- [ ] **Descubrimiento de Patrones**: Analiza el historial del shell para identificar comandos de "alto ruido" sin esquemas.
+- [ ] **Auto-Generación de Esquemas**: Utiliza LLMs para sugerir esquemas YAML basados en las salidas ruidosas capturadas.
+- [ ] **Corrección de Errores**: Aprende de los "Reintentos de Agentes" (ej., si un agente ejecuta `ls` y luego `ls -a`, Axiom debería ajustar el esquema `ls` predeterminado para ese contexto).
+
+### 5.3 Síntesis Estructural Profunda
+- [ ] **Modo Solo Esquema**: Transforma objetos masivos JSON/YAML en "Resúmenes de Forma" (solo claves y tipos).
+- [ ] **Diff Semántico**: Diffs ultracondensados que priorizan cambios lógicos sobre espacios en blanco o actualizaciones triviales.
+- [ ] **Minificador Universal**: Un modo de compresión "con pérdida" para logs que preserva el significado semántico mientras destruye el 90% de los caracteres.
+
+---
+
+## 📡 Fase 6: Telemetría y Control Plane (Axiom Pulse) - [EN PROGRESO]
 **Objetivo**: Observabilidad segura y métricas de valor para el usuario.
 - [x] **Handshake de Hardware**: Identidad única anclada a la PC (SHA-256).
 - [x] **Proof of Work (PoW)**: Filtro anti-spam para registros de nodos.
