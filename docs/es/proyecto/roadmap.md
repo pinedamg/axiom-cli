@@ -60,7 +60,27 @@ Este Roadmap combinado define la ruta de implementación de **AXIOM**, priorizan
 
 ---
 
-## 📡 Fase 5: Telemetría y Control Plane (Axiom Pulse) - [EN PROGRESO]
+## 💎 Fase 5: Economía de Tokens Avanzada (Inspirado en RTK)
+**Objetivo**: Maximizar el Retorno de Inversión (ROI) de cada token y automatizar la evolución del sistema.
+
+### 5.1 Motor de Predicción y ROI de Tokens
+- [ ] **Axiom Gain**: Panel de analíticas avanzado que muestra el ahorro acumulado en USD/Tokens.
+- [ ] **Alerta Predictiva**: Avisa a los agentes cuando un comando (ej., `cat` en un archivo enorme) excederá un "Presupuesto de Tokens".
+- [ ] **Arbitraje Económico**: Sugiere alternativas más económicas (ej., `grep` vs `cat | grep`) antes de la ejecución.
+
+### 5.2 Ciclo de Aprendizaje Autónomo (`axiom learn`)
+- [ ] **Descubrimiento de Patrones**: Analiza el historial de shell para identificar comandos de "alto ruido" sin esquemas.
+- [ ] **Autogeneración de Esquemas**: Usa un LLM para sugerir esquemas YAML basados en las salidas ruidosas capturadas.
+- [ ] **Corrección de Errores**: Aprende de los "Reintentos del Agente" (ej., si un agente ejecuta `ls` y luego `ls -a`, Axiom debería ajustar el esquema por defecto de `ls` para ese contexto).
+
+### 5.3 Síntesis Estructural Profunda
+- [ ] **Modo Solo Esquema**: Transforma objetos masivos de JSON/YAML en "Resúmenes de Forma" (solo claves y tipos).
+- [ ] **Diferencia Semántica (Semantic Diff)**: Diferencias ultra condensadas que priorizan los cambios lógicos sobre el espacio en blanco o actualizaciones triviales.
+- [ ] **Minificador Universal**: Un modo de compresión "con pérdida" para logs que preserva el significado semántico mientras destruye el 90% de los caracteres.
+
+---
+
+## 📡 Fase 6: Telemetría y Control Plane (Axiom Pulse) - [EN PROGRESO]
 **Objetivo**: Observabilidad segura y métricas de valor para el usuario.
 - [x] **Handshake de Hardware**: Identidad única anclada a la PC (SHA-256).
 - [x] **Proof of Work (PoW)**: Filtro anti-spam para registros de nodos.
