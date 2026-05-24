@@ -241,7 +241,11 @@ impl AxiomEngine {
             let prefix = if self.discovery.repeat_count > 0 {
                 Some(format!("... (previous line repeated {} more times)", self.discovery.repeat_count))
             } else { None };
-            self.discovery.last_line = Some(line.to_string());
+            // ⚡ Bolt: Reuse existing Option<String> buffer to avoid allocations
+            let mut new_last = self.discovery.last_line.take().unwrap_or_default();
+            new_last.clear();
+            new_last.push_str(line);
+            self.discovery.last_line = Some(new_last);
             self.discovery.repeat_count = 0;
             (prefix, PipelineAction::Continue(Cow::Borrowed(line)), "New line".to_string())
         }
@@ -318,6 +322,7 @@ impl AxiomEngine {
     }
 
     fn stage_plugins<'a>(&mut self, line: Option<Cow<'a, str>>) -> (Option<Cow<'a, str>>, Vec<(String, String)>) {
+        // ⚡ Bolt: Prefer Vec::new() over Vec::with_capacity(1) for collections that are frequently empty
         let mut reasons = Vec::new();
         match (line, &mut self.plugins) {
             (Some(current), Some(manager)) => {

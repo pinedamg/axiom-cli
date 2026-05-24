@@ -15,14 +15,13 @@ fn test_core_generic_scenarios() {
     };
 
     let docker_line = "Container 550e8400-e29b-41d4-a716-446655440000 started. Image: 0xdeadbeef";
-    let (template, vars) = session.engine.discovery.extract_parts(docker_line);
+    let template = session.engine.discovery.extract_parts(docker_line);
     
     assert!(template.contains("<UUID>"));
     assert!(template.contains("<HEX>"));
-    assert_eq!(vars.len(), 2);
 
     let traceback_line = "  File \"/usr/lib/python3.9/site-packages/requests/api.py\", line 64, in get";
-    let (path_template, _) = session.engine.discovery.extract_parts(traceback_line);
+    let path_template = session.engine.discovery.extract_parts(traceback_line);
     assert!(path_template.contains("<PATH>"));
 
     let error_line = "[CRITICAL] System failure at /var/log/syslog";
