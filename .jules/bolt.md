@@ -1,20 +1,6 @@
-## Memory Profiling & Optimization - [Date]
+# ⚡ Bolt: Pipeline Memory Discoveries
 
-### 🧩 Data Structure Audit & Optimization
-*   **DiscoveryEngine Collections**: Analyzed `src/engine/discovery.rs` and replaced `HashMap` with `BTreeMap` for string-keyed collections (`templates`, `synthesis_buffer`, `variable_buffer`). This mitigates the heavy hashing overhead for small, localized string keys and natively leverages sorting which we require downstream.
-*   **Buffer Flushing**: During summary generation `flush_variable_summary`, implemented `std::mem::take` to extract keys out of `BTreeMap` buffers. This prevents `O(N log N)` allocation overhead from cloning and manually sorting keys that were necessary with HashMaps. Additionally, pre-allocated the resulting `summaries` vector based on known lengths using `Vec::with_capacity` to prevent multi-allocation scaling inside the hot-path loop.
-*   **Regex Statically Compiled**: Optimized Regex initializations in `extract_parts` by statically caching compiled Regex instances using `std::sync::OnceLock`. This heavily alleviates cyclic heap allocations and CPU cycles executing `Regex::new()` on almost every line inside the parsing loop.
-*   **Cow Allocations in Transform**: Addressed `apply_structural_transform` returning dynamically allocated heap `String` strings on every processed line by restructuring to return `std::borrow::Cow<str>`. This safely handles string references and guarantees actual heap allocations only occur precisely when Markdown transformation is requested.
-
-**Impact**: Significant prevention of unnecessary heap allocation and cyclic overhead inside the per-line 'hot path'. Lowered hashing memory costs for system tracking.
-
----
-
-## Memory Profiling & Optimization - Gateways and Hot-Paths
-
-### 🧩 Data Structure Audit & Optimization
-*   **Hot-Path Allocations (`src/engine/mod.rs`)**: Discovered that passing lines down the axiom stream pipeline caused multiple `String` heap allocations on every tick. Refactored `PipelineAction` to use `Cow<'a, str>` instead of strict `String`s. This allowed zero-allocation pass-throughs when stages do not fundamentally modify the text (e.g. `stage_deduplicate`, `stage_guard`, `stage_analyze`). Because lines generally outlive the match scope, strings are bound locally and mapped appropriately to ensure lifetimes are satisfied without sacrificing borrow benefits when feasible.
-*   **Terminal Gateway Overhead (`src/gateway/filters.rs`)**: Initialized `StreamPipeline.buffer` with `String::with_capacity(1024)` based on an estimated typical dense line length. `events` vector capacity pre-allocated to 16 based on average chunk iterations.
-*   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
-
-**Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+- **Small String Key Overhead (`BTreeMap` vs `HashMap`)**: In heavily templated environments like `DiscoveryEngine`'s `synthesis_buffer`, `variable_buffer`, and `templates`, using `HashMap` leads to excessive hashing memory overhead for small string keys. `BTreeMap` is optimal here because it reduces hashing operations and provides ordered keys for efficient iteration without needing an additional vector sorting allocation during summarization.
+- **Value Tracking for Aggregation (`Vec<Vec<String>>` vs `usize`)**: For variables extracted during stream line duplication (`variable_buffer`), storing the fully extracted lists (`Vec<String>`) incurs large heap allocations that scale with matched streams. Since our goal is summarization (e.g., "Line matched X more times"), storing just a match count (`usize`) alongside the template key prevents arbitrary memory scaling.
+- **Line Iteration Hot Path Allocations (`std::mem::take` & `Cow`)**: In the `stage_deduplicate` phase of the `StreamPipeline`, taking variables (`last_line`) creates allocations if a new string is generated every iteration. However, using `.take()`, clearing it (`.clear()`), and pushing the str into it (`.push_str()`) retains the original capacity string allocation block and drastically improves the hot path speed.
+- **Pre-allocation Retention (`std::mem::replace` vs `std::mem::take`)**: When extracting contents from high-frequency pre-allocated buffers like `StreamPipeline::buffer`, using `std::mem::take` consumes the buffer and replaces it with a new, zero-capacity String, causing repeated costly heap reallocations. Using `std::mem::replace` with `String::with_capacity(1024)` ensures the new buffer starts with adequate capacity, avoiding allocation churn.
