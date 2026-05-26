@@ -1,20 +1,14 @@
-## Memory Profiling & Optimization - [Date]
+# Discovery Engine Memory Optimizations
 
-### 🧩 Data Structure Audit & Optimization
-*   **DiscoveryEngine Collections**: Analyzed `src/engine/discovery.rs` and replaced `HashMap` with `BTreeMap` for string-keyed collections (`templates`, `synthesis_buffer`, `variable_buffer`). This mitigates the heavy hashing overhead for small, localized string keys and natively leverages sorting which we require downstream.
-*   **Buffer Flushing**: During summary generation `flush_variable_summary`, implemented `std::mem::take` to extract keys out of `BTreeMap` buffers. This prevents `O(N log N)` allocation overhead from cloning and manually sorting keys that were necessary with HashMaps. Additionally, pre-allocated the resulting `summaries` vector based on known lengths using `Vec::with_capacity` to prevent multi-allocation scaling inside the hot-path loop.
-*   **Regex Statically Compiled**: Optimized Regex initializations in `extract_parts` by statically caching compiled Regex instances using `std::sync::OnceLock`. This heavily alleviates cyclic heap allocations and CPU cycles executing `Regex::new()` on almost every line inside the parsing loop.
-*   **Cow Allocations in Transform**: Addressed `apply_structural_transform` returning dynamically allocated heap `String` strings on every processed line by restructuring to return `std::borrow::Cow<str>`. This safely handles string references and guarantees actual heap allocations only occur precisely when Markdown transformation is requested.
+## Buffer Refactoring
+We identified that `variable_buffer` was previously declared as `BTreeMap<String, Vec<Vec<String>>>` to track regex template variables. However, the exact strings in those vectors were never actually utilized, only the length of the lists (`var_sets.len()`) to determine repeat counts.
 
-**Impact**: Significant prevention of unnecessary heap allocation and cyclic overhead inside the per-line 'hot path'. Lowered hashing memory costs for system tracking.
+We refactored `variable_buffer` to `BTreeMap<String, usize>`, strictly storing the repetition count.
 
----
+This significantly drops heap memory usage, since we no longer repeatedly allocate and push to dynamic vectors of strings for every matched line.
 
-## Memory Profiling & Optimization - Gateways and Hot-Paths
-
-### 🧩 Data Structure Audit & Optimization
-*   **Hot-Path Allocations (`src/engine/mod.rs`)**: Discovered that passing lines down the axiom stream pipeline caused multiple `String` heap allocations on every tick. Refactored `PipelineAction` to use `Cow<'a, str>` instead of strict `String`s. This allowed zero-allocation pass-throughs when stages do not fundamentally modify the text (e.g. `stage_deduplicate`, `stage_guard`, `stage_analyze`). Because lines generally outlive the match scope, strings are bound locally and mapped appropriately to ensure lifetimes are satisfied without sacrificing borrow benefits when feasible.
-*   **Terminal Gateway Overhead (`src/gateway/filters.rs`)**: Initialized `StreamPipeline.buffer` with `String::with_capacity(1024)` based on an estimated typical dense line length. `events` vector capacity pre-allocated to 16 based on average chunk iterations.
-*   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
-
-**Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+## String Extraction & Capacity Reuse
+1. `extract_parts` was refactored to directly perform inline regex string replacements and return a single `String`, completely avoiding `Vec<String>` allocations for regex captures.
+2. In `get_saved_bytes`, we refactored the estimate calculations to `template.capacity() + std::mem::size_of::<usize>()` to prevent multiplying the raw memory cost by match counts incorrectly.
+3. In `mod.rs` `stage_deduplicate`, we utilized `take().unwrap_or_default()`, `clear()`, and `push_str()` instead of allocating fresh `String` elements for the stream pipeline `last_line` variable.
+4. In `gateway/filters.rs`, we swapped out `std::mem::take(&mut self.buffer)` for `self.buffer.clone()` + `self.buffer.clear()` to maintain the underlying 1024-byte capacity instead of reallocating it constantly.
