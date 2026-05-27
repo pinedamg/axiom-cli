@@ -11,7 +11,7 @@ impl Default for StreamPipeline {
     fn default() -> Self {
         Self {
             buffer: String::with_capacity(1024),
-            ansi_regex: Regex::new(r"[\u001b\u009b][\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]").unwrap(),
+            ansi_regex: Regex::new(r"[\u001b\u009b][\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]").expect("Invalid hardcoded regex"),
             last_was_cr: false,
         }
     }
@@ -26,7 +26,8 @@ impl StreamFilter for StreamPipeline {
         for c in stripped.chars() {
             if c == '\n' {
                 // Line feed: emit what we have as a static line
-                let line = std::mem::take(&mut self.buffer);
+                let line = self.buffer.clone();
+                self.buffer.clear();
                 events.push(TerminalEvent::StaticLine(line));
                 self.last_was_cr = false;
             } else if c == '\r' {
