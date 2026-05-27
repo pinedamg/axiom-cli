@@ -55,6 +55,9 @@ Muestra la salida cruda del último comando ejecutado.
   - `-t, --tail <LÍNEAS>`: Número de líneas a mostrar desde el final.
   - `-g, --grep <PALABRA_CLAVE>`: Filtra las líneas por una palabra clave.
 
+### `axiom dev <ARGS>...`
+Ejecuta un comando en el Modo de Laboratorio para Desarrolladores (Rastreo de Decisiones). Este modo genera un reporte detallado de cómo Axiom procesó cada línea (ej. deduplicación, redacción de privacidad, análisis semántico).
+
 ### `axiom gain`
 Muestra análisis sobre el ahorro de tokens.
 - **Banderas**:

@@ -55,6 +55,9 @@ Show the raw output of the last executed command.
   - `-t, --tail <LINES>`: Number of lines to show from the end.
   - `-g, --grep <KEYWORD>`: Filter lines by a keyword.
 
+### `axiom dev <ARGS>...`
+Run a command in Developer Laboratory Mode (Decision Tracing). This mode outputs a detailed trace report of how Axiom processed each line (e.g., deduplication, privacy redaction, semantic analysis).
+
 ### `axiom gain`
 Show token savings analytics.
 - **Flags**:
