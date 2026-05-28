@@ -18,3 +18,12 @@
 *   **Pattern Matching RegEx (`src/engine/discovery.rs`)**: Extracted variables matched by privacy RegEx constructs iteratively appended to an unconstrained vector, which forced resizing on noisy unstructured strings. Refactored `extract_parts` to initialize the `variables` vector with `Vec::with_capacity(8)`.
 
 **Impact**: Expected multi-megabyte GC/heap turnover reduction per minute during dense log streams (e.g., recursive `ls`, intensive `npm install`, sprawling `cargo build`). Pre-allocations should significantly decrease OS memory locking overhead inside the sub-10ms performance envelope.
+
+## Optimization in Variable Buffer
+
+In Axiom's `DiscoveryEngine`, the `variable_buffer` was previously designed to map string templates to a `Vec<Vec<String>>`, accumulating every single extracted regex variable from stream lines for potential output.
+However, in high-frequency logging streams, this led to massive amounts of heap allocations as each line spawned multiple short-lived `String` vectors that were rarely utilized downstream (the aggregator summary merely printed the match count, not the variables themselves).
+
+**The Architectural Pattern:** High-frequency log stream aggregations should be optimized by tracking only mathematical counters instead of structural allocations when the individual values aren't surfaced in the final render.
+
+The type of `variable_buffer` was successfully changed from `BTreeMap<String, Vec<Vec<String>>>` to `BTreeMap<String, usize>`, representing purely the counter. The `extract_parts` function was simplified to return only the formatted format string (`.into_owned()`), entirely eliminating the `Vec<String>` accumulation pattern in the hot path. The memory usage calculations were updated accordingly to reflect only the string capacity and `usize` size.
