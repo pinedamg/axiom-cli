@@ -23,7 +23,7 @@ rules:
     
   - id: npm_success_install
     pattern: "^added \\d+ packages"
-    action: pass # Pass this through but maybe format it
+    action: keep # Pass this through but maybe format it
 ```
 
 ### Fields
@@ -34,9 +34,11 @@ rules:
 
 ### Rule Actions
 
+- `keep`: Allows the line to print normally. Used to explicitly whitelist important lines.
 - `collapse`: Hides the matching line. If multiple consecutive lines match, they are replaced by a single `summary` line. The `{count}` variable can be used in the summary.
-- `pass`: Allows the line to print normally. Used to explicitly whitelist important lines.
-- `drop`: Completely removes the line from the stream without any summary.
+- `redact`: Completely removes the line and replaces it with `[REDACTED_BY_SCHEMA]` for privacy shielding.
+- `hidden`: Completely removes the line from the stream without any summary.
+- `synthesize`: The new action for intelligent grouping, replacing multiple matched lines with a smart summary.
 
 ## How to Contribute a Schema
 

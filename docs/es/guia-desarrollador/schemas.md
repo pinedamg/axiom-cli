@@ -23,7 +23,7 @@ rules:
     
   - id: npm_success_install
     pattern: "^added \\d+ packages"
-    action: pass # Deja pasar esto pero quizás dale formato
+    action: keep # Deja pasar esto pero quizás dale formato
 ```
 
 ### Campos
@@ -34,9 +34,11 @@ rules:
 
 ### Acciones de las Reglas
 
+- `keep`: Permite que la línea se imprima normalmente. Se usa para añadir líneas importantes a una "lista blanca".
 - `collapse`: Oculta la línea que coincide. Si varias líneas consecutivas coinciden, se reemplazan por una única línea de `summary`. La variable `{count}` puede usarse en el resumen.
-- `pass`: Permite que la línea se imprima normalmente. Se usa para añadir líneas importantes a una "lista blanca".
-- `drop`: Elimina completamente la línea del flujo sin ningún resumen.
+- `redact`: Elimina completamente la línea y la reemplaza con `[REDACTED_BY_SCHEMA]` para proteger la privacidad.
+- `hidden`: Elimina completamente la línea del flujo sin ningún resumen.
+- `synthesize`: La nueva acción para agrupamiento inteligente, reemplazando múltiples líneas coincidentes con un resumen inteligente.
 
 ## Cómo Contribuir con un Schema
 

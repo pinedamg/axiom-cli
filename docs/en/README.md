@@ -18,6 +18,34 @@ Axiom acts as a **Semantic Firewall**. It intercepts your command output locally
 
 ---
 
+## 🏗️ How it Works: The Signal Funnel
+
+Axiom acts as a high-performance local filter between your tools and your context window.
+
+```mermaid
+graph TD
+    A[Terminal Command] -->|Intercept| B{AXIOM PROXY}
+
+    subgraph "LOCAL EXECUTION (Sub-10ms)"
+    B --> C[Deduplicate]
+    C --> D[Transform]
+    D --> E[Guard]
+    E --> F[Redact]
+    F --> G[Analyze]
+    G --> H[Plugins]
+    end
+
+    H --> I[⚡ HIGH-SIGNAL STREAM]
+    I --> J[🤖 AI AGENT / CURSOR / CLAUDE]
+    I --> K[👤 ZEN DEVELOPER]
+
+    style E fill:#ff9999,stroke:#333,stroke-width:2px,color:#000
+    style G fill:#99ccff,stroke:#333,stroke-width:2px,color:#000
+    style I fill:#99ff99,stroke:#333,stroke-width:4px,color:#000
+```
+
+---
+
 ## 📖 Table of Contents
 
 - [🚀 Getting Started](getting-started/installation.md)
